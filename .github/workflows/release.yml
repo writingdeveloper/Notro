@@ -1,0 +1,35 @@
+name: Release
+
+# Build the Windows EXE and publish it to a GitHub Release.
+# Triggered by pushing a version tag, e.g.:  git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install --upgrade pyinstaller -r requirements.txt
+
+      - name: Build EXE
+        run: pyinstaller --onefile --noconsole --name ClipShrink --clean clipshrink.py
+
+      - name: Publish release with EXE
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/ClipShrink.exe
+          generate_release_notes: true
