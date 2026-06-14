@@ -76,8 +76,8 @@ Edit the values at the top of `clipshrink.py`:
 - Compressed files are written to `%TEMP%\ClipShrink` and auto-deleted after 1 day.
 - Copying an image **file** (<kbd>Ctrl</kbd>+<kbd>C</kbd>) larger than the limit is
   compressed the same way.
-- **Languages:** English, 한국어, 日本語, 中文(简体). ClipShrink auto-detects your
-  Windows language and can be switched anytime from the tray **Language** menu.
+- **Languages:** English, 한국어, 日本語, 中文(简体), Español. ClipShrink auto-detects
+  your Windows language and can be switched anytime from the tray **Language** menu.
 
 ## Development
 

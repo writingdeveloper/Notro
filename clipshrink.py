@@ -28,7 +28,7 @@ from datetime import datetime
 
 from PIL import Image, ImageGrab
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 # ===================== 설정 =====================
 LIMIT_MB = 10           # 디스코드 무료 업로드 한도 (MB)
@@ -168,10 +168,10 @@ def set_setting_str(name: str, value: str):
 
 
 # ---------- 다국어 (i18n) ----------
-SUPPORTED_LANGS = ("en", "ko", "ja", "zh")
+SUPPORTED_LANGS = ("en", "ko", "ja", "zh", "es")
 
 # GetUserDefaultUILanguage()의 primary language id → 언어 코드
-_PRIMARY_LANG_MAP = {0x09: "en", 0x12: "ko", 0x11: "ja", 0x04: "zh"}
+_PRIMARY_LANG_MAP = {0x09: "en", 0x12: "ko", 0x11: "ja", 0x04: "zh", 0x0A: "es"}
 
 STRINGS = {
     "en": {
@@ -249,6 +249,25 @@ STRINGS = {
         "notify_file_deleted": "该文件已被删除。",
         "notify_startup_fail": "更改开机启动设置失败。",
         "notify_first_run": "正在托盘运行。如需开机自动启动，请在菜单 →「开机时自动运行」中开启。",
+    },
+    "es": {
+        "tooltip": "ClipShrink v{ver} — comprime imágenes para el límite de subida de Discord",
+        "pause": "Pausar la supervisión",
+        "resume": "Reanudar la supervisión",
+        "history": "Actividad reciente",
+        "history_empty": "(nada todavía)",
+        "upload_limit": "Límite de subida",
+        "open_folder": "Abrir carpeta de salida",
+        "run_at_startup": "Ejecutar al iniciar Windows",
+        "language": "Idioma",
+        "lang_auto": "Detección automática",
+        "quit": "Salir",
+        "notify_compress_done": "Comprimido: {orig:.1f} MB → {new:.1f} MB (-{pct}%, {fmt}) — solo pégalo.",
+        "notify_compress_fail": "Error de compresión: no se pudo reducir por debajo del límite.",
+        "notify_clipboard_fail": "Error al actualizar el portapapeles: otra aplicación lo está usando. Copia de nuevo en un momento.",
+        "notify_file_deleted": "Ese archivo ya se ha eliminado.",
+        "notify_startup_fail": "No se pudo cambiar la configuración de inicio.",
+        "notify_first_run": "Ejecutándose en la bandeja. Para iniciar con el sistema, actívalo en el menú → 'Ejecutar al iniciar Windows'.",
     },
 }
 
@@ -688,7 +707,13 @@ def main():
     )
 
     # 언어 메뉴 (자동 감지 + 각 언어). 언어명은 해당 언어 표기 그대로 둔다.
-    lang_names = {"en": "English", "ko": "한국어", "ja": "日本語", "zh": "中文(简体)"}
+    lang_names = {
+        "en": "English",
+        "ko": "한국어",
+        "ja": "日本語",
+        "zh": "中文(简体)",
+        "es": "Español",
+    }
 
     def make_lang_item(code):
         def on_select(icon, item):
@@ -710,6 +735,7 @@ def main():
         make_lang_item("ko"),
         make_lang_item("ja"),
         make_lang_item("zh"),
+        make_lang_item("es"),
     )
 
     icon = pystray.Icon(

@@ -3,6 +3,12 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-06-13
+
+### Added
+- Spanish (Español) UI translation, bringing supported languages to five:
+  English, 한국어, 日本語, 中文(简体), Español.
+
 ## [1.1.0] - 2026-06-13
 
 ### Added
