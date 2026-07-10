@@ -80,6 +80,43 @@ def popup_geometry() -> tuple[int, int, int, int]:
     return x, y, win_w, win_h
 
 
+def prepare_for_paste(path: str, limit_bytes: int, temp_dir: str) -> tuple[str, bool]:
+    """한도 초과 항목 전처리 (스펙 §6.7/§7).
+
+    정지 이미지: 기존 압축 파이프라인으로 한도 내 재인코딩.
+    GIF(애니메이션): 재압축 품질 저하가 커서 그대로 두고 경고만.
+    반환: (붙여넣을 경로, 한도 초과 경고 여부)
+    """
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        return path, False
+    if size <= limit_bytes:
+        return path, False
+    if path.lower().endswith(".gif"):
+        return path, True
+    from datetime import datetime
+
+    from PIL import Image
+
+    from .. import compress
+
+    try:
+        with Image.open(path) as img:
+            img.load()
+            result = compress.compress_image(img, limit_bytes)
+    except Exception:
+        return path, True
+    if result is None:
+        return path, True
+    data, ext = result
+    out = os.path.join(temp_dir,
+                       datetime.now().strftime("picker_%Y%m%d_%H%M%S_%f") + ext)
+    with open(out, "wb") as f:
+        f.write(data)
+    return out, False
+
+
 class PickerApi:
     """JS 브리지.
 
