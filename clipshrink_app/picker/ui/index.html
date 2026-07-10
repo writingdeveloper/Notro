@@ -6,9 +6,50 @@
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
-<div id="root">skeleton — <span id="probe">no probe gif</span>
-<img id="probe-img" width="120" height="120" alt="probe">
+<div id="app">
+  <header>
+    <input id="search" type="text" autocomplete="off" spellcheck="false">
+    <button id="btn-add" class="iconbtn" title="+">＋</button>
+    <button id="btn-settings" class="iconbtn" title="settings">⚙</button>
+  </header>
+  <nav id="tabs">
+    <button class="tab active" data-tab="emoji"></button>
+    <button class="tab" data-tab="sticker"></button>
+    <button class="tab" data-tab="gif"></button>
+  </nav>
+  <main id="content"></main>
+  <footer id="hint"></footer>
 </div>
+
+<div id="ctx" class="hidden"></div>
+
+<div id="modal-add" class="modal hidden">
+  <div class="modal-box">
+    <h3 id="add-title"></h3>
+    <input id="add-url" type="text" spellcheck="false">
+    <input id="add-name" type="text" spellcheck="false">
+    <input id="add-kw" type="text" spellcheck="false">
+    <p id="add-note" class="note"></p>
+    <p id="add-error" class="error hidden"></p>
+    <div class="row">
+      <button id="add-submit" class="primary"></button>
+      <button id="add-cancel"></button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-settings" class="modal hidden">
+  <div class="modal-box">
+    <h3 id="st-title"></h3>
+    <div id="st-folders"></div>
+    <div class="row">
+      <button id="st-addfolder" class="primary"></button>
+      <button id="st-close"></button>
+    </div>
+  </div>
+</div>
+
+<div id="dropzone" class="hidden"></div>
 <script src="app.js"></script>
 </body>
 </html>
