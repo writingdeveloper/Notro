@@ -85,25 +85,27 @@ def main():
         icon.run()
         return
 
-    import os
-
     import webview
 
     from .hotkey import HotkeyListener
+    from .library import Library
     from .picker.assets_server import AssetServer
     from .picker.window import PickerApi, PickerController
 
-    # 스켈레톤 resolver: probe만 서빙 (T7에서 라이브러리 기반으로 교체)
+    library = Library(config.DATA_DIR)
+
     def _resolve_asset(item_id: str):
-        if item_id == "probe":
-            return os.path.join(config.DATA_DIR, "assets", "probe.gif")
-        return None
+        item = library.get(item_id)
+        if item is None and item_id.startswith("folder:"):
+            item = next((i for i in library.scan_folders()
+                         if i["id"] == item_id), None)
+        return library.asset_path(item) if item else None
 
     asset_server = AssetServer(_resolve_asset)
     asset_server.start()
 
-    api = PickerApi(asset_server=asset_server)
-    picker = PickerController(api=api)
+    api = PickerApi(library=library, asset_server=asset_server)
+    picker = PickerController(library=library, api=api)
     api._ctrl = picker
     listener = HotkeyListener(on_hotkey=picker.toggle)
 
@@ -113,6 +115,7 @@ def main():
     )
     listener.on_register_fail = lambda label: icon.notify(
         tr("notify_hotkey_fail", combo=label), APP_NAME)
+    picker.on_notify = lambda msg: icon.notify(msg, APP_NAME)
 
     picker.create_window()
     icon.run_detached()

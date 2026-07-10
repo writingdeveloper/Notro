@@ -117,23 +117,94 @@ def prepare_for_paste(path: str, limit_bytes: int, temp_dir: str) -> tuple[str, 
     return out, False
 
 
+PICKER_STRING_KEYS = [
+    "picker_search", "picker_tab_emoji", "picker_tab_sticker", "picker_tab_gif",
+    "picker_recent", "picker_empty", "picker_hint", "picker_add_title",
+    "picker_add_url_ph", "picker_add_name_ph", "picker_add_kw_ph",
+    "picker_add_note", "picker_add_submit", "picker_cancel",
+    "picker_folders_title", "picker_add_folder", "picker_drop_hint",
+    "picker_ctx_file", "picker_ctx_url", "picker_ctx_delete",
+    "picker_err_lottie", "picker_err_not_discord", "picker_err_download",
+]
+
+
 class PickerApi:
-    """JS 브리지.
+    """JS 브리지. 각 메서드는 pywebview API 스레드에서 호출된다.
 
     주의: pywebview는 js_api 객체의 공개 속성을 재귀 탐색해 JS에 노출한다.
     비API 참조(컨트롤러·서버·라이브러리 등)를 공개 속성으로 두면 순환/거대
     그래프 탐색으로 브리지 생성이 멈춘다 — 반드시 `_` 접두 프라이빗으로.
     """
 
-    def __init__(self, asset_server=None):
+    def __init__(self, library=None, asset_server=None):
         self._ctrl: PickerController | None = None
+        self._library = library
         self._asset_server = asset_server
 
-    def probe_url(self):
-        """스켈레톤 검증용: 자산 서버를 통한 probe GIF URL."""
-        if self._asset_server:
-            return self._asset_server.url_for("probe")
-        return ""
+    def _display(self, item: dict) -> dict:
+        return {
+            "id": item["id"], "type": item["type"], "name": item["name"],
+            "keywords": item["keywords"], "animated": item["animated"],
+            "url": self._asset_server.url_for(item["id"]),
+            "can_url": bool(item.get("source_url")),
+            "is_folder": item["source_kind"] == "folder",
+        }
+
+    def get_state(self) -> dict:
+        from ..i18n import tr
+        return {
+            "items": [self._display(i) for i in self._library.all_display_items()],
+            "recent": [i["id"] for i in self._library.recent()],
+            "folders": [{**f, "exists": os.path.isdir(f["path"])}
+                        for f in self._library.folders()],
+            "strings": {k: tr(k) for k in PICKER_STRING_KEYS},
+        }
+
+    def select_item(self, item_id: str, mode: str = "file") -> bool:
+        if self._ctrl:
+            self._ctrl.select(item_id, mode)
+        return True
+
+    def register_url(self, url: str, name: str = "", keywords: str = "") -> dict:
+        from .. import fetch
+        kws = [k.strip() for k in (keywords or "").replace(",", " ").split()
+               if k.strip()]
+        try:
+            item = fetch.register_from_url(self._library, url, name, kws)
+        except fetch.UnsupportedAssetError:
+            return {"ok": False, "error": "lottie"}
+        except ValueError:
+            return {"ok": False, "error": "not_discord"}
+        except Exception:
+            return {"ok": False, "error": "download"}
+        return {"ok": True, "item": self._display(item)}
+
+    def register_files(self, paths, type_: str) -> dict:
+        from .. import fetch
+        n = 0
+        for p in paths or []:
+            try:
+                fetch.register_from_file(self._library, p, type_)
+                n += 1
+            except Exception:
+                pass
+        return {"ok": True, "count": n}
+
+    def add_folder(self, default_type: str = "gif") -> dict:
+        import webview
+        res = self._ctrl.window.create_file_dialog(webview.FOLDER_DIALOG)
+        if res:
+            self._library.add_folder(res[0], default_type)
+            return {"ok": True}
+        return {"ok": False}
+
+    def remove_folder(self, path: str) -> bool:
+        self._library.remove_folder(path)
+        return True
+
+    def remove_item(self, item_id: str) -> bool:
+        self._library.remove_item(item_id)
+        return True
 
     def hide(self):
         if self._ctrl:
@@ -142,11 +213,57 @@ class PickerApi:
 
 
 class PickerController:
-    def __init__(self, api=None):
+    def __init__(self, library=None, api=None):
         self.window = None
         self.prev_hwnd = 0
         self.visible = False
+        self.on_notify = None  # tr()된 메시지를 받는 콜백 (트레이 알림)
+        self.library = library
         self._api = api
+
+    def _resolve(self, item_id: str) -> dict | None:
+        item = self.library.get(item_id)
+        if item is None and item_id.startswith("folder:"):
+            item = next((i for i in self.library.scan_folders()
+                         if i["id"] == item_id), None)
+        return item
+
+    def _notify(self, msg: str) -> None:
+        if self.on_notify:
+            try:
+                self.on_notify(msg)
+            except Exception:
+                pass
+
+    def select(self, item_id: str, mode: str = "file") -> None:
+        """피커 선택 → 숨김 → 클립보드 → 포커스 복귀 → Ctrl+V. 전송은 사용자."""
+        import time as _t
+
+        from .. import config
+        from ..i18n import tr
+
+        item = self._resolve(item_id)
+        if not item:
+            return
+        self.hide()
+        warn = False
+        if mode == "url" and item.get("source_url"):
+            ok = cb.set_clipboard_text(item["source_url"])
+        else:
+            path, warn = prepare_for_paste(self.library.asset_path(item),
+                                           config.LIMIT_BYTES, config.TEMP_DIR)
+            ok = cb.set_clipboard_file(path)
+        focused = cb.focus_window(self.prev_hwnd)
+        if ok and focused:
+            _t.sleep(0.12)
+            cb.send_ctrl_v()
+            if warn:
+                self._notify(tr("picker_oversize_warn"))
+        elif ok:
+            self._notify(tr("notify_paste_manual"))
+        else:
+            self._notify(tr("notify_clipboard_fail"))
+        self.library.touch(item["id"])
 
     def create_window(self):
         import webview
