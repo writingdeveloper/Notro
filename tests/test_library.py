@@ -206,6 +206,47 @@ def test_apply_lib_backfills_new_fields(tmp_path):
     assert r["favorite"] is False and r["collection"] == ""
 
 
+def test_set_collection_moves_file_on_disk(tmp_path):
+    lib = make_lib(tmp_path)
+    fn = put_asset(lib, "a.png")
+    item = lib.add_item("emoji", "a", [], "local", "", fn, False)
+    old_path = lib.asset_path(item)
+    assert os.path.exists(old_path)
+
+    lib.set_collection(item["id"], "miku")
+
+    new_path = lib.asset_path(lib.get(item["id"]))
+    assert not os.path.exists(old_path)
+    assert os.path.exists(new_path)
+    assert "miku" in new_path
+
+
+def test_set_collection_move_failure_leaves_state_unchanged(tmp_path, monkeypatch):
+    lib = make_lib(tmp_path)
+    fn = put_asset(lib, "a.png")
+    item = lib.add_item("emoji", "a", [], "local", "", fn, False)
+    old_path = lib.asset_path(item)
+
+    def boom(*a, **k):
+        raise OSError("locked")
+    monkeypatch.setattr(os, "replace", boom)
+
+    lib.set_collection(item["id"], "miku")
+
+    assert lib.get(item["id"])["collection"] == ""
+    assert os.path.exists(old_path)
+
+
+def test_set_collection_noop_when_same_name(tmp_path):
+    lib = make_lib(tmp_path)
+    fn = put_asset(lib, "a.png", "miku")
+    item = lib.add_item("emoji", "a", [], "local", "", fn, False, collection="miku")
+    old_path = lib.asset_path(item)
+    lib.set_collection(item["id"], "miku")
+    assert lib.asset_path(lib.get(item["id"])) == old_path
+    assert os.path.exists(old_path)
+
+
 def test_set_collection_and_list(tmp_path):
     lib = make_lib(tmp_path)
     a = lib.add_item("emoji", "a", ["miku"], "local", "", put_asset(lib, "a.png"), False)

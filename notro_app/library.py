@@ -143,10 +143,25 @@ class Library:
         return [i for i in self.items() if i.get("favorite")]
 
     def set_collection(self, item_id: str, name: str) -> None:
+        """등록 항목의 컬렉션을 바꾸고 파일을 새 폴더로 이동한다.
+        이동이 실패하면 메타데이터도 바꾸지 않는다(파일 위치와 collection
+        필드의 불일치를 방지 — asset_path()는 collection 필드를 그대로 믿는다)."""
         item = self._items.get(item_id)
-        if item is not None:
-            item["collection"] = (name or "").strip()
-            self._save()
+        if item is None:
+            return
+        new_name = (name or "").strip()
+        if new_name == item.get("collection", ""):
+            return
+        old_path = self.asset_path(item)
+        new_dir = self.collection_dir(new_name)
+        new_path = os.path.join(new_dir, item["filename"])
+        if os.path.exists(old_path) and old_path != new_path:
+            try:
+                os.replace(old_path, new_path)
+            except OSError:
+                return
+        item["collection"] = new_name
+        self._save()
 
     def collections(self) -> list[str]:
         """세로 바용 컬렉션 목록: 등록 항목의 collection(빈 값 제외) + 감시 폴더 basename."""
