@@ -42,12 +42,14 @@ class HotkeyListener:
         self.on_register_fail = on_register_fail
         self._thread: threading.Thread | None = None
         self._thread_id: int | None = None
+        self._ready = threading.Event()  # _run이 _thread_id를 채웠는지 알린다
         self.combo: str = HOTKEY_OFF
 
     def start(self, combo_key: str) -> None:
         self.combo = combo_key
         if combo_key not in HOTKEY_CHOICES:
             return  # off
+        self._ready.clear()
         self._thread = threading.Thread(
             target=self._run, args=(combo_key,), daemon=True)
         self._thread.start()
@@ -57,6 +59,11 @@ class HotkeyListener:
         self.start(combo_key)
 
     def stop(self) -> None:
+        # _run이 _thread_id를 채울 때까지 기다린다. 그러지 않으면 start() 직후
+        # 곧바로 stop()/set_combo()가 불릴 때 WM_QUIT을 보낼 대상이 없어(_thread_id가
+        # 아직 None) 스레드가 GetMessage에 갇히고 핫키가 해제되지 않는다.
+        if self._thread:
+            self._ready.wait(2)
         if self._thread_id:
             user32.PostThreadMessageW(self._thread_id, WM_QUIT, 0, 0)
         if self._thread:
@@ -68,6 +75,7 @@ class HotkeyListener:
         import os
         kernel32 = ctypes.windll.kernel32
         self._thread_id = kernel32.GetCurrentThreadId()
+        self._ready.set()  # _thread_id 준비 완료 — stop()이 WM_QUIT을 보낼 수 있다
         mods, vk, label = HOTKEY_CHOICES[combo_key]
         registered = user32.RegisterHotKey(None, _HOTKEY_ID, mods, vk)
         log = os.environ.get("CLIPSHRINK_DEBUG", "")

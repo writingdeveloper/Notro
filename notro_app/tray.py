@@ -15,9 +15,11 @@ from .config import (get_setting_str, is_startup_registered, set_setting_int,
 from .i18n import set_language, tr
 
 
-def make_icon_image(active=True):
+def make_icon_image(active=True, update_pending=False):
     """Notro 트레이 아이콘: 니트로식 블러플 캡슐에 'not Nitro' 대각선 슬래시.
-    active=False(감시 중지)면 회색으로 표시."""
+    active=False(감시 중지)면 회색으로 표시. update_pending이면 우측 상단에
+    주황 배지를 그려 업데이트 대기를 알린다 — Windows 알림이 꺼져 있어도
+    트레이에서 보이는 신호다."""
     img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     color = (88, 101, 242, 255) if active else (128, 128, 128, 255)  # 디스코드 블러플
@@ -25,7 +27,29 @@ def make_icon_image(active=True):
     d.rounded_rectangle([12, 20, 52, 44], radius=12, fill=color)
     # "not Nitro" 대각선 슬래시 (흰 선으로 캡슐 위에 또렷하게)
     d.line([16, 46, 48, 18], fill=(255, 255, 255, 255), width=7)
+    if update_pending:
+        # 업데이트 대기 배지 (우측 상단 주황 원 + 흰 테두리). 16px 트레이에서도
+        # 읽히도록 크게 그린다.
+        d.ellipse([40, 2, 62, 24], fill=(255, 149, 0, 255),
+                  outline=(255, 255, 255, 255), width=3)
     return img
+
+
+def signal_update_ready(icon, monitor, tag: str) -> None:
+    """업데이트 준비를 알림 설정과 무관한 경로로도 전달한다: 트레이 아이콘 배지 +
+    툴팁 변경 + 메뉴 갱신(숨겨진 '재시작해 업데이트' 항목 노출). 알림이 켜져 있으면
+    토스트도 함께 띄운다. on_ready가 icon.notify만 부르면 알림을 끈 사용자는
+    업데이트를 전혀 인지하지 못하므로, 아이콘·툴팁·메뉴로도 신호를 남긴다."""
+    try:
+        icon.icon = make_icon_image(monitor.enabled, update_pending=True)
+        icon.title = tr("update_ready", ver=tag)
+        icon.update_menu()
+    except Exception:
+        pass
+    try:
+        icon.notify(tr("update_ready", ver=tag), APP_NAME)
+    except Exception:
+        pass
 
 
 def build_icon(monitor, picker=None, listener=None, on_quit_extra=None, updater=None) -> "pystray.Icon":
@@ -37,7 +61,8 @@ def build_icon(monitor, picker=None, listener=None, on_quit_extra=None, updater=
 
     def on_toggle(icon, item):
         monitor.enabled = not monitor.enabled
-        icon.icon = make_icon_image(monitor.enabled)
+        pending = bool(updater and updater.ready_exe)
+        icon.icon = make_icon_image(monitor.enabled, update_pending=pending)
 
     def on_toggle_startup(icon, item):
         try:
@@ -181,7 +206,7 @@ def build_icon(monitor, picker=None, listener=None, on_quit_extra=None, updater=
             def _bg():
                 updater.check_once()
                 if updater.ready_exe:
-                    icon.update_menu()
+                    signal_update_ready(icon, monitor, updater.ready_tag)
                 else:
                     icon.notify(tr("update_none"), APP_NAME)
             threading.Thread(target=_bg, daemon=True).start()

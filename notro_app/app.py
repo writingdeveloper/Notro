@@ -103,7 +103,7 @@ def main():
         # 피커 없이 v1 모드로 동작 (압축 기능은 그대로)
         icon = tray.build_icon(monitor, updater=upd)
         if upd:
-            upd.on_ready = lambda tag, exe: icon.notify(tr("update_ready", ver=tag), APP_NAME)
+            upd.on_ready = lambda tag, exe: tray.signal_update_ready(icon, monitor, tag)
             upd.start()
         if first_run:
             threading.Timer(1.5, lambda: icon.notify(tr("notify_first_run"), APP_NAME)).start()
@@ -144,7 +144,7 @@ def main():
         tr("notify_hotkey_fail", combo=label), APP_NAME)
     picker.on_notify = lambda msg: icon.notify(msg, APP_NAME)
     if upd:
-        upd.on_ready = lambda tag, exe: icon.notify(tr("update_ready", ver=tag), APP_NAME)
+        upd.on_ready = lambda tag, exe: tray.signal_update_ready(icon, monitor, tag)
         upd.start()
 
     picker.create_window()

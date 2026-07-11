@@ -3,6 +3,31 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.5] - 2026-07-11
+
+### Fixed
+- **Update availability is now visible even with Windows notifications off.** The
+  "update ready" signal previously fired only a toast (`on_ready` → `icon.notify`),
+  which Focus Assist / disabled notifications suppress — and the "Restart to update"
+  tray item stayed hidden because pystray's Windows menu is a cached HMENU that was
+  never refreshed. Readiness now also (a) draws an orange badge on the tray icon,
+  (b) updates the tray tooltip, and (c) refreshes the menu so the Restart item
+  actually appears. The toast still fires for users who have notifications on.
+- **Hotkey-listener thread race.** Rebinding the picker hotkey in quick succession
+  could leak the listener thread and leave the old hotkey registered — `WM_QUIT` was
+  posted before the worker recorded its thread id. `stop()` now waits for the id.
+- **Library thread-safety.** The asset HTTP server (multi-threaded) and the picker
+  js_api thread could mutate the item/folder maps mid-iteration; guarded with a
+  reentrant lock.
+- **Clipboard memory leak** on the rare `GlobalLock`/`SetClipboardData` failure path
+  (the moved global wasn't freed when ownership didn't transfer to the clipboard).
+
+### Changed
+- Localized the picker's ⚙ settings-button tooltip (was hardcoded English "settings").
+- Unified Korean UI wording to a consistent polite register (해요체) — fixed a
+  mixed-register sentence and the "move to collection" label (`컬렉션으로 이동`).
+  Minor English/Chinese fixes (fullwidth `＋`, `素材库`).
+
 ## [2.5.4] - 2026-07-11
 
 ### Fixed

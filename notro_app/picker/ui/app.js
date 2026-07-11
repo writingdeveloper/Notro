@@ -32,6 +32,8 @@ function mock() {
 /* ---------- 렌더 ---------- */
 function applyStrings() {
   $("#search").placeholder = str("picker_search");
+  $("#btn-add").title = str("picker_add_submit");
+  $("#btn-settings").title = str("picker_settings");
   document.querySelectorAll(".tab").forEach((b) => {
     b.textContent = str("picker_tab_" + b.dataset.tab);
   });

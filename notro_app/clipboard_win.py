@@ -19,6 +19,8 @@ kernel32.GlobalLock.argtypes = [wt.HGLOBAL]
 kernel32.GlobalUnlock.argtypes = [wt.HGLOBAL]
 kernel32.GlobalSize.restype = ctypes.c_size_t
 kernel32.GlobalSize.argtypes = [wt.HGLOBAL]
+kernel32.GlobalFree.restype = wt.HGLOBAL
+kernel32.GlobalFree.argtypes = [wt.HGLOBAL]
 user32.SetClipboardData.restype = wt.HANDLE
 user32.SetClipboardData.argtypes = [wt.UINT, wt.HANDLE]
 user32.GetClipboardData.restype = wt.HANDLE
@@ -61,10 +63,14 @@ def _global_put(fmt: int, data: bytes) -> bool:
         return False
     ptr = kernel32.GlobalLock(hmem)
     if not ptr:
+        kernel32.GlobalFree(hmem)  # 잠금 실패 — 소유권을 넘기지 못했으니 해제
         return False
     ctypes.memmove(ptr, data, len(data))
     kernel32.GlobalUnlock(hmem)
-    return bool(user32.SetClipboardData(fmt, hmem))
+    if user32.SetClipboardData(fmt, hmem):
+        return True  # 성공 시 소유권이 클립보드로 넘어가므로 해제하지 않는다
+    kernel32.GlobalFree(hmem)  # 실패 시 소유권이 넘어가지 않았으니 해제
+    return False
 
 
 def _put_marker() -> None:

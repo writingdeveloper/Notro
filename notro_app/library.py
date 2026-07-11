@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import threading
 import time
 import uuid
 
@@ -40,6 +41,10 @@ class Library:
         self._items: dict[str, dict] = {}
         self._folders: list[dict] = []
         self._scan_cache: dict[str, tuple[tuple, list[dict]]] = {}
+        # 자산 HTTP 서버(다중 요청 스레드)와 피커 js_api 스레드가 항목·폴더·
+        # 스캔 캐시에 동시 접근하므로, 순회 중 변경으로 인한 오류(RuntimeError:
+        # dictionary changed size 등)를 막기 위해 재진입 락으로 상태 접근을 보호한다.
+        self._lock = threading.RLock()
         self._load()
 
     # ---------- 영속 ----------
@@ -123,38 +128,42 @@ class Library:
             "favorite": bool(favorite), "collection": collection or "",
             "added_at": _now(), "use_count": 0, "last_used": 0,
         }
-        self._items[item["id"]] = item
-        self._save()
+        with self._lock:
+            self._items[item["id"]] = item
+            self._save()
         return item
 
     def get(self, item_id: str) -> dict | None:
         return self._items.get(item_id)
 
     def remove_item(self, item_id: str) -> None:
-        item = self._items.pop(item_id, None)
-        if item:
-            try:
-                os.remove(self.asset_path(item))
-            except OSError:
-                pass
-            self._save()
+        with self._lock:
+            item = self._items.pop(item_id, None)
+            if item:
+                try:
+                    os.remove(self.asset_path(item))
+                except OSError:
+                    pass
+                self._save()
 
     def touch(self, item_id: str) -> None:
-        item = self._items.get(item_id)
-        if not item:
-            return  # 폴더 항목 등은 무시
-        item["use_count"] += 1
-        item["last_used"] = _now()
-        self._save()
+        with self._lock:
+            item = self._items.get(item_id)
+            if not item:
+                return  # 폴더 항목 등은 무시
+            item["use_count"] += 1
+            item["last_used"] = _now()
+            self._save()
 
     def toggle_favorite(self, item_id: str) -> bool:
         """등록 항목의 즐겨찾기를 반전하고 새 값을 반환 (폴더 항목은 무시→False)."""
-        item = self._items.get(item_id)
-        if not item:
-            return False
-        item["favorite"] = not item.get("favorite", False)
-        self._save()
-        return item["favorite"]
+        with self._lock:
+            item = self._items.get(item_id)
+            if not item:
+                return False
+            item["favorite"] = not item.get("favorite", False)
+            self._save()
+            return item["favorite"]
 
     def favorites(self) -> list[dict]:
         return [i for i in self.items() if i.get("favorite")]
@@ -163,28 +172,30 @@ class Library:
         """등록 항목의 컬렉션을 바꾸고 파일을 새 폴더로 이동한다.
         이동이 실패하면 메타데이터도 바꾸지 않는다(파일 위치와 collection
         필드의 불일치를 방지 — asset_path()는 collection 필드를 그대로 믿는다)."""
-        item = self._items.get(item_id)
-        if item is None:
-            return
-        new_name = (name or "").strip()
-        if new_name == item.get("collection", ""):
-            return
-        old_path = self.asset_path(item)
-        new_dir = self.collection_dir(new_name)
-        new_path = os.path.join(new_dir, item["filename"])
-        if os.path.exists(old_path) and old_path != new_path:
-            try:
-                os.replace(old_path, new_path)
-            except OSError:
+        with self._lock:
+            item = self._items.get(item_id)
+            if item is None:
                 return
-        item["collection"] = new_name
-        self._save()
+            new_name = (name or "").strip()
+            if new_name == item.get("collection", ""):
+                return
+            old_path = self.asset_path(item)
+            new_dir = self.collection_dir(new_name)
+            new_path = os.path.join(new_dir, item["filename"])
+            if os.path.exists(old_path) and old_path != new_path:
+                try:
+                    os.replace(old_path, new_path)
+                except OSError:
+                    return
+            item["collection"] = new_name
+            self._save()
 
     def collections(self) -> list[str]:
         """세로 바용 컬렉션 목록: 등록 항목의 collection(빈 값 제외) + 감시 폴더 basename."""
-        regs = {i.get("collection", "") for i in self._items.values()}
+        with self._lock:
+            regs = {i.get("collection", "") for i in self._items.values()}
+            folders = {os.path.basename(f["path"]) for f in self._folders}
         regs.discard("")
-        folders = {os.path.basename(f["path"]) for f in self._folders}
         return sorted(regs | folders)
 
     def collection_icon(self, name: str) -> str | None:
@@ -196,10 +207,12 @@ class Library:
         return None
 
     def items(self) -> list[dict]:
-        return sorted(self._items.values(), key=lambda i: i["name"].lower())
+        with self._lock:
+            return sorted(self._items.values(), key=lambda i: i["name"].lower())
 
     def recent(self, limit: int = 16) -> list[dict]:
-        used = [i for i in self._items.values() if i["last_used"] > 0]
+        with self._lock:
+            used = [i for i in self._items.values() if i["last_used"] > 0]
         return sorted(used, key=lambda i: i["last_used"], reverse=True)[:limit]
 
     def asset_path(self, item: dict) -> str:
@@ -218,23 +231,28 @@ class Library:
     # ---------- 폴더 ----------
     def add_folder(self, path: str, default_type: str = "gif") -> None:
         ap = os.path.abspath(path)
-        if any(f["path"] == ap for f in self._folders):
-            return
-        self._folders.append({"path": ap, "default_type": default_type})
-        self._save()
+        with self._lock:
+            if any(f["path"] == ap for f in self._folders):
+                return
+            self._folders.append({"path": ap, "default_type": default_type})
+            self._save()
 
     def remove_folder(self, path: str) -> None:
         ap = os.path.abspath(path)
-        self._folders = [f for f in self._folders if f["path"] != ap]
-        self._scan_cache.pop(ap, None)
-        self._save()
+        with self._lock:
+            self._folders = [f for f in self._folders if f["path"] != ap]
+            self._scan_cache.pop(ap, None)
+            self._save()
 
     def folders(self) -> list[dict]:
-        return list(self._folders)
+        with self._lock:
+            return list(self._folders)
 
     def scan_folders(self) -> list[dict]:
+        with self._lock:
+            folders = list(self._folders)  # 순회 중 변경 방지 스냅샷
         out: list[dict] = []
-        for folder in self._folders:
+        for folder in folders:
             path, dtype = folder["path"], folder["default_type"]
             try:
                 entries = sorted(os.listdir(path))
@@ -243,7 +261,8 @@ class Library:
             names = [n for n in entries
                      if os.path.splitext(n)[1].lower() in SUPPORTED_EXTS]
             sig = (self._dir_sig(path), tuple(names))
-            cached = self._scan_cache.get(path)
+            with self._lock:
+                cached = self._scan_cache.get(path)
             if cached and cached[0] == sig:
                 out.extend(cached[1])
                 continue
@@ -259,7 +278,8 @@ class Library:
                     "collection": os.path.basename(path),
                     "added_at": 0, "use_count": 0, "last_used": 0,
                 })
-            self._scan_cache[path] = (sig, items)
+            with self._lock:
+                self._scan_cache[path] = (sig, items)
             out.extend(items)
         return out
 

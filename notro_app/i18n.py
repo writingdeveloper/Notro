@@ -45,11 +45,11 @@ STRINGS = {
         "lang_auto": "자동 감지",
         "quit": "종료",
         "notify_compress_done": "압축 완료: {orig:.1f}MB → {new:.1f}MB ({pct}% 감소, {fmt}) — 그대로 붙여넣으세요.",
-        "notify_compress_fail": "압축 실패: 한도 이하로 줄이지 못했습니다.",
-        "notify_clipboard_fail": "클립보드 교체 실패: 다른 프로그램이 클립보드를 사용 중입니다. 잠시 후 다시 복사해 주세요.",
-        "notify_file_deleted": "파일이 이미 삭제되었습니다.",
-        "notify_startup_fail": "시작 프로그램 설정 변경에 실패했습니다.",
-        "notify_first_run": "트레이에서 실행 중입니다. 부팅 시 자동 실행하려면 메뉴 → 'Windows 시작 시 자동 실행'을 켜세요.",
+        "notify_compress_fail": "압축 실패: 한도 이하로 줄이지 못했어요.",
+        "notify_clipboard_fail": "클립보드 교체 실패: 다른 프로그램이 클립보드를 사용 중이에요. 잠시 후 다시 복사해 주세요.",
+        "notify_file_deleted": "파일이 이미 삭제되었어요.",
+        "notify_startup_fail": "시작 프로그램 설정을 바꾸지 못했어요.",
+        "notify_first_run": "트레이에서 실행 중이에요. 부팅 시 자동 실행하려면 메뉴 → 'Windows 시작 시 자동 실행'을 켜세요.",
     },
     "ja": {
         "tooltip": "Notro v{ver} — Discordのアップロード上限に自動圧縮",
@@ -127,7 +127,7 @@ _PICKER_STRINGS = {
         "picker_tab_sticker": "Stickers",
         "picker_tab_gif": "GIFs",
         "picker_recent": "Recently used",
-        "picker_empty": "Nothing here yet — press + to add, or drop image files.",
+        "picker_empty": "Nothing here yet — press ＋ to add, or drop image files.",
         "picker_hint": "Click = paste · Enter = first result · Esc = close · Right-click = more",
         "picker_add_title": "Add from Discord link",
         "picker_add_url_ph": "Paste an emoji/sticker link (cdn.discordapp.com/…)",
@@ -151,9 +151,9 @@ _PICKER_STRINGS = {
         "hotkey_menu": "피커 단축키",
         "hotkey_off": "끄기",
         "notify_hotkey_fail": "단축키 {combo} 등록 실패 — 다른 앱이 사용 중일 수 있어요. 트레이 메뉴에서 다른 조합을 선택하세요.",
-        "notify_webview2_missing": "피커에는 Microsoft Edge WebView2 런타임이 필요합니다(Windows 11 내장). 압축 기능은 계속 동작합니다.",
-        "notify_paste_manual": "클립보드에 준비했습니다 — 디스코드에서 Ctrl+V 하세요.",
-        "picker_oversize_warn": "업로드 한도를 넘는 항목이라 원본 그대로 보냈습니다 — 디스코드가 거부할 수 있어요.",
+        "notify_webview2_missing": "피커에는 Microsoft Edge WebView2 런타임이 필요해요(Windows 11 내장). 압축 기능은 계속 동작해요.",
+        "notify_paste_manual": "클립보드에 준비했어요 — 디스코드에서 Ctrl+V 하세요.",
+        "picker_oversize_warn": "업로드 한도를 넘는 항목이라 원본 그대로 보냈어요 — 디스코드가 거부할 수 있어요.",
         "picker_convert_warn": "애니메이션을 변환하지 못해 정지 이미지로 저장했어요.",
         "picker_paste_no_image": "붙여넣을 이미지가 클립보드에 없어요 — 이미지를 먼저 복사하거나 파일을 끌어다 놓으세요.",
         "picker_search": "검색",
@@ -243,7 +243,7 @@ _PICKER_STRINGS = {
         "picker_drop_hint": "松开即添加到此标签",
         "picker_ctx_file": "作为文件粘贴",
         "picker_ctx_url": "作为链接粘贴",
-        "picker_ctx_delete": "从库中删除",
+        "picker_ctx_delete": "从素材库中删除",
         "picker_err_lottie": "这是 Lottie 贴纸（.json），无法转换。请先保存为图片再添加。",
         "picker_err_not_discord": "这不是 Discord 表情/贴纸链接。",
         "picker_err_download": "下载失败 — 请检查链接或网络。",
@@ -303,11 +303,11 @@ _UPDATER_STRINGS = {
     "ko": {
         "update_check": "업데이트 확인",
         "update_checking": "업데이트 확인 중…",
-        "update_none": "최신 버전입니다.",
-        "update_ready": "Notro {ver} 준비됨 — 재시작하면 적용됩니다.",
+        "update_none": "최신 버전이에요.",
+        "update_ready": "Notro {ver} 준비됨 — 재시작하면 적용돼요.",
         "update_restart": "지금 재시작해 업데이트",
         "update_auto": "자동 업데이트 확인",
-        "update_failed": "업데이트 확인 실패. 나중에 다시 시도합니다.",
+        "update_failed": "업데이트 확인 실패 — 나중에 다시 시도해요.",
     },
     "ja": {
         "update_check": "アップデートを確認",
@@ -357,7 +357,7 @@ _V24_STRINGS = {
     "ko": {
         "picker_ctx_favorite": "즐겨찾기 추가",
         "picker_ctx_unfavorite": "즐겨찾기 제거",
-        "picker_ctx_collection": "컬렉션 이동…",
+        "picker_ctx_collection": "컬렉션으로 이동…",
         "picker_col_all": "전체",
         "picker_col_favorites": "즐겨찾기",
         "picker_open_library": "라이브러리 폴더 열기",
@@ -395,6 +395,13 @@ _V24_STRINGS = {
 for _lang, _table in _V24_STRINGS.items():
     STRINGS[_lang].update(_table)
 del _V24_STRINGS
+
+
+# ---------- 설정 버튼 툴팁 (v2.5.5) ----------
+# index.html의 ⚙ 버튼 title이 하드코딩 "settings"로 남아 있던 것을 현지화한다.
+for _lang, _s in {"en": "Settings", "ko": "설정", "ja": "設定",
+                  "zh": "设置", "es": "Ajustes"}.items():
+    STRINGS[_lang]["picker_settings"] = _s
 
 current_lang = "en"  # 실행 시 set_language()로 설정됨
 
