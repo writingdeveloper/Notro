@@ -51,6 +51,17 @@ def _enable_dpi_awareness():
             pass
 
 
+def _set_app_user_model_id():
+    """작업 표시줄이 트레이·피커 창을 Notro exe 아이콘으로 묶어 표시하도록
+    명시적 AppUserModelID를 지정한다. 지정하지 않으면 pythonw/WebView2 기본
+    아이콘으로 흩어져, 시작 표시줄에 Notro 아이콘 대신 기본 아이콘이 뜬다."""
+    import ctypes
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("writingdeveloper.Notro")
+    except Exception:
+        pass
+
+
 def main():
     import os
     import sys
@@ -60,6 +71,7 @@ def main():
         faulthandler.dump_traceback_later(18, file=_fh)
 
     _enable_dpi_awareness()
+    _set_app_user_model_id()
     ensure_single_instance()
     config.migrate_legacy_data()  # v2.0 ClipShrink → Notro 데이터/설정 이전 (1회)
     cleanup_temp()

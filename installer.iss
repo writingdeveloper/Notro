@@ -16,6 +16,7 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=dist
 OutputBaseFilename=NotroSetup
+SetupIconFile=assets\notro.ico
 UninstallDisplayIcon={app}\Notro.exe
 Compression=lzma2
 SolidCompression=yes

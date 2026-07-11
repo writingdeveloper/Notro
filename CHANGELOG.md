@@ -3,6 +3,20 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.3] - 2026-07-11
+
+### Fixed
+- **The app, its installer, and the Start-menu / desktop / taskbar shortcuts now
+  show the Notro icon instead of the generic default.** The build pipeline never
+  embedded an icon: no `.ico` existed in the repo (only `docs/icon.png`), and
+  neither the PyInstaller build (`release.yml` / `build.bat` / `Notro.spec`) nor
+  the Inno Setup script passed one — so every shortcut, the setup wizard, and the
+  running app's taskbar entry inherited the default icon from an icon-less
+  `Notro.exe`. Added a multi-resolution `assets/notro.ico` (16–256 px) wired into
+  the EXE build (`--icon`) and the installer (`SetupIconFile`), plus an explicit
+  AppUserModelID so the taskbar groups the running app under the Notro icon
+  rather than pythonw/WebView2's default.
+
 ## [2.5.2] - 2026-07-11
 
 ### Fixed
