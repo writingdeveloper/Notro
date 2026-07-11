@@ -4,7 +4,7 @@ cd /d "%~dp0"
 echo [1/3] 의존성 설치...
 pip install --upgrade pyinstaller -r requirements.txt || goto :error
 echo [2/3] EXE 빌드...
-pyinstaller --onefile --noconsole --name Notro --clean ^
+pyinstaller --onedir --noconsole --name Notro --clean ^
   --icon assets\notro.ico ^
   --add-data "notro_app\picker\ui;notro_app/picker/ui" ^
   --collect-all webview notro.py || goto :error

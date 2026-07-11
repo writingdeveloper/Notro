@@ -30,7 +30,7 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 Name: "startupicon"; Description: "Run Notro at Windows startup"; GroupDescription: "Startup:"; Flags: unchecked
 
 [Files]
-Source: "dist\Notro.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\Notro\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\Notro"; Filename: "{app}\Notro.exe"

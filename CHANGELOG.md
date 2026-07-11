@@ -3,6 +3,24 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.4] - 2026-07-11
+
+### Fixed
+- **Root-caused and eliminated the "Failed to load Python DLL ... _MEI...\\python312.dll"
+  error that kept recurring after auto-update.** v2.5.1 (a delay) and v2.5.2
+  (installer-driven relaunch) only changed *when* the app relaunched; the real cause
+  was the **onefile** build itself. onefile extracts the entire ~37 MB payload —
+  including the Python DLL — into a fresh `%TEMP%\\_MEIxxxxx` folder on every launch,
+  and the post-install relaunch fired while that extraction was still racing (AV scan
+  / file-handle settle) on the just-written exe, so the DLL was momentarily
+  unloadable. Relaunching from the Start Menu seconds later always worked — the tell
+  that the installed exe itself was fine. Switched the build to **onedir**: the Python
+  DLL and its dependencies now live permanently in the installed `_internal\\` folder
+  and load directly, so there is no per-launch extraction and thus no race. The
+  installer packages the whole folder; the download is still a single `NotroSetup.exe`.
+  Verified locally that the onedir exe creates no `_MEI` folder and loads its DLL from
+  `_internal\\`.
+
 ## [2.5.3] - 2026-07-11
 
 ### Fixed
