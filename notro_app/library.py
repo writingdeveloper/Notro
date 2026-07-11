@@ -58,6 +58,8 @@ class Library:
         items = {}
         for i in data.get("items", []):
             i.setdefault("convert_warning", False)  # 구버전 항목 하위호환
+            i.setdefault("favorite", False)
+            i.setdefault("collection", "")
             items[i["id"]] = i
         self._items = items
 
@@ -83,12 +85,14 @@ class Library:
         return uuid.uuid4().hex[:12] + ext
 
     def add_item(self, type_, name, keywords, source_kind, source_url,
-                 filename, animated, convert_warning=False) -> dict:
+                 filename, animated, convert_warning=False,
+                 favorite=False, collection="") -> dict:
         item = {
             "id": uuid.uuid4().hex[:12], "type": type_, "name": name,
             "keywords": list(keywords or []), "source_kind": source_kind,
             "source_url": source_url, "filename": filename,
             "animated": bool(animated), "convert_warning": bool(convert_warning),
+            "favorite": bool(favorite), "collection": collection or "",
             "added_at": _now(), "use_count": 0, "last_used": 0,
         }
         self._items[item["id"]] = item
@@ -114,6 +118,31 @@ class Library:
         item["use_count"] += 1
         item["last_used"] = _now()
         self._save()
+
+    def toggle_favorite(self, item_id: str) -> bool:
+        """등록 항목의 즐겨찾기를 반전하고 새 값을 반환 (폴더 항목은 무시→False)."""
+        item = self._items.get(item_id)
+        if not item:
+            return False
+        item["favorite"] = not item.get("favorite", False)
+        self._save()
+        return item["favorite"]
+
+    def favorites(self) -> list[dict]:
+        return [i for i in self.items() if i.get("favorite")]
+
+    def set_collection(self, item_id: str, name: str) -> None:
+        item = self._items.get(item_id)
+        if item is not None:
+            item["collection"] = (name or "").strip()
+            self._save()
+
+    def collections(self) -> list[str]:
+        """세로 바용 컬렉션 목록: 등록 항목의 collection(빈 값 제외) + 감시 폴더 basename."""
+        regs = {i.get("collection", "") for i in self._items.values()}
+        regs.discard("")
+        folders = {os.path.basename(f["path"]) for f in self._folders}
+        return sorted(regs | folders)
 
     def items(self) -> list[dict]:
         return sorted(self._items.values(), key=lambda i: i["name"].lower())
@@ -168,6 +197,7 @@ class Library:
                     "keywords": [], "source_kind": "folder", "source_url": "",
                     "filename": n, "abs_path": ap,
                     "animated": ext.lower() == ".gif",
+                    "collection": os.path.basename(path),
                     "added_at": 0, "use_count": 0, "last_used": 0,
                 })
             self._scan_cache[path] = (sig, items)

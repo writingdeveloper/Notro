@@ -174,3 +174,45 @@ def test_search_type_filter(tmp_path):
     lib.add_item("gif", "g", ["x"], "local", "", put_asset(lib, "b.png"), False)
     assert [i["name"] for i in lib.search("", "emoji")] == ["e"]  # 빈 쿼리 + 타입
     assert [i["name"] for i in lib.search("x", "gif")] == ["g"]  # 쿼리 + 타입 동시
+
+
+# ---------- favorites / collections (v2.4) ----------
+def test_toggle_favorite_and_list(tmp_path):
+    lib = make_lib(tmp_path)
+    it = lib.add_item("emoji", "a", [], "local", "", put_asset(lib, "a.png"), False)
+    assert lib.toggle_favorite(it["id"]) is True
+    assert [i["id"] for i in lib.favorites()] == [it["id"]]
+    assert lib.toggle_favorite(it["id"]) is False
+    assert lib.favorites() == []
+
+
+def test_apply_lib_backfills_new_fields(tmp_path):
+    from notro_app.library import Library
+    lib = make_lib(tmp_path)
+    it = lib.add_item("emoji", "a", [], "local", "", put_asset(lib, "a.png"), False)
+    del it["favorite"]
+    del it["collection"]
+    lib._save()
+    lib2 = Library(lib.data_dir)
+    r = lib2.get(it["id"])
+    assert r["favorite"] is False and r["collection"] == ""
+
+
+def test_set_collection_and_list(tmp_path):
+    lib = make_lib(tmp_path)
+    a = lib.add_item("emoji", "a", ["miku"], "local", "", put_asset(lib, "a.png"), False)
+    lib.add_item("emoji", "b", [], "local", "", put_asset(lib, "b.png"), False)
+    lib.set_collection(a["id"], "miku")
+    assert lib.get(a["id"])["collection"] == "miku"
+    assert "miku" in lib.collections()
+
+
+def test_folder_items_collection_is_basename(tmp_path):
+    lib = make_lib(tmp_path)
+    folder = tmp_path / "gifs"
+    folder.mkdir()
+    Image.new("RGB", (4, 4)).save(folder / "x.gif")
+    lib.add_folder(str(folder), "gif")
+    items = lib.scan_folders()
+    assert items and items[0]["collection"] == "gifs"
+    assert "gifs" in lib.collections()
