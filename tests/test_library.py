@@ -310,6 +310,30 @@ def test_asset_path_uncategorized_subfolder(tmp_path):
         os.path.join(lib.assets_dir, "_uncategorized", fn))
 
 
+def test_collection_icon_returns_first_registered_item(tmp_path):
+    lib = make_lib(tmp_path)
+    a = lib.add_item("emoji", "a", [], "local", "",
+                     put_asset(lib, "a.png", "miku"), False, collection="miku")
+    lib.add_item("emoji", "b", [], "local", "",
+                 put_asset(lib, "b.png", "miku"), False, collection="miku")
+    assert lib.collection_icon("miku") == a["id"]
+
+
+def test_collection_icon_covers_folder_scanned_items(tmp_path):
+    lib = make_lib(tmp_path)
+    folder = tmp_path / "gifs"
+    folder.mkdir()
+    Image.new("RGB", (4, 4)).save(folder / "x.gif")
+    lib.add_folder(str(folder), "gif")
+    icon_id = lib.collection_icon("gifs")
+    assert icon_id == "folder:" + str(folder / "x.gif")
+
+
+def test_collection_icon_none_when_empty(tmp_path):
+    lib = make_lib(tmp_path)
+    assert lib.collection_icon("nope") is None
+
+
 def test_folder_items_collection_is_basename(tmp_path):
     lib = make_lib(tmp_path)
     folder = tmp_path / "gifs"

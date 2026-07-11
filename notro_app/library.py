@@ -187,6 +187,14 @@ class Library:
         folders = {os.path.basename(f["path"]) for f in self._folders}
         return sorted(regs | folders)
 
+    def collection_icon(self, name: str) -> str | None:
+        """세로 바 대표 아이콘용 첫 항목 id. 등록 항목을 먼저, 그다음 감시
+        폴더 스캔 항목 순으로 찾는다(all_display_items() 순서). 없으면 None."""
+        for i in self.all_display_items():
+            if (i.get("collection") or "") == name:
+                return i["id"]
+        return None
+
     def items(self) -> list[dict]:
         return sorted(self._items.values(), key=lambda i: i["name"].lower())
 
