@@ -3,6 +3,22 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.0] - 2026-07-11
+
+### Added
+- **Assets are now organized into per-collection folders** on disk
+  (`%APPDATA%\Notro\assets\<collection>\`) instead of one flat pile of files —
+  opening the library folder (tray, or picker settings) is actually browsable
+  now. Existing files migrate automatically the next time Notro starts.
+- **Collections show a representative thumbnail** on the left rail instead of
+  2-letter text, using the collection's first item (falls back to text if the
+  collection is empty).
+
+### Fixed
+- `remove_item` now deletes the asset from its actual (collection) folder
+  instead of a stale flat path — a latent bug from the v2.4.0 rail feature that
+  would have left orphaned files behind.
+
 ## [2.4.1] - 2026-07-10
 
 ### Fixed
