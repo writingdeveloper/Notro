@@ -17,13 +17,15 @@ function mock() {
   const sq = (c) => "data:image/svg+xml," + encodeURIComponent(
     `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' rx='12' fill='${c}'/></svg>`);
   state.items = [
-    { id: "1", type: "emoji", name: "smile", keywords: ["happy"], animated: false, url: sq("#f9a62b"), can_url: true, is_folder: false, convert_warning: false },
-    { id: "2", type: "emoji", name: "wave", keywords: [], animated: false, url: sq("#eb459e"), can_url: true, is_folder: false, convert_warning: false },
-    { id: "3", type: "sticker", name: "cat", keywords: [], animated: false, url: sq("#57f287"), can_url: false, is_folder: false, convert_warning: true },
-    { id: "4", type: "gif", name: "dance", keywords: [], animated: true, url: sq("#5865f2"), can_url: false, is_folder: true, convert_warning: false },
+    { id: "1", type: "emoji", name: "miku smile", keywords: ["happy"], animated: false, url: sq("#39c5bb"), can_url: true, is_folder: false, convert_warning: false, favorite: true, collection: "miku" },
+    { id: "2", type: "emoji", name: "wave", keywords: [], animated: false, url: sq("#eb459e"), can_url: true, is_folder: false, convert_warning: false, favorite: false, collection: "" },
+    { id: "3", type: "emoji", name: "miku wink", keywords: [], animated: false, url: sq("#57f287"), can_url: false, is_folder: false, convert_warning: false, favorite: true, collection: "miku" },
+    { id: "4", type: "sticker", name: "cat", keywords: [], animated: false, url: sq("#f9a62b"), can_url: false, is_folder: false, convert_warning: true, favorite: false, collection: "" },
+    { id: "5", type: "gif", name: "dance", keywords: [], animated: true, url: sq("#5865f2"), can_url: false, is_folder: true, convert_warning: false, favorite: false, collection: "gifs" },
   ];
   state.recent = ["1"];
   state.folders = [{ path: "C:\\mock\\gifs", default_type: "gif", exists: true }];
+  state.collections = ["miku", "gifs"];
   state.strings = {};
 }
 
