@@ -3,6 +3,18 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.4.0] - 2026-07-10
+
+### Added
+- **Favorites** — right-click any item to star it. A ★ tab on the new left rail
+  shows just favorites, and a Favorites row appears at the top of other views.
+- **Collections** — a left rail groups items like Discord's per-server emoji.
+  Watched-folder items auto-group by folder name; registered items can be moved
+  to a named collection via right-click. The bundled Miku items are grouped as
+  **miku**. The rail crosses with the Emoji/Sticker/GIF tabs.
+- **Open library folder** — from the tray and the picker settings (⚙), to browse
+  the cached assets under `%APPDATA%\Notro`.
+
 ## [2.3.0] - 2026-07-10
 
 ### Changed
