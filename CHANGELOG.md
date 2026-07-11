@@ -3,6 +3,16 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.4.1] - 2026-07-10
+
+### Fixed
+- **Auto-update now actually restarts and installs.** In v2.3.0–2.4.0 the updater
+  ran the silent installer and quit the app, but Inno's `[Run] postinstall` never
+  fires under `/VERYSILENT` (there's no finished page), so the app never came back;
+  the quit-vs-install race also left the update unapplied. The updater now writes a
+  helper batch that waits for the app to exit, runs the silent install, then
+  relaunches the installed exe — the same robust pattern as the pre-installer build.
+
 ## [2.4.0] - 2026-07-10
 
 ### Added

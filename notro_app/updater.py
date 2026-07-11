@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 import threading
 import urllib.request
 
@@ -99,14 +100,40 @@ def download_and_verify(release: dict, dest_dir: str, downloader=_download):
     return exe_path
 
 
+def build_apply_bat(pid: int, setup_path: str, target_exe: str) -> str:
+    """앱(pid) 종료 대기 → NotroSetup.exe silent 설치 → 설치된 exe 재실행.
+
+    silent 설치는 완료 페이지가 없어 Inno `[Run] postinstall`이 실행되지 않으므로,
+    재실행은 이 헬퍼가 직접 담당한다. 또한 앱 종료를 먼저 기다려 설치와 종료의
+    레이스를 없앤다."""
+    return f'''@echo off
+:wait
+tasklist /FI "PID eq {pid}" 2>NUL | find "{pid}" >NUL
+if not errorlevel 1 (
+  timeout /t 1 /nobreak >NUL
+  goto wait
+)
+"{setup_path}" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+start "" "{target_exe}"
+del "%~f0"
+'''
+
+
 def apply_and_restart(setup_path: str, _spawn=None) -> None:
-    """다운로드한 NotroSetup.exe를 silent로 실행한다. Inno Setup의
-    CloseApplications가 실행 중 앱을 종료·교체하고 [Run] 항목이 앱을 재실행한다.
-    설치 위치가 %LOCALAPPDATA%라 관리자 권한이 필요 없다. 호출자는 이 함수 직후
-    앱을 종료해야 한다(트레이 on_quit). _spawn은 테스트 주입용."""
+    """헬퍼 배치를 만들어 실행하고 즉시 반환한다. 배치가 현재 앱(pid) 종료를 기다린
+    뒤 NotroSetup.exe를 silent 설치하고 설치된 exe(`sys.executable`)를 재실행한다.
+    호출자는 이 함수 직후 앱을 종료해야 한다(트레이 on_quit). _spawn은 테스트 주입용.
+
+    이전 방식(앱이 setup을 직접 실행한 뒤 종료)은 (1) 설치와 종료의 레이스로 설치가
+    불안정했고 (2) Inno `[Run] postinstall`이 VERYSILENT에서 건너뛰어져 앱이 재실행되지
+    않았다. 헬퍼가 종료 대기 → 설치 → 재실행을 순차 처리해 두 문제를 모두 없앤다."""
     spawn = _spawn or subprocess.Popen
-    spawn([setup_path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"],
-          creationflags=CREATE_NO_WINDOW, close_fds=True)
+    target = sys.executable
+    bat_dir = os.path.dirname(os.path.abspath(setup_path))
+    bat = os.path.join(bat_dir, "apply_update.bat")
+    with open(bat, "w", encoding="utf-8") as f:
+        f.write(build_apply_bat(os.getpid(), setup_path, target))
+    spawn(["cmd", "/c", bat], creationflags=CREATE_NO_WINDOW, close_fds=True)
 
 
 class UpdateChecker(threading.Thread):

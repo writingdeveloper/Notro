@@ -40,5 +40,7 @@ Name: "{autodesktop}\Notro"; Filename: "{app}\Notro.exe"; Tasks: desktopicon
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Notro"; ValueData: """{app}\Notro.exe"""; Tasks: startupicon; Flags: uninsdeletevalue
 
 [Run]
-; No skipifsilent: after a silent auto-update the app relaunches itself here too.
+; Manual installs offer to launch on the finished page. Silent auto-updates skip
+; this (VERYSILENT has no finished page, so postinstall never fires) — the
+; updater's helper batch relaunches the app instead. This line is for manual runs.
 Filename: "{app}\Notro.exe"; Description: "Launch Notro"; Flags: nowait postinstall

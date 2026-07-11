@@ -80,15 +80,29 @@ def test_download_and_verify_none_without_sha(tmp_path):
     assert updater.download_and_verify(rel, str(tmp_path), downloader=lambda *a, **k: None) is None
 
 
-# ---------- apply_and_restart (silent installer) ----------
-def test_apply_and_restart_runs_silent_installer():
+# ---------- apply_and_restart (helper bat: wait → silent install → relaunch) ----------
+def test_build_apply_bat_has_pid_setup_target():
+    bat = updater.build_apply_bat(1234, r"C:\t\NotroSetup.exe", r"C:\app\Notro.exe")
+    assert "1234" in bat
+    assert r"C:\t\NotroSetup.exe" in bat
+    assert r"C:\app\Notro.exe" in bat
+    assert "/VERYSILENT" in bat
+    assert "start" in bat.lower()
+    assert "tasklist" in bat.lower()  # 앱 종료 대기
+
+
+def test_apply_and_restart_writes_helper_bat_and_spawns_cmd(tmp_path):
+    setup = str(tmp_path / "NotroSetup.exe")
+    open(setup, "w").close()
     calls = []
-    updater.apply_and_restart(r"C:\tmp\NotroSetup.exe",
-                              _spawn=lambda args, **k: calls.append(args))
-    assert calls, "installer should be spawned"
-    assert calls[0][0] == r"C:\tmp\NotroSetup.exe"
-    assert "/VERYSILENT" in calls[0]
-    assert "/SUPPRESSMSGBOXES" in calls[0]
+    updater.apply_and_restart(setup, _spawn=lambda args, **k: calls.append(list(args)))
+    assert calls and calls[0][0] == "cmd"
+    bat = os.path.join(str(tmp_path), "apply_update.bat")
+    assert os.path.exists(bat)
+    with open(bat, encoding="utf-8") as f:
+        content = f.read()
+    assert "/VERYSILENT" in content
+    assert "start" in content.lower()
 
 
 # ---------- UpdateChecker ----------
