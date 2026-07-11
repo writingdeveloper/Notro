@@ -28,16 +28,25 @@ jobs:
       - name: Build EXE
         run: pyinstaller --onefile --noconsole --name Notro --clean --add-data "notro_app\picker\ui;notro_app/picker/ui" --collect-all webview notro.py
 
-      - name: Generate SHA256 checksum
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Build installer
         shell: pwsh
         run: |
-          $hash = (Get-FileHash dist/Notro.exe -Algorithm SHA256).Hash.ToLower()
-          "$hash  Notro.exe" | Out-File -FilePath dist/Notro.exe.sha256 -Encoding ascii -NoNewline
+          $ver = "${{ github.ref_name }}" -replace '^v',''
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss /DAppVersion=$ver
 
-      - name: Publish release with EXE
+      - name: Generate SHA256
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist/NotroSetup.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  NotroSetup.exe" | Out-File -FilePath dist/NotroSetup.exe.sha256 -Encoding ascii -NoNewline
+
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/Notro.exe
-            dist/Notro.exe.sha256
+            dist/NotroSetup.exe
+            dist/NotroSetup.exe.sha256
           generate_release_notes: true
