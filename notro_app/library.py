@@ -10,15 +10,26 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import uuid
 
 SUPPORTED_EXTS = (".png", ".gif", ".webp")
 SCHEMA_VERSION = 1
 
+_INVALID_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
 
 def _now() -> float:
     return time.time()
+
+
+def _slug(name) -> str:
+    """컬렉션명을 파일시스템 안전 폴더명으로. 빈 값은 미분류 폴더."""
+    name = (name or "").strip()
+    if not name:
+        return "_uncategorized"
+    return _INVALID_CHARS.sub("_", name)[:80] or "_uncategorized"
 
 
 class Library:
@@ -154,7 +165,15 @@ class Library:
     def asset_path(self, item: dict) -> str:
         if item.get("abs_path"):
             return item["abs_path"]
-        return os.path.join(self.assets_dir, item["filename"])
+        return os.path.join(self.assets_dir, _slug(item.get("collection", "")),
+                            item["filename"])
+
+    def collection_dir(self, name: str) -> str:
+        """등록 시 자산을 저장할 폴더 (없으면 생성). fetch.py가 신규 파일을
+        쓸 때 사용 — asset_path()는 순수 계산이라 여기서 생성을 담당한다."""
+        d = os.path.join(self.assets_dir, _slug(name))
+        os.makedirs(d, exist_ok=True)
+        return d
 
     # ---------- 폴더 ----------
     def add_folder(self, path: str, default_type: str = "gif") -> None:

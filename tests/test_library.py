@@ -12,10 +12,18 @@ def make_lib(tmp_path):
     return Library(str(tmp_path / "data"))
 
 
-def put_asset(lib, name="a.png"):
-    p = os.path.join(lib.assets_dir, name)
+def put_asset(lib, name="a.png", collection=""):
+    from notro_app.library import _slug
+    d = os.path.join(lib.assets_dir, _slug(collection))
+    os.makedirs(d, exist_ok=True)
+    p = os.path.join(d, name)
     Image.new("RGB", (4, 4), (255, 0, 0)).save(p)
     return name
+
+
+def make_lib_at(data_dir):
+    from notro_app.library import Library
+    return Library(data_dir)
 
 
 def test_supported_exts_contract():
@@ -205,6 +213,32 @@ def test_set_collection_and_list(tmp_path):
     lib.set_collection(a["id"], "miku")
     assert lib.get(a["id"])["collection"] == "miku"
     assert "miku" in lib.collections()
+
+
+def test_slug_sanitizes_and_defaults(tmp_path):
+    from notro_app.library import _slug
+    assert _slug("") == "_uncategorized"
+    assert _slug("  ") == "_uncategorized"
+    assert _slug("miku") == "miku"
+    assert _slug('a/b\\c:d') == "a_b_c_d"
+
+
+def test_asset_path_uses_collection_subfolder(tmp_path):
+    lib = make_lib(tmp_path)
+    fn = put_asset(lib, "a.png", "miku")
+    item = lib.add_item("emoji", "a", [], "local", "", fn, False, collection="miku")
+    path = lib.asset_path(item)
+    assert os.path.normpath(path) == os.path.normpath(
+        os.path.join(lib.assets_dir, "miku", fn))
+
+
+def test_asset_path_uncategorized_subfolder(tmp_path):
+    lib = make_lib(tmp_path)
+    fn = put_asset(lib, "b.png")
+    item = lib.add_item("emoji", "b", [], "local", "", fn, False)
+    path = lib.asset_path(item)
+    assert os.path.normpath(path) == os.path.normpath(
+        os.path.join(lib.assets_dir, "_uncategorized", fn))
 
 
 def test_folder_items_collection_is_basename(tmp_path):
