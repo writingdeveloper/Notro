@@ -59,7 +59,9 @@ picker is disabled and compression keeps working.
 
 ## Download & run (recommended)
 
-Grab the latest `Notro.exe` from the [**Releases**](../../releases) page and run it.
+Grab the latest `NotroSetup.exe` from the [**Releases**](../../releases) page and run it.
+It installs to `%LOCALAPPDATA%\Programs\Notro` (no admin rights needed) and adds Start
+Menu / Desktop shortcuts. Uninstall any time from **Settings → Apps** or the Start Menu.
 
 - It runs in the tray. Right-click the icon for: open the picker, change the
   picker hotkey, pause/resume, recent history, switch the upload limit

@@ -3,6 +3,23 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.0] - 2026-07-10
+
+### Changed
+- **Now ships as an installer (`NotroSetup.exe`)** instead of a portable exe.
+  Installs to `%LOCALAPPDATA%\Programs\Notro` (no admin rights), adds a Start Menu
+  entry and an optional Desktop shortcut, an optional "run at startup" step, and a
+  proper uninstaller (Settings → Apps). Fixes the "lost the file / must remember
+  where it is" problem of the portable build.
+- The auto-updater now downloads `NotroSetup.exe` and runs it silently
+  (`/VERYSILENT`) to update in place, replacing the batch self-replace.
+
+### Migration
+- **v2.2.0 → v2.3.0 must be done manually once:** the v2.2.0 updater looks for a
+  `Notro.exe` asset, which v2.3.0 no longer publishes. Download and run
+  `NotroSetup.exe` once; your library (`%APPDATA%\Notro`) and settings carry over.
+  From v2.3.0 onward, updates are automatic again.
+
 ## [2.2.0] - 2026-07-10
 
 ### Added
