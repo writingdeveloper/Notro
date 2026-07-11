@@ -183,8 +183,7 @@ def build_icon(monitor, picker=None, listener=None, on_quit_extra=None, updater=
         def on_restart_update(icon, item):
             if updater.ready_exe:
                 from . import updater as um
-                um.apply_and_restart(updater.ready_exe,
-                                     os.path.dirname(updater.ready_exe))
+                um.apply_and_restart(updater.ready_exe)
                 on_quit(icon, item)
 
         def on_toggle_auto(icon, item):

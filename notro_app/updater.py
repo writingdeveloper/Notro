@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""반자동 자동 업데이터 (GitHub Releases + SHA256 검증 + 배치 자기교체).
+"""반자동 자동 업데이터 (GitHub Releases + SHA256 검증 + 인스톨러 silent 실행).
 
 frozen(exe)일 때만 실제 의미가 있다. 개발 실행에서는 app.py가 기동하지 않는다.
 신규 의존성 없이 표준 라이브러리만 사용한다."""
@@ -9,7 +9,6 @@ import hashlib
 import json
 import os
 import subprocess
-import sys
 import threading
 import urllib.request
 
@@ -17,6 +16,8 @@ from . import __version__
 
 REPO = "writingdeveloper/Notro"
 API_LATEST = f"https://api.github.com/repos/{REPO}/releases/latest"
+ASSET_NAME = "NotroSetup.exe"
+ASSET_SHA = ASSET_NAME + ".sha256"
 CHECK_INTERVAL = 24 * 3600
 CREATE_NO_WINDOW = 0x08000000
 
@@ -38,7 +39,8 @@ def is_newer(latest_tag: str, current: str) -> bool:
 
 
 def check_latest(opener=urllib.request.urlopen, timeout: int = 10):
-    """GitHub Releases 최신본 조회 → {tag, exe_url, sha256_url} 또는 None."""
+    """GitHub Releases 최신본 조회 → {tag, exe_url, sha256_url} 또는 None.
+    exe_url은 인스톨러(NotroSetup.exe) 자산을 가리킨다."""
     req = urllib.request.Request(
         API_LATEST,
         headers={"User-Agent": f"Notro/{__version__}",
@@ -48,10 +50,10 @@ def check_latest(opener=urllib.request.urlopen, timeout: int = 10):
     tag = data.get("tag_name", "")
     exe_url = sha_url = None
     for a in data.get("assets", []):
-        n = (a.get("name") or "").lower()
-        if n == "notro.exe":
+        n = a.get("name") or ""
+        if n == ASSET_NAME:
             exe_url = a.get("browser_download_url")
-        elif n == "notro.exe.sha256":
+        elif n == ASSET_SHA:
             sha_url = a.get("browser_download_url")
     if not tag or not exe_url:
         return None
@@ -77,12 +79,12 @@ def _sha256(path: str) -> str:
 
 
 def download_and_verify(release: dict, dest_dir: str, downloader=_download):
-    """새 exe를 내려받아 SHA256을 검증한다. 검증 성공 시 경로, 아니면 None.
+    """NotroSetup.exe를 내려받아 SHA256을 검증한다. 성공 시 경로, 아니면 None.
     sha256 자산이 없으면(구버전 릴리스) 자동 설치하지 않는다."""
     if not release.get("sha256_url"):
         return None
     os.makedirs(dest_dir, exist_ok=True)
-    exe_path = os.path.join(dest_dir, "Notro.exe")
+    exe_path = os.path.join(dest_dir, ASSET_NAME)
     sha_path = exe_path + ".sha256"
     downloader(release["exe_url"], exe_path)
     downloader(release["sha256_url"], sha_path)
@@ -97,40 +99,18 @@ def download_and_verify(release: dict, dest_dir: str, downloader=_download):
     return exe_path
 
 
-def build_bat(pid: int, new_exe: str, target_exe: str) -> str:
-    """실행 중 프로세스(pid) 종료 대기 → 백업 → 교체 → 재시작. 실패 시 .bak 롤백."""
-    return f'''@echo off
-:wait
-tasklist /FI "PID eq {pid}" 2>NUL | find "{pid}" >NUL
-if not errorlevel 1 (
-  timeout /t 1 /nobreak >NUL
-  goto wait
-)
-copy /Y "{target_exe}" "{target_exe}.bak" >NUL
-move /Y "{new_exe}" "{target_exe}" >NUL
-if errorlevel 1 (
-  move /Y "{target_exe}.bak" "{target_exe}" >NUL
-) else (
-  del "{target_exe}.bak" >NUL 2>&1
-)
-start "" "{target_exe}"
-del "%~f0"
-'''
-
-
-def apply_and_restart(new_exe: str, bat_dir: str) -> None:
-    """배치 헬퍼를 만들어 실행하고 즉시 반환한다. 호출자가 앱을 종료하면
-    배치가 종료를 감지해 교체·재시작한다."""
-    os.makedirs(bat_dir, exist_ok=True)
-    target = sys.executable
-    bat = os.path.join(bat_dir, "apply_update.bat")
-    with open(bat, "w", encoding="utf-8") as f:
-        f.write(build_bat(os.getpid(), new_exe, target))
-    subprocess.Popen(["cmd", "/c", bat], creationflags=CREATE_NO_WINDOW, close_fds=True)
+def apply_and_restart(setup_path: str, _spawn=None) -> None:
+    """다운로드한 NotroSetup.exe를 silent로 실행한다. Inno Setup의
+    CloseApplications가 실행 중 앱을 종료·교체하고 [Run] 항목이 앱을 재실행한다.
+    설치 위치가 %LOCALAPPDATA%라 관리자 권한이 필요 없다. 호출자는 이 함수 직후
+    앱을 종료해야 한다(트레이 on_quit). _spawn은 테스트 주입용."""
+    spawn = _spawn or subprocess.Popen
+    spawn([setup_path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"],
+          creationflags=CREATE_NO_WINDOW, close_fds=True)
 
 
 class UpdateChecker(threading.Thread):
-    """백그라운드로 시작 시 + interval마다 확인. 준비되면 on_ready(tag, exe) 호출.
+    """백그라운드로 시작 시 + interval마다 확인. 준비되면 on_ready(tag, setup) 호출.
 
     _check/_download는 테스트 주입용. 실제로는 check_latest / download_and_verify."""
 
