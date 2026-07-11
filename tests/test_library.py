@@ -256,6 +256,34 @@ def test_set_collection_and_list(tmp_path):
     assert "miku" in lib.collections()
 
 
+def test_remove_item_deletes_asset_in_subfolder(tmp_path):
+    lib = make_lib(tmp_path)
+    fn = put_asset(lib, "g.gif", "miku")
+    item = lib.add_item("gif", "g", [], "local", "", fn, True, collection="miku")
+    path = lib.asset_path(item)
+    assert os.path.exists(path)
+    lib.remove_item(item["id"])
+    assert not os.path.exists(path)
+
+
+def test_migration_moves_flat_legacy_files_on_load(tmp_path):
+    d = str(tmp_path / "data")
+    lib = make_lib_at(d)
+    fn = put_asset(lib, "old.png", "miku")
+    item = lib.add_item("emoji", "old", [], "local", "", fn, False, collection="miku")
+    nested = lib.asset_path(item)
+    flat = os.path.join(lib.assets_dir, fn)
+    os.replace(nested, flat)
+    assert os.path.exists(flat) and not os.path.exists(nested)
+
+    lib2 = make_lib_at(d)
+
+    assert os.path.exists(nested)
+    assert not os.path.exists(flat)
+    lib3 = make_lib_at(d)  # 멱등
+    assert os.path.exists(nested)
+
+
 def test_slug_sanitizes_and_defaults(tmp_path):
     from notro_app.library import _slug
     assert _slug("") == "_uncategorized"

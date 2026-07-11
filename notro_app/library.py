@@ -64,6 +64,23 @@ class Library:
                     os.replace(path, path + ".bak")
                 except OSError:
                     pass
+        self._migrate_flat_assets_to_folders()
+
+    def _migrate_flat_assets_to_folders(self) -> None:
+        """v2.4 이전 평면 저장 자산을 컬렉션별 하위 폴더로 1회 이전한다.
+        이미 이전됐으면(평면 위치에 파일 없음) 조용히 스킵 — 멱등."""
+        for item in self._items.values():
+            flat = os.path.join(self.assets_dir, item["filename"])
+            if not os.path.exists(flat):
+                continue
+            target = self.asset_path(item)
+            if os.path.normpath(target) == os.path.normpath(flat):
+                continue
+            try:
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                os.replace(flat, target)
+            except OSError:
+                pass
 
     def _apply_lib(self, data: dict) -> None:
         items = {}
@@ -117,7 +134,7 @@ class Library:
         item = self._items.pop(item_id, None)
         if item:
             try:
-                os.remove(os.path.join(self.assets_dir, item["filename"]))
+                os.remove(self.asset_path(item))
             except OSError:
                 pass
             self._save()
