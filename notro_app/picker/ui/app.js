@@ -1,16 +1,16 @@
 /* Notro Picker UI. pywebview 부재 시(mock) 브라우저 단독 미리보기 지원. */
 const $ = (s) => document.querySelector(s);
-const state = { items: [], recent: [], folders: [], strings: {}, tab: "emoji", query: "" };
+const state = { items: [], recent: [], folders: [], collections: [], strings: {}, tab: "emoji", query: "", collection: "__all__" };
 
 const str = (k) => state.strings[k] || k;
 const api = () => window.pywebview && window.pywebview.api;
 
 /* ---------- 데이터 ---------- */
 async function refresh() {
-  if (!api()) { mock(); applyStrings(); render(); renderFolders(); return; }
+  if (!api()) { mock(); applyStrings(); renderRail(); render(); renderFolders(); return; }
   const s = await api().get_state();
-  Object.assign(state, { items: s.items, recent: s.recent, folders: s.folders, strings: s.strings });
-  applyStrings(); render(); renderFolders();
+  Object.assign(state, { items: s.items, recent: s.recent, folders: s.folders, collections: s.collections || [], strings: s.strings });
+  applyStrings(); renderRail(); render(); renderFolders();
 }
 
 function mock() {
@@ -42,15 +42,37 @@ function applyStrings() {
   $("#add-submit").textContent = str("picker_add_submit");
   $("#add-cancel").textContent = str("picker_cancel");
   $("#st-title").textContent = str("picker_folders_title");
+  $("#st-openlib").textContent = str("picker_open_library");
   $("#st-addfolder").textContent = str("picker_add_folder");
   $("#st-close").textContent = str("picker_cancel");
   $("#dropzone").textContent = str("picker_drop_hint");
 }
 
+function inCollection(i) {
+  if (state.collection === "__all__") return true;
+  if (state.collection === "__fav__") return i.favorite;
+  return (i.collection || "") === state.collection;
+}
+
+function renderRail() {
+  const rail = $("#rail");
+  rail.innerHTML = "";
+  const add = (key, label, title) => {
+    const b = document.createElement("button");
+    b.textContent = label; b.title = title;
+    if (state.collection === key) b.classList.add("active");
+    b.addEventListener("click", () => { state.collection = key; renderRail(); render(); });
+    rail.appendChild(b);
+  };
+  add("__fav__", "★", str("picker_col_favorites"));
+  add("__all__", "▦", str("picker_col_all"));
+  for (const col of state.collections) add(col, col.slice(0, 2), col);
+}
+
 // 타이핑 반응성을 위한 클라이언트 미러. 정식 검색 책임은 library.search() (스펙 §3).
 function filtered() {
   const q = state.query.trim().toLowerCase();
-  return state.items.filter((i) => i.type === state.tab &&
+  return state.items.filter((i) => i.type === state.tab && inCollection(i) &&
     (!q || i.name.toLowerCase().includes(q) ||
       i.keywords.some((k) => k.toLowerCase().includes(q))));
 }
@@ -59,6 +81,10 @@ function render() {
   const c = $("#content");
   c.innerHTML = "";
   const items = filtered();
+  if (!state.query && state.collection !== "__fav__") {
+    const favs = items.filter((i) => i.favorite);
+    if (favs.length) c.appendChild(section(str("picker_col_favorites"), favs.slice(0, 16)));
+  }
   if (!state.query) {
     const rset = new Set(state.recent);
     const rec = items.filter((i) => rset.has(i.id));
@@ -99,6 +125,12 @@ function section(title, items) {
       b.title = item.name + " — " + str("picker_convert_warn");
       b.appendChild(badge);
     }
+    if (item.favorite) {
+      const fb = document.createElement("span");
+      fb.className = "fav-badge";
+      fb.textContent = "★";
+      b.appendChild(fb);
+    }
     b.addEventListener("click", () => select(item, "file"));
     b.addEventListener("contextmenu", (e) => { e.preventDefault(); showCtx(e, item); });
     g.appendChild(b);
@@ -124,8 +156,15 @@ function showCtx(e, item) {
   };
   add(str("picker_ctx_file"), () => select(item, "file"));
   if (item.can_url) add(str("picker_ctx_url"), () => select(item, "url"));
-  if (!item.is_folder)
+  if (!item.is_folder) {
+    add(item.favorite ? str("picker_ctx_unfavorite") : str("picker_ctx_favorite"),
+        async () => { await api().toggle_favorite(item.id); refresh(); });
+    add(str("picker_ctx_collection"), async () => {
+      const name = window.prompt(str("picker_ctx_collection"), item.collection || "");
+      if (name !== null) { await api().set_collection(item.id, name.trim()); refresh(); }
+    });
     add(str("picker_ctx_delete"), async () => { await api().remove_item(item.id); refresh(); }, true);
+  }
   ctx.classList.remove("hidden");
   const x = Math.min(e.clientX, window.innerWidth - 160);
   const y = Math.min(e.clientY, window.innerHeight - ctx.offsetHeight - 8);
@@ -195,6 +234,7 @@ $("#st-close").addEventListener("click", () => $("#modal-settings").classList.ad
 $("#st-addfolder").addEventListener("click", async () => {
   if (api()) { await api().add_folder(state.tab); refresh(); }
 });
+$("#st-openlib").addEventListener("click", () => { if (api()) api().open_data_dir(); });
 
 document.addEventListener("click", (e) => { if (!$("#ctx").contains(e.target)) hideCtx(); });
 window.addEventListener("keydown", (e) => {

@@ -12,7 +12,7 @@ from .. import clipboard_win as cb
 
 user32 = ctypes.windll.user32
 
-WIN_W, WIN_H = 440, 420
+WIN_W, WIN_H = 500, 420
 MONITOR_DEFAULTTONEAREST = 2
 
 _DEBUG_LOG = os.environ.get("NOTRO_DEBUG", "")
@@ -126,6 +126,8 @@ PICKER_STRING_KEYS = [
     "picker_ctx_file", "picker_ctx_url", "picker_ctx_delete",
     "picker_err_lottie", "picker_err_not_discord", "picker_err_download",
     "picker_convert_warn", "picker_paste_no_image",
+    "picker_ctx_favorite", "picker_ctx_unfavorite", "picker_ctx_collection",
+    "picker_col_all", "picker_col_favorites", "picker_open_library",
 ]
 
 

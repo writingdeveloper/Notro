@@ -57,6 +57,12 @@ def build_icon(monitor, picker=None, listener=None, on_quit_extra=None, updater=
     def on_open_folder(icon, item):
         os.startfile(config.TEMP_DIR)
 
+    def on_open_library(icon, item):
+        try:
+            os.startfile(config.DATA_DIR)
+        except OSError:
+            pass
+
     def make_open(path):
         def _open(icon, item):
             if os.path.exists(path):
@@ -212,6 +218,7 @@ def build_icon(monitor, picker=None, listener=None, on_quit_extra=None, updater=
             pystray.MenuItem(lambda item: tr("history"), pystray.Menu(history_items)),
             pystray.MenuItem(lambda item: tr("upload_limit"), limit_menu),
             pystray.MenuItem(lambda item: tr("open_folder"), on_open_folder),
+            pystray.MenuItem(lambda item: tr("open_library_folder"), on_open_library),
             pystray.MenuItem(lambda item: tr("language"), lang_menu),
             pystray.MenuItem(
                 lambda item: tr("run_at_startup"),

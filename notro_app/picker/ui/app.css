@@ -12,7 +12,20 @@ body {
   font-size: 14px; user-select: none;
   border: 1px solid #232428; border-radius: 8px;
 }
-#app { display: flex; flex-direction: column; height: 100vh; }
+#app { display: flex; height: 100vh; }
+#rail {
+  width: 48px; flex: 0 0 48px; background: var(--input);
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px; padding: 8px 0; overflow-y: auto;
+}
+#rail button {
+  width: 36px; height: 36px; flex: 0 0 36px; border-radius: 50%; border: 0;
+  background: var(--panel); color: var(--text); cursor: pointer;
+  font-size: 14px; display: flex; align-items: center; justify-content: center;
+}
+#rail button:hover { background: var(--hover); }
+#rail button.active { background: var(--accent); color: #fff; border-radius: 14px; }
+#main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
 header { display: flex; gap: 6px; padding: 10px 10px 6px; }
 #search {
@@ -66,6 +79,11 @@ header { display: flex; gap: 6px; padding: 10px 10px 6px; }
   border-radius: 8px; pointer-events: none;
   box-shadow: 0 0 0 2px var(--bg);
 }
+.fav-badge {
+  position: absolute; top: -2px; left: -2px; z-index: 2;
+  font-size: 11px; color: #f0b232; line-height: 1; pointer-events: none;
+  text-shadow: 0 0 2px #000;
+}
 .empty { color: var(--muted); text-align: center; padding: 24px 8px; }
 
 footer {
@@ -111,6 +129,11 @@ footer {
   background: var(--hover); color: var(--text); font-family: inherit;
 }
 .row button.primary { background: var(--accent); color: #fff; }
+button.wide {
+  width: 100%; border: none; padding: 8px; border-radius: 6px; cursor: pointer;
+  background: var(--hover); color: var(--text); font-family: inherit; margin-top: 4px;
+}
+button.wide:hover { background: var(--accent); color: #fff; }
 #st-folders {
   max-height: 180px; overflow-y: auto; display: flex;
   flex-direction: column; gap: 4px;

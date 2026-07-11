@@ -7,18 +7,21 @@
 </head>
 <body>
 <div id="app">
-  <header>
-    <input id="search" type="text" autocomplete="off" spellcheck="false">
-    <button id="btn-add" class="iconbtn" title="+">＋</button>
-    <button id="btn-settings" class="iconbtn" title="settings">⚙</button>
-  </header>
-  <nav id="tabs">
-    <button class="tab active" data-tab="emoji"></button>
-    <button class="tab" data-tab="sticker"></button>
-    <button class="tab" data-tab="gif"></button>
-  </nav>
-  <main id="content"></main>
-  <footer id="hint"></footer>
+  <nav id="rail"></nav>
+  <div id="main">
+    <header>
+      <input id="search" type="text" autocomplete="off" spellcheck="false">
+      <button id="btn-add" class="iconbtn" title="+">＋</button>
+      <button id="btn-settings" class="iconbtn" title="settings">⚙</button>
+    </header>
+    <nav id="tabs">
+      <button class="tab active" data-tab="emoji"></button>
+      <button class="tab" data-tab="sticker"></button>
+      <button class="tab" data-tab="gif"></button>
+    </nav>
+    <main id="content"></main>
+    <footer id="hint"></footer>
+  </div>
 </div>
 
 <div id="ctx" class="hidden"></div>
@@ -42,6 +45,7 @@
   <div class="modal-box">
     <h3 id="st-title"></h3>
     <div id="st-folders"></div>
+    <button id="st-openlib" class="wide"></button>
     <div class="row">
       <button id="st-addfolder" class="primary"></button>
       <button id="st-close"></button>

@@ -342,6 +342,60 @@ for _lang, _table in _UPDATER_STRINGS.items():
     STRINGS[_lang].update(_table)
 del _UPDATER_STRINGS
 
+
+# ---------- 즐겨찾기·컬렉션·폴더 열기 (v2.4) 문자열 ----------
+_V24_STRINGS = {
+    "en": {
+        "picker_ctx_favorite": "Add to favorites",
+        "picker_ctx_unfavorite": "Remove from favorites",
+        "picker_ctx_collection": "Move to collection…",
+        "picker_col_all": "All",
+        "picker_col_favorites": "Favorites",
+        "picker_open_library": "Open library folder",
+        "open_library_folder": "Open library folder",
+    },
+    "ko": {
+        "picker_ctx_favorite": "즐겨찾기 추가",
+        "picker_ctx_unfavorite": "즐겨찾기 제거",
+        "picker_ctx_collection": "컬렉션 이동…",
+        "picker_col_all": "전체",
+        "picker_col_favorites": "즐겨찾기",
+        "picker_open_library": "라이브러리 폴더 열기",
+        "open_library_folder": "라이브러리 폴더 열기",
+    },
+    "ja": {
+        "picker_ctx_favorite": "お気に入りに追加",
+        "picker_ctx_unfavorite": "お気に入りから削除",
+        "picker_ctx_collection": "コレクションへ移動…",
+        "picker_col_all": "すべて",
+        "picker_col_favorites": "お気に入り",
+        "picker_open_library": "ライブラリフォルダーを開く",
+        "open_library_folder": "ライブラリフォルダーを開く",
+    },
+    "zh": {
+        "picker_ctx_favorite": "添加到收藏",
+        "picker_ctx_unfavorite": "从收藏中移除",
+        "picker_ctx_collection": "移动到合集…",
+        "picker_col_all": "全部",
+        "picker_col_favorites": "收藏",
+        "picker_open_library": "打开素材文件夹",
+        "open_library_folder": "打开素材文件夹",
+    },
+    "es": {
+        "picker_ctx_favorite": "Añadir a favoritos",
+        "picker_ctx_unfavorite": "Quitar de favoritos",
+        "picker_ctx_collection": "Mover a colección…",
+        "picker_col_all": "Todos",
+        "picker_col_favorites": "Favoritos",
+        "picker_open_library": "Abrir carpeta de biblioteca",
+        "open_library_folder": "Abrir carpeta de biblioteca",
+    },
+}
+
+for _lang, _table in _V24_STRINGS.items():
+    STRINGS[_lang].update(_table)
+del _V24_STRINGS
+
 current_lang = "en"  # 실행 시 set_language()로 설정됨
 
 
