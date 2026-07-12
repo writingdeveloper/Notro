@@ -26,6 +26,7 @@ class Monitor:
         self.history = []  # 처리 내역: {time, path, orig_mb, new_mb, pct}
         self.history_lock = threading.Lock()  # 감시 스레드 ↔ 트레이 메뉴 스레드 동시 접근 보호
         self.on_history_change = None  # 트레이 메뉴 갱신 콜백
+        self.on_video_oversize = None  # 한도 초과 비디오 감지 콜백 (app.py가 배선)
 
     def notify(self, title, msg):
         if self.status_cb:
@@ -69,16 +70,29 @@ class Monitor:
         if isinstance(content, Image.Image):
             img = content
         elif isinstance(content, list):
-            # 파일이 복사된 경우: 이미지 파일이고 한도 초과면 그것도 압축
+            # 파일이 복사된 경우(CF_HDROP). 비디오는 감지만 하고 오케스트레이션에
+            # 위임한다 — 인코딩은 수십 초라 감시 루프를 막으면 안 된다.
             paths = [p for p in content if isinstance(p, str)]
-            if len(paths) == 1 and paths[0].lower().endswith(
-                (".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tif", ".tiff")
-            ):
+            if len(paths) != 1:
+                return
+            path = paths[0]
+            ext = os.path.splitext(path)[1].lower()
+
+            if ext in config.VIDEO_EXTS:
                 try:
-                    size = os.path.getsize(paths[0])
+                    size = os.path.getsize(path)
+                except OSError:
+                    return
+                if size > config.LIMIT_BYTES and self.on_video_oversize:
+                    self.on_video_oversize(path)
+                return
+
+            if ext in (".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tif", ".tiff"):
+                try:
+                    size = os.path.getsize(path)
                     if size > config.LIMIT_BYTES:
                         orig_bytes = size
-                        img = Image.open(paths[0])
+                        img = Image.open(path)
                         img.load()
                 except Exception:
                     return
