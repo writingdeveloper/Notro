@@ -40,6 +40,12 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 # 피커 라이브러리 영구 데이터
 DATA_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "Notro")
 
+# 비디오 압축 대상 확장자 (출력은 항상 mp4)
+VIDEO_EXTS = (".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v")
+
+# 내려받은 ffmpeg 보관 위치 (배포물에 포함하지 않는다)
+BIN_DIR = os.path.join(DATA_DIR, "bin")
+
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 SETTINGS_KEY = r"Software\Notro"
 
