@@ -3,6 +3,21 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.6.0] - 2026-07-12
+
+### Added
+- **Video compression.** Copy a game clip that is too big for Discord (the free limit is
+  **10 MB**, lowered from 25 MB in 2024) and Notro offers to shrink it: it reads the file
+  with ffmpeg, picks a resolution/bitrate/fps that fits, encodes, and puts the compressed
+  `.mp4` back on the clipboard so <kbd>Ctrl</kbd>+<kbd>V</kbd> attaches it in Discord.
+  - Notro **asks first** in a window (not a toast — toasts never reach users who turned
+    notifications off) and shows what to expect: `52MB · 1:12 · 1080p60 → about 9.5MB · 480p30`.
+  - If a clip simply cannot fit — the floor is **360p / 300 kbps** — Notro says so instead
+    of producing an unwatchable mosaic.
+  - **ffmpeg is not bundled.** It is downloaded on demand (about 30 MB, SHA256-verified)
+    the first time you compress a video, or taken from PATH if you already have it. Notro
+    never ships the binary, so nothing changes for people who don't compress video.
+
 ## [2.5.8] - 2026-07-12
 
 ### Added

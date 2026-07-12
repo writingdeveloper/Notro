@@ -61,6 +61,17 @@ or link embeds, not as native inline emojis.
 Requires the **WebView2 runtime** (built into Windows 11). Without it, the
 picker is disabled and compression keeps working.
 
+## Video clips (v2.6)
+
+Copy a game clip that's too big for Discord and Notro **asks whether to compress it**,
+showing what to expect: `52MB · 1:12 · 1080p60 → about 9.5MB · 480p30`. It encodes with
+ffmpeg and puts the compressed `.mp4` back on the clipboard, so <kbd>Ctrl</kbd>+<kbd>V</kbd>
+attaches it in Discord.
+
+**ffmpeg is never bundled** — it's downloaded on demand (~30 MB, checksum-verified) the
+first time you compress a video, or taken from your PATH if you already have it. If a clip
+can't fit under the limit even at 360p, Notro tells you instead of producing a mosaic.
+
 ## Download & run (recommended)
 
 Grab the latest `NotroSetup.exe` from the [**Releases**](../../releases) page and run it.

@@ -42,6 +42,17 @@ Pulsa <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> (configurable desde la bande
 
 Requiere el **entorno de ejecución WebView2** (incluido en Windows 11). Sin él, el selector se desactiva y la compresión sigue funcionando.
 
+## Clips de vídeo (v2.6)
+
+Copia un clip de juego demasiado grande para Discord y Notro **te pregunta si comprimirlo**,
+mostrando qué esperar: `52MB · 1:12 · 1080p60 → unos 9.5MB · 480p30`. Codifica con ffmpeg y
+deja el `.mp4` comprimido en el portapapeles, así que con <kbd>Ctrl</kbd>+<kbd>V</kbd> se
+adjunta en Discord.
+
+**ffmpeg no se incluye en la aplicación**: se descarga solo cuando hace falta (unos 30 MB,
+con verificación de checksum), o se usa el de tu PATH si ya lo tienes. Si un clip no cabe
+bajo el límite ni siquiera a 360p, Notro te lo dice en vez de generar un mosaico.
+
 ## Descargar y ejecutar (recomendado)
 
 Obtén el `NotroSetup.exe` más reciente desde la página de [**Releases**](../../releases) y ejecútalo. Se instala en `%LOCALAPPDATA%\Programs\Notro` (sin permisos de administrador) y añade accesos directos al menú Inicio y al escritorio. Desinstálalo cuando quieras desde **Configuración → Aplicaciones** o el menú Inicio.
