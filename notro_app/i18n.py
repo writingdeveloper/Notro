@@ -479,6 +479,93 @@ for _lang, _table in _WELCOME_STRINGS.items():
     STRINGS[_lang].update(_table)
 del _WELCOME_STRINGS
 
+# ---------- 비디오 압축 (v2.6) ----------
+_VIDEO_STRINGS = {
+    "en": {
+        "video_confirm_title": "Compress this video?",
+        "video_meta": "{name} · {size} · {dur} · {res}",
+        "video_estimate": "Estimate: about {size} · {res}",
+        "video_warn_quality": "Quality will drop noticeably at this length.",
+        "video_need_ffmpeg": "Video compression needs ffmpeg (about {mb} MB). Download it?",
+        "video_btn_compress": "Compress",
+        "video_btn_cancel": "Cancel",
+        "video_btn_close": "Close",
+        "video_downloading": "Downloading ffmpeg… {pct}%",
+        "video_encoding": "Encoding… {pct}%",
+        "video_done": "Compressed to {size} — press Ctrl+V in Discord.",
+        "video_fail_toobig": "This video can't be squeezed under {limit}. Trim it shorter, or you'd need Nitro.",
+        "video_fail_download": "Couldn't download ffmpeg.",
+        "video_fail_encode": "Encoding failed.",
+    },
+    "ko": {
+        "video_confirm_title": "이 영상을 압축할까요?",
+        "video_meta": "{name} · {size} · {dur} · {res}",
+        "video_estimate": "예상: 약 {size} · {res}",
+        "video_warn_quality": "이 길이에서는 화질이 크게 떨어져요.",
+        "video_need_ffmpeg": "비디오 압축에는 ffmpeg(약 {mb}MB)가 필요해요. 받을까요?",
+        "video_btn_compress": "압축하기",
+        "video_btn_cancel": "취소",
+        "video_btn_close": "닫기",
+        "video_downloading": "ffmpeg 다운로드 중… {pct}%",
+        "video_encoding": "인코딩 중… {pct}%",
+        "video_done": "{size}로 압축했어요 — 디스코드에서 Ctrl+V 하세요.",
+        "video_fail_toobig": "이 영상은 {limit} 이하로 줄일 수 없어요. 더 짧게 자르거나 Nitro가 필요해요.",
+        "video_fail_download": "ffmpeg를 받지 못했어요.",
+        "video_fail_encode": "인코딩에 실패했어요.",
+    },
+    "ja": {
+        "video_confirm_title": "この動画を圧縮しますか？",
+        "video_meta": "{name} · {size} · {dur} · {res}",
+        "video_estimate": "予想: 約 {size} · {res}",
+        "video_warn_quality": "この長さでは画質がかなり低下します。",
+        "video_need_ffmpeg": "動画の圧縮には ffmpeg（約 {mb}MB）が必要です。ダウンロードしますか？",
+        "video_btn_compress": "圧縮する",
+        "video_btn_cancel": "キャンセル",
+        "video_btn_close": "閉じる",
+        "video_downloading": "ffmpeg をダウンロード中… {pct}%",
+        "video_encoding": "エンコード中… {pct}%",
+        "video_done": "{size} に圧縮しました — Discord で Ctrl+V してください。",
+        "video_fail_toobig": "この動画は {limit} 以下にできません。短く切るか、Nitro が必要です。",
+        "video_fail_download": "ffmpeg をダウンロードできませんでした。",
+        "video_fail_encode": "エンコードに失敗しました。",
+    },
+    "zh": {
+        "video_confirm_title": "要压缩这个视频吗？",
+        "video_meta": "{name} · {size} · {dur} · {res}",
+        "video_estimate": "预计: 约 {size} · {res}",
+        "video_warn_quality": "这个长度下画质会明显下降。",
+        "video_need_ffmpeg": "视频压缩需要 ffmpeg（约 {mb}MB）。要下载吗？",
+        "video_btn_compress": "压缩",
+        "video_btn_cancel": "取消",
+        "video_btn_close": "关闭",
+        "video_downloading": "正在下载 ffmpeg… {pct}%",
+        "video_encoding": "正在编码… {pct}%",
+        "video_done": "已压缩到 {size} — 在 Discord 中按 Ctrl+V。",
+        "video_fail_toobig": "这个视频无法压到 {limit} 以下。请剪短一些，否则需要 Nitro。",
+        "video_fail_download": "无法下载 ffmpeg。",
+        "video_fail_encode": "编码失败。",
+    },
+    "es": {
+        "video_confirm_title": "¿Comprimir este vídeo?",
+        "video_meta": "{name} · {size} · {dur} · {res}",
+        "video_estimate": "Estimado: unos {size} · {res}",
+        "video_warn_quality": "Con esta duración la calidad bajará notablemente.",
+        "video_need_ffmpeg": "La compresión de vídeo necesita ffmpeg (unos {mb} MB). ¿Descargarlo?",
+        "video_btn_compress": "Comprimir",
+        "video_btn_cancel": "Cancelar",
+        "video_btn_close": "Cerrar",
+        "video_downloading": "Descargando ffmpeg… {pct}%",
+        "video_encoding": "Codificando… {pct}%",
+        "video_done": "Comprimido a {size}: pulsa Ctrl+V en Discord.",
+        "video_fail_toobig": "Este vídeo no cabe en {limit}. Recórtalo o necesitarás Nitro.",
+        "video_fail_download": "No se pudo descargar ffmpeg.",
+        "video_fail_encode": "Error al codificar.",
+    },
+}
+for _lang, _table in _VIDEO_STRINGS.items():
+    STRINGS[_lang].update(_table)
+del _VIDEO_STRINGS
+
 current_lang = "en"  # 실행 시 set_language()로 설정됨
 
 

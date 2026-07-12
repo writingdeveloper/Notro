@@ -41,3 +41,24 @@ def test_set_language_explicit_and_invalid():
 def test_set_language_auto_resolves_to_supported():
     i18n.set_language("auto")
     assert i18n.current_lang in i18n.SUPPORTED_LANGS
+
+
+def test_video_keys_exist_in_all_languages():
+    keys = ["video_confirm_title", "video_meta", "video_estimate", "video_warn_quality",
+            "video_need_ffmpeg", "video_btn_compress", "video_btn_cancel", "video_btn_close",
+            "video_downloading", "video_encoding", "video_done",
+            "video_fail_toobig", "video_fail_download", "video_fail_encode"]
+    for lang in i18n.SUPPORTED_LANGS:
+        for k in keys:
+            assert k in i18n.STRINGS[lang], f"{lang} missing {k}"
+
+
+def test_video_placeholders_match_across_languages():
+    import re
+    def ph(s):
+        return set(re.findall(r"\{(\w+)", s))
+    for k in ("video_meta", "video_estimate", "video_need_ffmpeg",
+              "video_downloading", "video_encoding", "video_done", "video_fail_toobig"):
+        ref = ph(i18n.STRINGS["en"][k])
+        for lang in i18n.SUPPORTED_LANGS:
+            assert ph(i18n.STRINGS[lang][k]) == ref, f"{lang}/{k}"
