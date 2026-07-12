@@ -8,7 +8,9 @@ ffprobe 하나 때문에 100MB+ 빌드를 받을 이유가 없어 `ffmpeg -i`의
 
 from __future__ import annotations
 
+import os
 import re
+import subprocess
 from dataclasses import dataclass
 
 
@@ -145,3 +147,46 @@ def build_args(ffmpeg: str, src: str, plan: EncodePlan, dest: str) -> list[str]:
         args += ["-an"]
     args += ["-movflags", "+faststart", dest]
     return args
+
+
+CREATE_NO_WINDOW = 0x08000000   # 콘솔 창이 뜨지 않게
+
+
+def probe(ffmpeg: str, path: str) -> VideoMeta | None:
+    """`ffmpeg -i`로 메타데이터를 읽는다. 출력 파일이 없어 종료 코드는 항상 1이지만,
+    필요한 정보는 stderr에 이미 다 나와 있다."""
+    try:
+        p = subprocess.run(
+            [ffmpeg, "-hide_banner", "-i", path],
+            capture_output=True, text=True, errors="replace",
+            creationflags=CREATE_NO_WINDOW, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return parse_ffmpeg_info(p.stderr or "")
+
+
+def encode(ffmpeg: str, src: str, plan: EncodePlan, dest: str,
+           on_progress=None, should_cancel=None) -> bool:
+    """한 번의 인코딩만 책임진다 (재시도 판단은 호출자 몫).
+    on_progress(seconds_done) 콜백, should_cancel() -> True면 즉시 중단."""
+    try:
+        proc = subprocess.Popen(
+            build_args(ffmpeg, src, plan, dest),
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            text=True, errors="replace", creationflags=CREATE_NO_WINDOW,
+        )
+    except OSError:
+        return False
+    try:
+        for line in proc.stderr:
+            if should_cancel and should_cancel():
+                proc.terminate()
+                return False
+            t = parse_progress(line)
+            if t is not None and on_progress:
+                on_progress(t)
+        return proc.wait() == 0 and os.path.exists(dest)
+    finally:
+        if proc.poll() is None:
+            proc.terminate()

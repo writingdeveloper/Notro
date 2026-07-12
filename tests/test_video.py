@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from notro_app.video import VideoMeta, parse_ffmpeg_info, EncodePlan, plan_encode, build_args, parse_progress
+import notro_app.video as video_mod
 
 SAMPLE = """ffmpeg version 7.1 Copyright (c) 2000-2024
   Duration: 00:01:12.34, start: 0.000000, bitrate: 5842 kb/s
@@ -151,3 +152,22 @@ def test_build_args_drops_audio_when_silent():
     args = build_args("ffmpeg.exe", "in.mp4", plan, "out.mp4")
     assert "-an" in args
     assert "-c:a" not in args
+
+
+# --- probe / encode (subprocess를 가짜로 주입) ------------------------------
+
+def test_probe_parses_stderr_from_subprocess(monkeypatch):
+    class FakeCompleted:
+        stderr = SAMPLE
+
+    monkeypatch.setattr(video_mod.subprocess, "run", lambda *a, **k: FakeCompleted())
+    m = video_mod.probe("ffmpeg.exe", "clip.mp4")
+    assert m.height == 1080 and m.has_audio is True
+
+
+def test_probe_returns_none_when_ffmpeg_missing(monkeypatch):
+    def boom(*a, **k):
+        raise OSError("not found")
+
+    monkeypatch.setattr(video_mod.subprocess, "run", boom)
+    assert video_mod.probe("ffmpeg.exe", "clip.mp4") is None
