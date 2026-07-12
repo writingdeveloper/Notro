@@ -3,6 +3,31 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.8] - 2026-07-12
+
+### Added
+- **The installer now installs the WebView2 Runtime when it is missing.** The picker
+  requires WebView2; Windows 11 ships it, but a Windows 10 machine may not have it — and
+  the installer neither checked nor installed it, so after a "successful" install the
+  picker silently stayed dead. The wizard now detects it and, if absent, downloads
+  Microsoft's official bootstrapper and installs it quietly. A failed download is
+  non-fatal (compression works without WebView2), and silent auto-updates skip the step
+  entirely, so existing users are unaffected.
+- **The installer now speaks all five app languages** (English, 한국어, 日本語,
+  中文(简体), Español) — wizard text, the task checkboxes, and the finish-page guidance.
+  Korean and Simplified Chinese are official in Inno Setup 6.3+, so no language files
+  need to be vendored.
+- **The exe carries version info** (version, publisher, description in the file
+  properties dialog), generated from `__version__` by `build_version_file.py`.
+
+### Fixed
+- **32-bit Windows could install a 64-bit build.** `ArchitecturesAllowed` was unset, so
+  Setup would happily install on x86 where the exe cannot run — it now refuses.
+
+### Changed
+- The release workflow publishes only on tag pushes, so `workflow_dispatch` can verify a
+  build (and compile the Inno script) without creating a release.
+
 ## [2.5.7] - 2026-07-11
 
 ### Changed

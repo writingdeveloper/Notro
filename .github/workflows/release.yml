@@ -26,7 +26,9 @@ jobs:
         run: pip install --upgrade pyinstaller -r requirements.txt
 
       - name: Build EXE
-        run: pyinstaller --onedir --noconsole --name Notro --clean --icon assets/notro.ico --add-data "notro_app\picker\ui;notro_app/picker/ui" --collect-all webview notro.py
+        run: |
+          python build_version_file.py
+          pyinstaller --onedir --noconsole --name Notro --clean --icon assets/notro.ico --version-file version_info.txt --add-data "notro_app\picker\ui;notro_app/picker/ui" --collect-all webview notro.py
 
       - name: Install Inno Setup
         run: choco install innosetup -y
@@ -43,7 +45,10 @@ jobs:
           $hash = (Get-FileHash dist/NotroSetup.exe -Algorithm SHA256).Hash.ToLower()
           "$hash  NotroSetup.exe" | Out-File -FilePath dist/NotroSetup.exe.sha256 -Encoding ascii -NoNewline
 
+      # 태그 푸시일 때만 릴리스를 만든다. 덕분에 workflow_dispatch로 돌리면 빌드와
+      # installer 컴파일만 검증하고 릴리스는 만들지 않는다(installer.iss 안전 검증용).
       - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
