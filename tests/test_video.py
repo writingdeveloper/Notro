@@ -188,6 +188,104 @@ def test_probe_returns_none_when_ffmpeg_missing(monkeypatch):
     assert video_mod.probe("ffmpeg.exe", "clip.mp4") is None
 
 
+def _fake_encode_proc(lines, returncode=0):
+    """encode()가 실제로 건드리는 Popen 표면만 흉내낸다: stderr 이터러블 +
+    wait/poll/terminate. 진짜 subprocess처럼 wait()나 terminate() 이후에는
+    poll()이 더는 None을 돌려주지 않는다(그래야 encode()의 finally에서
+    이미 끝난 프로세스에 terminate()를 또 걸지 않는지도 자연스럽게 맞물린다)."""
+
+    class _FakeProc:
+        def __init__(self):
+            self.stderr = lines
+            self.terminated = False
+            self._waited = False
+
+        def wait(self):
+            self._waited = True
+            return returncode
+
+        def poll(self):
+            return returncode if (self._waited or self.terminated) else None
+
+        def terminate(self):
+            self.terminated = True
+
+    return _FakeProc()
+
+
+def test_encode_reports_progress_via_callback(monkeypatch, tmp_path):
+    lines = [
+        "frame=  1 fps=0.0 q=0.0 size=N/A time=00:00:01.00 bitrate=N/A\n",
+        "frame= 75 fps=30 q=28.0 size=100KiB time=00:00:02.50 bitrate=300kbits/s\n",
+        "Stream mapping:\n",              # time=이 없는 줄은 무시되어야 한다
+    ]
+    fake = _fake_encode_proc(lines, returncode=0)
+    monkeypatch.setattr(video_mod.subprocess, "Popen", lambda *a, **k: fake)
+    dest = tmp_path / "out.mp4"
+    dest.write_bytes(b"x")                # ffmpeg가 결과물을 만들어 놓은 상태를 흉내낸다
+
+    seen = []
+    plan = EncodePlan(height=480, fps=30, video_kbps=500, audio_kbps=96, warn=True)
+    ok = video_mod.encode("ffmpeg.exe", "in.mp4", plan, str(dest), on_progress=seen.append)
+
+    assert ok is True
+    assert seen == [1.0, 2.5]
+    assert fake not in video_mod._ACTIVE          # 성공 경로에서도 등록 해제된다
+
+
+def test_encode_cancel_terminates_process_and_returns_false(monkeypatch, tmp_path):
+    lines = [
+        "frame=  1 time=00:00:01.00 bitrate=N/A\n",
+        "frame=  2 time=00:00:02.00 bitrate=N/A\n",
+        "frame=  3 time=00:00:03.00 bitrate=N/A\n",
+    ]
+    fake = _fake_encode_proc(lines, returncode=0)
+    monkeypatch.setattr(video_mod.subprocess, "Popen", lambda *a, **k: fake)
+    dest = tmp_path / "out.mp4"
+    dest.write_bytes(b"x")                # 취소 판단과 무관해야 함을 보이려고 파일도 만들어 둔다
+
+    calls = {"n": 0}
+
+    def should_cancel():
+        calls["n"] += 1
+        return calls["n"] >= 2            # 두 번째 줄 처리 직전에 취소 신호를 보낸다
+
+    seen = []
+    plan = EncodePlan(height=480, fps=30, video_kbps=500, audio_kbps=96, warn=True)
+    ok = video_mod.encode("ffmpeg.exe", "in.mp4", plan, str(dest),
+                          on_progress=seen.append, should_cancel=should_cancel)
+
+    assert ok is False                    # 취소되면 절대 True를 돌려주지 않는다
+    assert fake.terminated is True        # 프로세스가 실제로 종료 요청을 받았다
+    assert seen == [1.0]                  # 취소 신호 이후 줄(2, 3번째)은 처리되지 않는다
+    assert fake not in video_mod._ACTIVE  # 취소 경로에서도 등록 해제된다
+
+
+def test_encode_false_when_dest_missing_even_if_exit_zero(monkeypatch, tmp_path):
+    fake = _fake_encode_proc([], returncode=0)
+    monkeypatch.setattr(video_mod.subprocess, "Popen", lambda *a, **k: fake)
+    dest = tmp_path / "missing.mp4"       # ffmpeg가 결과 파일을 만들지 못한 상태
+
+    plan = EncodePlan(height=480, fps=30, video_kbps=500, audio_kbps=96, warn=True)
+    ok = video_mod.encode("ffmpeg.exe", "in.mp4", plan, str(dest))
+
+    assert ok is False                    # 종료 코드가 0이어도 파일이 없으면 실패
+    assert fake not in video_mod._ACTIVE  # 실패 경로에서도 등록 해제된다
+
+
+def test_encode_false_when_ffmpeg_exits_nonzero(monkeypatch, tmp_path):
+    fake = _fake_encode_proc([], returncode=1)
+    monkeypatch.setattr(video_mod.subprocess, "Popen", lambda *a, **k: fake)
+    dest = tmp_path / "out.mp4"
+    dest.write_bytes(b"x")                # 파일이 있어도 종료 코드가 실패면 실패
+
+    plan = EncodePlan(height=480, fps=30, video_kbps=500, audio_kbps=96, warn=True)
+    ok = video_mod.encode("ffmpeg.exe", "in.mp4", plan, str(dest))
+
+    assert ok is False
+    assert fake not in video_mod._ACTIVE  # 실패 경로에서도 등록 해제된다
+
+
 # --- terminate_all (앱 종료 시 고아 ffmpeg 프로세스 방지) --------------------
 
 def test_terminate_all_kills_tracked_processes():
