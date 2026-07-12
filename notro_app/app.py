@@ -135,9 +135,12 @@ def main():
     api._ctrl = picker
     listener = HotkeyListener(on_hotkey=picker.toggle)
 
+    from . import video as _video
+
     icon = tray.build_icon(
         monitor, picker=picker, listener=listener, updater=upd,
         on_quit_extra=lambda: (listener.stop(), asset_server.stop(), picker.destroy(),
+                               _video.terminate_all(),   # 인코딩 중이면 ffmpeg를 죽인다
                                upd.stop() if upd else None),
     )
     listener.on_register_fail = lambda label: icon.notify(
@@ -146,6 +149,117 @@ def main():
     if upd:
         upd.on_ready = lambda tag, exe: tray.signal_update_ready(icon, monitor, tag)
         upd.start()
+
+    def _handle_video(path: str):
+        """한도 초과 비디오: 확인 창 → (필요시 ffmpeg 다운로드) → 인코딩 → 클립보드 교체.
+        monitor 스레드를 막지 않도록 별도 스레드에서 돈다. 클립보드는 성공했을 때만 바꾼다."""
+        import os as _os
+
+        from . import ffmpeg_setup, video
+        from . import clipboard_win as _cb
+        from .video_window import VideoWindow, fmt_dur, fmt_size
+
+        ff = ffmpeg_setup.find_ffmpeg()
+        name = _os.path.basename(path)
+        try:
+            src_size = _os.path.getsize(path)
+        except OSError:
+            return
+
+        meta = video.probe(ff, path) if ff else None
+        if ff and meta is None:
+            # ffmpeg는 있는데 읽지 못했다 = 비디오가 아니거나 손상됐다.
+            # 창도 띄우지 않고 조용히 무시한다 (spec §5) — 오탐으로 사용자를 방해하지 않는다.
+            return
+        plan = video.plan_encode(meta, config.LIMIT_BYTES) if meta else None
+
+        if meta and not plan:                       # 하한 미달 — 정직하게 실패
+            limit = fmt_size(config.LIMIT_BYTES)
+            w = VideoWindow(tr("video_confirm_title"),
+                            tr("video_meta", name=name, size=fmt_size(src_size),
+                               dur=fmt_dur(meta.duration), res=f"{meta.height}p"),
+                            tr("video_fail_toobig", limit=limit), None,
+                            tr("video_btn_close"))
+            w.show()
+            return
+
+        if ff and meta and plan:
+            est = tr("video_estimate", size=fmt_size(config.LIMIT_BYTES),
+                     res=f"{plan.height}p{plan.fps}")
+            meta_line = tr("video_meta", name=name, size=fmt_size(src_size),
+                           dur=fmt_dur(meta.duration), res=f"{meta.height}p{int(meta.fps)}")
+            warn = tr("video_warn_quality") if plan.warn else None
+            accept = tr("video_btn_compress")
+        else:                                       # ffmpeg가 없다 — 먼저 받아야 한다
+            est = tr("video_need_ffmpeg", mb=ffmpeg_setup.DOWNLOAD_MB)
+            meta_line = tr("video_meta", name=name, size=fmt_size(src_size), dur="-", res="-")
+            warn = None
+            accept = tr("video_btn_compress")
+
+        w = VideoWindow(tr("video_confirm_title"), meta_line, est, warn, accept)
+        w.show()
+
+        def _work():
+            if not w.accepted.wait(timeout=300):    # 5분 내 응답 없으면 포기
+                return
+            nonlocal ff, meta, plan
+            if not ff:
+                ff = ffmpeg_setup.download_ffmpeg(
+                    on_progress=lambda frac: w.set_progress(
+                        tr("video_downloading", pct=int(frac * 100)), int(frac * 100)))
+                if not ff:
+                    w.finish(tr("video_fail_download"))
+                    return
+                meta = video.probe(ff, path)
+                plan = video.plan_encode(meta, config.LIMIT_BYTES) if meta else None
+                if not plan:
+                    w.finish(tr("video_fail_toobig", limit=fmt_size(config.LIMIT_BYTES)))
+                    return
+
+            out = _os.path.join(config.TEMP_DIR,
+                                _os.path.splitext(name)[0] + "_notro.mp4")
+            for attempt in range(2):                # 1-pass 오차 → 1회만 재시도
+                ok = video.encode(
+                    ff, path, plan, out,
+                    on_progress=lambda done: w.set_progress(
+                        tr("video_encoding", pct=int(done / meta.duration * 100)),
+                        int(done / meta.duration * 100)),
+                    should_cancel=w.cancelled.is_set)
+                if w.cancelled.is_set():
+                    if _os.path.exists(out):
+                        _os.remove(out)
+                    return
+                if not ok:
+                    w.finish(tr("video_fail_encode"))
+                    return
+                if _os.path.getsize(out) <= config.LIMIT_BYTES:
+                    break
+                if attempt == 0:                    # 여전히 크다 — 비트레이트를 낮춰 한 번 더
+                    plan = video.EncodePlan(plan.height, plan.fps,
+                                            int(plan.video_kbps * 0.8),
+                                            plan.audio_kbps, plan.warn)
+                else:
+                    w.finish(tr("video_fail_encode"))
+                    return
+
+            if _cb.set_clipboard_file(out):
+                monitor.last_seq = _cb.get_sequence_number()   # 자기 출력 재처리 방지
+                w.finish(tr("video_done", size=fmt_size(_os.path.getsize(out))))
+            else:
+                w.finish(tr("notify_clipboard_fail"))
+
+        threading.Thread(target=_work, daemon=True).start()
+
+    def _on_video_oversize(path: str):
+        # monitor.py는 이 콜백을 감싸지 않고 직접 호출한다 — 다른 선택적 콜백인
+        # status_cb/on_history_change는 try/except로 감싸져 있는 것과 다르다(리뷰 지적).
+        # 여기서 예외를 삼켜야 클립보드 감시 루프가 죽지 않는다.
+        try:
+            threading.Thread(target=_handle_video, args=(path,), daemon=True).start()
+        except Exception:
+            pass
+
+    monitor.on_video_oversize = _on_video_oversize
 
     picker.create_window()
     icon.run_detached()
