@@ -100,6 +100,11 @@ def plan_encode(meta: VideoMeta, limit_bytes: int) -> EncodePlan | None:
         return None
 
     def _plan(height: int, need: int) -> EncodePlan:
+        # build_args의 `-vf scale=-2:{height}`는 "-2"로 가로만 짝수로 맞추고 세로는
+        # 그대로 통과시킨다. 사다리 rung(1080/720/480/360)은 이미 짝수라 영향 없지만,
+        # 아래 네이티브 해상도 폴백은 원본의 홀수 높이(예: 크롭된 화면 녹화)를 그대로
+        # 넘길 수 있어 libx264가 거부한다 — 항상 짝수로 내림(업스케일 금지 유지).
+        height -= height % 2
         fps = int(round(meta.fps))
         if meta.fps > 30 and video_kbps < need * 1.5:
             fps = 30              # 60fps를 감당할 여유가 없다

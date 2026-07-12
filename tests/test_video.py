@@ -111,6 +111,17 @@ def test_source_below_smallest_rung_still_none_under_floor():
     assert p is None
 
 
+def test_source_below_smallest_rung_with_odd_height_yields_even_plan_height():
+    # 크롭된 화면 녹화 등은 높이가 홀수일 수 있다(예: 321px). 이 소스가 사다리의
+    # 가장 작은 rung(360p)보다도 작으면 네이티브 해상도 폴백을 타는데, build_args의
+    # `-vf scale=-2:{height}`는 "-2"로 가로만 짝수로 맞추고 세로(height)는 그대로
+    # 통과시키므로 libx264가 홀수 높이를 거부한다. plan.height는 항상 짝수여야 한다.
+    p = plan_encode(_meta(30, w=480, h=321), LIMIT)
+    assert p is not None
+    assert p.height % 2 == 0
+    assert p.height == 320                       # 업스케일 금지 유지 → 320으로 내림
+
+
 def test_boundary_at_exactly_300_kbps_still_plans_360p():
     # video_kbps가 "정확히" 하한(300)이면 미달이 아니다 — 360p 계획이 나와야 한다.
     # duration=100, limit_bytes=4,950,000 → total_kbps=396.0, audio=96 → video_kbps=300
