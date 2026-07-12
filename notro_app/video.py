@@ -64,6 +64,9 @@ AUDIO_KBPS = 96          # AAC 고정
 MIN_VIDEO_KBPS = 300     # 이 아래로는 내려가지 않는다 (360p 하한)
 
 # 해상도 사다리: (높이, 30fps 기준 최소 비디오 kbps)
+# 주의: 높이 내림차순으로 정렬되어 있어야 한다 — plan_encode의 루프가 "처음으로
+# 맞는(=가장 큰) rung"에서 곧바로 return하므로, 순서가 깨지면 예산이 감당할 수 있는
+# 더 높은 해상도가 있어도 낮은 해상도가 먼저 선택되는 등 화질 선택이 조용히 잘못된다.
 _LADDER = ((1080, 2500), (720, 1000), (480, 500), (360, MIN_VIDEO_KBPS))
 
 
@@ -80,7 +83,9 @@ def plan_encode(meta: VideoMeta, limit_bytes: int) -> EncodePlan | None:
     """목표 용량에 맞는 인코딩 계획. 하한(360p/300kbps) 밑이면 None = '못 줄임'.
 
     60fps는 같은 체감 화질에 약 1.5배 비트레이트를 먹는다 — 여유가 없으면 30fps로 낮춘다.
-    원본보다 해상도를 키우지 않는다.
+    원본보다 해상도를 키우지 않는다. 원본이 사다리의 가장 작은 rung(360p)보다도 작으면
+    (예: 240p) 모든 rung이 업스케일 금지 규칙에 걸려 스킵되므로, 예산이 하한을 넘길 때는
+    원본 해상도 그대로 계획한다 — None은 "예산이 하한 미달"일 때만 쓴다.
     """
     if meta.duration <= 0:
         return None
@@ -90,13 +95,22 @@ def plan_encode(meta: VideoMeta, limit_bytes: int) -> EncodePlan | None:
     if video_kbps < MIN_VIDEO_KBPS:
         return None
 
+    def _plan(height: int, need: int) -> EncodePlan:
+        fps = int(round(meta.fps))
+        if meta.fps > 30 and video_kbps < need * 1.5:
+            fps = 30              # 60fps를 감당할 여유가 없다
+        warn = height < meta.height and height <= 480
+        return EncodePlan(height, fps, video_kbps, audio, warn)
+
     for height, need in _LADDER:
         if height > meta.height:      # 원본보다 키우지 않는다
             continue
         if video_kbps >= need:
-            fps = int(round(meta.fps))
-            if meta.fps > 30 and video_kbps < need * 1.5:
-                fps = 30              # 60fps를 감당할 여유가 없다
-            warn = height < meta.height and height <= 480
-            return EncodePlan(height, fps, video_kbps, audio, warn)
-    return None
+            return _plan(height, need)
+
+    # 여기 도달했다는 건 원본이 360p보다도 작다는 뜻이다: meta.height >= 360이었다면
+    # 사다리의 마지막 rung(360, MIN_VIDEO_KBPS)은 절대 스킵되지 않고, 그 need는 위에서
+    # 이미 통과했으므로 루프 안에서 반드시 return됐을 것이다. 예산은 이미 하한을
+    # 넘겼으니 "못 줄임"이 아니라 원본 해상도 그대로 인코딩한다(업스케일이 아니므로
+    # warn=False). fps 판단 기준은 정의된 rung이 없으므로 사다리 최하한 기준을 쓴다.
+    return _plan(meta.height, MIN_VIDEO_KBPS)

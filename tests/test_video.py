@@ -88,3 +88,32 @@ def test_silent_video_has_no_audio_budget():
 
 def test_zero_duration_returns_none():
     assert plan_encode(_meta(0), LIMIT) is None
+
+
+# --- 리뷰 발견사항 회귀 테스트 -------------------------------------------
+
+def test_source_below_smallest_rung_encodes_at_native_resolution():
+    # 240p는 사다리의 가장 작은 rung(360p)보다도 작다 → 업스케일 금지 규칙 때문에
+    # 모든 rung이 스킵된다. 예산(약 2560kbps)은 하한(300)을 훌쩍 넘으므로
+    # None("못 줄임")이 아니라 원본 해상도(240p) 그대로 계획해야 한다.
+    p = plan_encode(_meta(30, w=320, h=240), LIMIT)
+    assert p is not None
+    assert p.height == 240                      # 원본 해상도 그대로 (업스케일 아님)
+    assert p.warn is False                       # 축소가 아니므로 경고 없음
+    assert p.fps == 60                           # 예산이 넉넉해 60fps 유지
+
+
+def test_source_below_smallest_rung_still_none_under_floor():
+    # 원본이 사다리보다 작아도(240p) 예산이 하한(300kbps) 미만이면 여전히 None이어야
+    # 한다 — 네이티브 해상도 폴백이 하한 검사를 우회하면 안 된다.
+    p = plan_encode(_meta(600, w=320, h=240), LIMIT)   # 10분 → 하한 미달
+    assert p is None
+
+
+def test_boundary_at_exactly_300_kbps_still_plans_360p():
+    # video_kbps가 "정확히" 하한(300)이면 미달이 아니다 — 360p 계획이 나와야 한다.
+    # duration=100, limit_bytes=4,950,000 → total_kbps=396.0, audio=96 → video_kbps=300
+    p = plan_encode(_meta(100), 4_950_000)
+    assert p is not None
+    assert p.height == 360
+    assert p.video_kbps == 300
