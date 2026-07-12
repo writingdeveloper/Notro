@@ -14,6 +14,10 @@
 
 一款面向 Discord 免费用户的小巧 Windows 托盘应用。当剪贴板中的图片超过 Discord 免费上传限制（10 MB）时**自动压缩**，并以热键弹窗提供 Nitro 锁定的**表情·贴纸·GIF 选择器**，**完全不修改 Discord 客户端**。只需 <kbd>Ctrl</kbd>+<kbd>V</kbd> 粘贴即可。
 
+<p align="center">
+  <img src="docs/picker.png" width="430" alt="Notro 选择器：表情·贴纸·GIF 标签页、收藏与合集">
+</p>
+
 ## 工作原理（自动压缩）
 
 1. 常驻系统托盘并监视剪贴板。
@@ -64,6 +68,10 @@ Notro **没有主窗口**。安装后会静默启动，常驻在**系统托盘**
 
 首次启动时会弹出一个**说明窗口**介绍以上内容 — 并显示你要寻找的托盘图标。关闭它后，
 Notro 仍在托盘中运行。
+
+<p align="center">
+  <img src="docs/welcome.png" width="380" alt="Notro 首次运行的说明窗口">
+</p>
 
 ## 从源码运行（开发）
 

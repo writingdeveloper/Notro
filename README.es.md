@@ -14,6 +14,10 @@
 
 Una pequeña aplicación de bandeja para Windows para los usuarios gratuitos de Discord. **Comprime automáticamente las imágenes del portapapeles** que superan el límite de subida gratuito de Discord (10 MB) e incluye un **selector de emojis, stickers y GIF** (ventana emergente con atajo) que cubre lo que bloquea Nitro, **sin modificar el cliente de Discord**. Solo pega con <kbd>Ctrl</kbd>+<kbd>V</kbd>.
 
+<p align="center">
+  <img src="docs/picker.png" width="430" alt="El selector de Notro: pestañas de emojis, stickers y GIF, favoritos y colecciones">
+</p>
+
 ## Cómo funciona (compresión automática)
 
 1. Reside en la bandeja del sistema y vigila el portapapeles.
@@ -67,6 +71,10 @@ A partir de ahí:
 
 En el primer arranque aparece una **ventana de bienvenida** que explica todo esto y muestra
 una imagen del icono de la bandeja que debes buscar. Al cerrarla, Notro sigue en la bandeja.
+
+<p align="center">
+  <img src="docs/welcome.png" width="380" alt="Ventana de bienvenida de Notro en el primer arranque">
+</p>
 
 ## Ejecutar desde el código fuente (desarrollo)
 

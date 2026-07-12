@@ -17,6 +17,10 @@ images** that exceed Discord's free upload limit (10 MB), and ships an
 **emoji / sticker / GIF picker** (hotkey popup) that fills the Nitro gap
 **without modifying the Discord client**. Just paste with <kbd>Ctrl</kbd>+<kbd>V</kbd>.
 
+<p align="center">
+  <img src="docs/picker.png" width="430" alt="The Notro picker: emoji / sticker / GIF tabs, favorites and collections">
+</p>
+
 ## How it works (auto-compression)
 
 1. Lives in the system tray and watches the clipboard.
@@ -92,6 +96,10 @@ From there:
 
 On the very first launch a short **welcome window** explains all of this — and shows a
 picture of the tray icon you're looking for. Close it and Notro keeps running in the tray.
+
+<p align="center">
+  <img src="docs/welcome.png" width="380" alt="Notro's first-run welcome window">
+</p>
 
 ## Run from source (development)
 
