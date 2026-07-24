@@ -3,6 +3,7 @@
 import os
 import time
 
+import pytest
 from PIL import Image
 
 from notro_app.library import Library, SUPPORTED_EXTS
@@ -204,6 +205,47 @@ def test_apply_lib_backfills_new_fields(tmp_path):
     lib2 = Library(lib.data_dir)
     r = lib2.get(it["id"])
     assert r["favorite"] is False and r["collection"] == ""
+
+
+def test_content_hash_persists_and_is_searchable(tmp_path):
+    """해시 필드나 타입·컬렉션 필터가 빠지는 회귀를 잡는다."""
+    lib = make_lib(tmp_path)
+    item = lib.add_item(
+        "emoji", "cap", [], "local", "",
+        put_asset(lib, "cap.png", "__notro_captures__"), False,
+        collection="__notro_captures__", content_hash="abc123")
+
+    lib2 = Library(lib.data_dir)
+    found = lib2.find_by_content_hash(
+        "abc123", "emoji", "__notro_captures__")
+
+    assert lib2.get(item["id"])["content_hash"] == "abc123"
+    assert found["id"] == item["id"]
+    assert lib2.find_by_content_hash(
+        "abc123", "sticker", "__notro_captures__") is None
+
+
+def test_apply_lib_backfills_content_hash(tmp_path):
+    """구버전 library.json에서 신규 필드 KeyError가 나는 회귀를 잡는다."""
+    lib = make_lib(tmp_path)
+    item = lib.add_item(
+        "emoji", "old", [], "local", "", put_asset(lib), False)
+    item.pop("content_hash", None)
+    lib._save()
+
+    assert Library(lib.data_dir).get(item["id"])["content_hash"] == ""
+
+
+def test_add_item_rolls_back_memory_when_save_fails(tmp_path, monkeypatch):
+    """JSON 저장 실패 후 메모리에 유령 항목이 남는 회귀를 잡는다."""
+    lib = make_lib(tmp_path)
+    monkeypatch.setattr(
+        lib, "_save", lambda: (_ for _ in ()).throw(OSError("disk")))
+
+    with pytest.raises(OSError):
+        lib.add_item("emoji", "x", [], "local", "", "x.png", False)
+
+    assert lib.items() == []
 
 
 def test_set_collection_moves_file_on_disk(tmp_path):

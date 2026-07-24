@@ -103,14 +103,15 @@ def _first_frame_png(src: str, dest: str) -> None:
         im.convert("RGBA").save(dest, format="PNG")
 
 
-def _finalize_asset(library, tmp_path: str, ext: str) -> tuple[str, bool, bool]:
+def _finalize_asset(library, tmp_path: str, ext: str,
+                    collection: str = "") -> tuple[str, bool, bool]:
     """APNG면 GIF로 변환해 저장, 아니면 그대로.
 
-    (최종 파일명, animated, convert_failed) 반환. 신규 등록은 항상 미분류
-    폴더에 쓴다 — 사용자가 이후 우클릭으로 컬렉션을 지정하는 기존 흐름과 일치.
+    (최종 파일명, animated, convert_failed) 반환. collection이 없으면 기존처럼
+    미분류 폴더에 쓰고, 지정되면 해당 컬렉션에 처음부터 저장한다.
     APNG→GIF 변환이 실패하면 정지 PNG(첫 프레임)로 폴백하고 convert_failed=True
     (스펙 §7 — 등록 자체는 성공시키고 항목에 경고 배지를 남긴다)."""
-    dest_dir = library.collection_dir("")
+    dest_dir = library.collection_dir(collection)
     if ext == ".png" and is_apng(tmp_path):
         gif_name = library.new_asset_filename(".gif")
         gif_path = os.path.join(dest_dir, gif_name)
@@ -167,19 +168,32 @@ def register_from_file(library, src_path: str, type_: str,
 
 
 def register_from_png_bytes(library, data: bytes, type_: str,
-                            name: str = "", keywords=None) -> dict:
+                            name: str = "", keywords=None,
+                            collection: str = "", content_hash: str = "") -> dict:
     """클립보드 PNG 바이트를 캐시에 저장하고 라이브러리에 등록 (스펙 §5 —
     클립보드 이미지 붙여넣기: 스티커를 수동 저장한 경우의 주 경로).
 
     파일 등록과 동일하게 _finalize_asset을 재사용해 정지/애니메이션(APNG→GIF)을
     판정한다. 원본 파일이 없으므로 source_kind는 파일 드롭과 같은 'local'."""
     tmp = os.path.join(library.assets_dir, "_pb" + library.new_asset_filename(".png"))
+    filename = ""
     try:
         with open(tmp, "wb") as f:
             f.write(data)
-        filename, animated, convert_failed = _finalize_asset(library, tmp, ".png")
+        filename, animated, convert_failed = _finalize_asset(
+            library, tmp, ".png", collection)
+        try:
+            return library.add_item(
+                type_, name, keywords or [], "local", "", filename, animated,
+                convert_failed, collection=collection, content_hash=content_hash)
+        except Exception:
+            if filename:
+                try:
+                    os.remove(os.path.join(
+                        library.collection_dir(collection), filename))
+                except OSError:
+                    pass
+            raise
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
-    return library.add_item(type_, name, keywords or [],
-                            "local", "", filename, animated, convert_failed)

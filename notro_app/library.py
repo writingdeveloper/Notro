@@ -93,6 +93,7 @@ class Library:
             i.setdefault("convert_warning", False)  # 구버전 항목 하위호환
             i.setdefault("favorite", False)
             i.setdefault("collection", "")
+            i.setdefault("content_hash", "")
             items[i["id"]] = i
         self._items = items
 
@@ -119,19 +120,33 @@ class Library:
 
     def add_item(self, type_, name, keywords, source_kind, source_url,
                  filename, animated, convert_warning=False,
-                 favorite=False, collection="") -> dict:
+                 favorite=False, collection="", content_hash="") -> dict:
         item = {
             "id": uuid.uuid4().hex[:12], "type": type_, "name": name,
             "keywords": list(keywords or []), "source_kind": source_kind,
             "source_url": source_url, "filename": filename,
             "animated": bool(animated), "convert_warning": bool(convert_warning),
             "favorite": bool(favorite), "collection": collection or "",
+            "content_hash": content_hash or "",
             "added_at": _now(), "use_count": 0, "last_used": 0,
         }
         with self._lock:
             self._items[item["id"]] = item
-            self._save()
+            try:
+                self._save()
+            except Exception:
+                self._items.pop(item["id"], None)
+                raise
         return item
+
+    def find_by_content_hash(self, content_hash: str, type_: str,
+                             collection: str) -> dict | None:
+        """같은 타입·컬렉션에 저장된 동일 바이트 항목을 찾는다."""
+        with self._lock:
+            return next((i for i in self._items.values()
+                         if i.get("content_hash") == content_hash
+                         and i["type"] == type_
+                         and i.get("collection", "") == collection), None)
 
     def get(self, item_id: str) -> dict | None:
         return self._items.get(item_id)

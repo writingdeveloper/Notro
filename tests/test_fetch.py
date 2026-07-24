@@ -185,3 +185,34 @@ def test_register_from_url_apng_convert_failure_falls_back_to_png(tmp_path, monk
     with Image.open(lib.asset_path(item)) as im:
         assert im.format == "PNG"
         assert getattr(im, "n_frames", 1) == 1
+
+
+def test_register_png_bytes_writes_directly_to_collection(tmp_path):
+    """최종 파일과 메타데이터 컬렉션이 어긋나는 회귀를 잡는다."""
+    lib = Library(str(tmp_path / "d"))
+
+    item = fetch.register_from_png_bytes(
+        lib, png_bytes(), "emoji", name="capture",
+        collection="__notro_captures__", content_hash="hash1")
+
+    assert item["collection"] == "__notro_captures__"
+    assert item["content_hash"] == "hash1"
+    assert os.path.basename(os.path.dirname(lib.asset_path(item))) == \
+        "__notro_captures__"
+    assert os.path.exists(lib.asset_path(item))
+
+
+def test_register_png_bytes_removes_asset_when_metadata_save_fails(
+        tmp_path, monkeypatch):
+    """메타데이터 실패 뒤 고아 자산 파일이 남는 회귀를 잡는다."""
+    lib = Library(str(tmp_path / "d"))
+    monkeypatch.setattr(
+        lib, "add_item",
+        lambda *a, **k: (_ for _ in ()).throw(OSError("json")))
+
+    with pytest.raises(OSError):
+        fetch.register_from_png_bytes(
+            lib, png_bytes(), "emoji", collection="__notro_captures__")
+
+    capture_dir = tmp_path / "d" / "assets" / "__notro_captures__"
+    assert list(capture_dir.glob("*")) == []
