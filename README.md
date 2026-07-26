@@ -42,6 +42,13 @@ with three tabs: **Emoji / Stickers / GIFs**.
 - **Add items:** press **＋** and paste a Discord *"Copy Link"* emoji URL, or
   drag & drop image files onto the picker, or add **watched folders** (⚙) whose
   PNG/GIF/WebP/APNG files appear automatically in the current tab.
+- **Choose where it goes:** the add dialog has a collection dropdown (plus a "New
+  collection…" entry) that defaults to the one you are viewing; drag & drop and
+  <kbd>Ctrl</kbd>+<kbd>V</kbd> registrations follow the same selection, and added items
+  land in the tab you are viewing.
+- **Drop in a whole folder:** create a folder under `%APPDATA%\Notro\assets` and put
+  images in it — the folder name shows up as a collection with no registration step.
+  Animated files land in the GIF tab, still images in the Emoji tab.
 - **Save captures:** press the clipboard button to save the current image directly
   to the **Captures** emoji collection (or keep using <kbd>Ctrl</kbd>+<kbd>V</kbd>).
   Picker settings can automatically save each new clipboard image; this is off by

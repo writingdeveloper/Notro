@@ -3,6 +3,8 @@
   --bg: #313338; --panel: #2b2d31; --input: #1e1f22;
   --text: #dbdee1; --muted: #949ba4; --accent: #5865f2;
   --hover: #35373c; --danger: #da373c; --radius: 8px;
+  /* select 드롭다운·스크롤바 등 브라우저가 직접 그리는 UI도 다크로 */
+  color-scheme: dark;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; overflow: hidden; }
@@ -130,10 +132,22 @@ footer {
   color: var(--muted); font-size: 11px; text-transform: uppercase;
   letter-spacing: .3px; margin-top: 5px;
 }
-.modal-box input {
+.modal-box input, .modal-box select {
   background: var(--input); border: none; outline: none; color: var(--text);
   padding: 8px 10px; border-radius: 6px; width: 100%;
 }
+#add-collection-label {
+  color: var(--muted); font-size: 11px; text-transform: uppercase;
+  letter-spacing: .3px; margin-top: 5px;
+}
+/* 목록임을 알 수 있게 직접 그린 화살표 (외부 자산 없이 인라인 SVG) */
+#add-collection-select {
+  appearance: none; cursor: pointer; padding-right: 30px;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23949ba4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+}
+#add-collection-select option { background: var(--panel); color: var(--text); }
 .note { color: var(--muted); font-size: 11.5px; }
 .setting-row {
   display: flex; align-items: center; gap: 12px; padding: 9px 10px;

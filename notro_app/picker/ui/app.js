@@ -45,6 +45,8 @@ function applyStrings() {
   $("#add-url").placeholder = str("picker_add_url_ph");
   $("#add-name").placeholder = str("picker_add_name_ph");
   $("#add-kw").placeholder = str("picker_add_kw_ph");
+  $("#add-collection-label").textContent = str("picker_add_collection_ph");
+  $("#add-collection").placeholder = str("picker_add_collection_new_ph");
   $("#add-note").textContent = str("picker_add_note");
   $("#add-submit").textContent = str("picker_add_submit");
   $("#add-cancel").textContent = str("picker_cancel");
@@ -202,20 +204,76 @@ function showCtx(e, item) {
 function hideCtx() { $("#ctx").classList.add("hidden"); }
 
 /* ---------- 등록 모달 ---------- */
+/* 세로 바에서 실제 컬렉션을 보고 있으면 그곳을 기본 저장 위치로 쓴다.
+   전체(__all__)·즐겨찾기(__fav__)는 컬렉션이 아니므로 미분류. */
+function currentCollection() {
+  return (state.collection === "__all__" || state.collection === "__fav__")
+    ? "" : state.collection;
+}
+
+/* 저장 위치 선택: 미분류 + 기존 컬렉션 목록 + "새 컬렉션"(항상 마지막).
+   "새 컬렉션"은 값이 아니라 마지막 항목인지로 판별한다 — 어떤 문자열을
+   sentinel로 써도 사용자가 같은 이름의 컬렉션을 만들 수 있기 때문이다. */
+function renderCollectionOptions(selected) {
+  const sel = $("#add-collection-select");
+  sel.innerHTML = "";
+  const add = (value, label) => {
+    const o = document.createElement("option");
+    o.value = value;
+    o.textContent = label;
+    sel.appendChild(o);
+  };
+  add("", str("picker_col_uncategorized"));
+  for (const col of state.collections) add(col.name, col.label || col.name);
+  add("", str("picker_add_collection_new"));
+  const at = state.collections.findIndex((c) => c.name === selected);
+  sel.selectedIndex = at < 0 ? 0 : at + 1;
+  syncCollectionInput();
+}
+
+function isNewCollection() {
+  const sel = $("#add-collection-select");
+  return sel.selectedIndex === sel.options.length - 1;
+}
+
+/* "새 컬렉션"을 골랐을 때만 이름 입력칸을 보여준다 */
+function syncCollectionInput() {
+  const isNew = isNewCollection();
+  $("#add-collection").classList.toggle("hidden", !isNew);
+  if (isNew) $("#add-collection").focus();
+}
+
+function chosenCollection() {
+  return isNewCollection()
+    ? $("#add-collection").value.trim()
+    : $("#add-collection-select").value;
+}
+
 function openAdd() {
   $("#add-error").classList.add("hidden");
   $("#add-url").value = "";
   $("#add-name").value = "";
   $("#add-kw").value = "";
+  $("#add-collection").value = "";
+  renderCollectionOptions(currentCollection());
   $("#modal-add").classList.remove("hidden");
   $("#add-url").focus();
 }
 async function submitAdd() {
   const url = $("#add-url").value.trim();
   if (!url || !api()) return;
-  const res = await api().register_url(url, $("#add-name").value.trim(), $("#add-kw").value.trim());
-  if (res.ok) { $("#modal-add").classList.add("hidden"); refresh(); }
-  else {
+  const added = chosenCollection();
+  const res = await api().register_url(url, $("#add-name").value.trim(),
+    $("#add-kw").value.trim(), added, state.tab);
+  if (res.ok) {
+    $("#modal-add").classList.add("hidden");
+    await refresh();
+    if (added && added !== currentCollection()) {
+      state.collection = added;  /* 방금 넣은 컬렉션을 바로 보여준다 */
+      renderRail();
+      render();
+    }
+  } else {
     const el = $("#add-error");
     el.textContent = str("picker_err_" + res.error);
     el.classList.remove("hidden");
@@ -279,6 +337,8 @@ $("#btn-add").addEventListener("click", openAdd);
 $("#btn-capture").addEventListener("click", addCapture);
 $("#add-submit").addEventListener("click", submitAdd);
 $("#add-url").addEventListener("keydown", (e) => { if (e.key === "Enter") submitAdd(); });
+$("#add-collection-select").addEventListener("change", syncCollectionInput);
+$("#add-collection").addEventListener("keydown", (e) => { if (e.key === "Enter") submitAdd(); });
 $("#add-cancel").addEventListener("click", () => $("#modal-add").classList.add("hidden"));
 $("#btn-settings").addEventListener("click", () => {
   $("#st-auto-capture").checked = state.autoCaptureSave;
@@ -317,7 +377,7 @@ window.addEventListener("drop", async (e) => {
   if (!api()) return;
   const paths = [...e.dataTransfer.files].map((f) => f.pywebviewFullPath).filter(Boolean);
   if (paths.length) {
-    const res = await api().register_files(paths, state.tab);
+    const res = await api().register_files(paths, state.tab, currentCollection());
     await refresh();
     if (res.failed && res.count) flashHint("picker_drop_partial", res);
     else if (res.failed) flashHint("picker_drop_failed");
@@ -345,7 +405,7 @@ window.addEventListener("paste", async (e) => {
   const items = (e.clipboardData && e.clipboardData.items) || [];
   const hasImage = [...items].some((it) => it.type && it.type.indexOf("image/") === 0);
   if (hasImage) e.preventDefault();
-  const res = await api().register_clipboard(state.tab);
+  const res = await api().register_clipboard(state.tab, currentCollection());
   if (res && res.ok) await refresh();
   else if (hasImage || (res && res.error !== "no_image")) {
     flashHint(captureErrorKey(res && res.error));

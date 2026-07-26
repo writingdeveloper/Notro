@@ -39,6 +39,18 @@ def test_auto_capture_uses_native_checkbox_with_description():
     assert by_id["st-folders-subtitle"][0] in {"h4", "p"}
 
 
+def test_add_modal_has_collection_picker():
+    """URL 등록 시 저장할 컬렉션을 고를 수 없게 되는 회귀를 잡는다.
+    목록에서 고르는 select와, 새 이름을 적는 입력칸이 함께 있어야 한다."""
+    by_id = {attrs.get("id"): (tag, attrs) for tag, attrs in elements()
+             if attrs.get("id")}
+    assert by_id["add-collection-select"][0] == "select"
+    assert by_id["add-collection"][0] == "input"
+    label_tag, label_attrs = by_id["add-collection-label"]
+    assert label_tag == "label"
+    assert label_attrs.get("for") == "add-collection-select"
+
+
 def test_capture_button_is_a_real_button():
     by_id = {attrs.get("id"): (tag, attrs) for tag, attrs in elements()
              if attrs.get("id")}

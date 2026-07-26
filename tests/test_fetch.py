@@ -26,9 +26,32 @@ def apng_bytes():
     return buf.getvalue()
 
 
+def animated_webp_bytes():
+    f1 = Image.new("RGBA", (8, 8), (255, 0, 0, 255))
+    f2 = Image.new("RGBA", (8, 8), (0, 0, 255, 255))
+    buf = io.BytesIO()
+    f1.save(buf, format="WEBP", save_all=True, append_images=[f2], duration=80)
+    return buf.getvalue()
+
+
+def static_webp_bytes():
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 8), (0, 255, 0)).save(buf, format="WEBP")
+    return buf.getvalue()
+
+
 def gif_bytes():
     f1 = Image.new("P", (8, 8), 0)
     f2 = Image.new("P", (8, 8), 1)
+    buf = io.BytesIO()
+    f1.save(buf, format="GIF", save_all=True, append_images=[f2], duration=80)
+    return buf.getvalue()
+
+
+def multiframe_gif_bytes():
+    """프레임 내용이 실제로 다른 GIF (PIL이 동일 프레임은 합쳐버린다)."""
+    f1 = Image.new("RGB", (8, 8), (255, 0, 0)).convert("P")
+    f2 = Image.new("RGB", (8, 8), (0, 0, 255)).convert("P")
     buf = io.BytesIO()
     f1.save(buf, format="GIF", save_all=True, append_images=[f2], duration=80)
     return buf.getvalue()
@@ -185,6 +208,132 @@ def test_register_from_url_apng_convert_failure_falls_back_to_png(tmp_path, monk
     with Image.open(lib.asset_path(item)) as im:
         assert im.format == "PNG"
         assert getattr(im, "n_frames", 1) == 1
+
+
+# ---------- 애니메이션 보존 (URL 등록) ----------
+def url_download(payload_by_ext):
+    """확장자별 응답을 흉내내는 download. 없는 확장자는 404처럼 예외."""
+    def _dl(url, dest, timeout=10):
+        ext = os.path.splitext(url)[1].lower()
+        if ext not in payload_by_ext:
+            raise OSError(f"404 {url}")
+        with open(dest, "wb") as f:
+            f.write(payload_by_ext[ext])
+    return _dl
+
+
+def test_register_from_url_prefers_gif_for_animated_emoji(tmp_path, monkeypatch):
+    """쿼리 없는 .webp는 애니메이션 이모지의 첫 프레임만 준다 — GIF 변형을 쓴다."""
+    lib = Library(str(tmp_path / "d"))
+    monkeypatch.setattr(fetch, "download", url_download(
+        {".gif": multiframe_gif_bytes(), ".webp": static_webp_bytes()}))
+
+    item = fetch.register_from_url(
+        lib, "https://cdn.discordapp.com/emojis/7.webp?size=240&animated=true")
+
+    assert item["animated"] is True and item["filename"].endswith(".gif")
+    assert item["source_url"] == "https://cdn.discordapp.com/emojis/7.gif"
+    with Image.open(lib.asset_path(item)) as im:
+        assert im.format == "GIF" and im.n_frames > 1
+
+
+def test_register_from_url_static_emoji_keeps_requested_ext(tmp_path, monkeypatch):
+    """정지 이모지는 GIF 변형이 없으므로 요청된 확장자를 그대로 받는다."""
+    lib = Library(str(tmp_path / "d"))
+    monkeypatch.setattr(fetch, "download",
+                        url_download({".webp": static_webp_bytes()}))
+
+    item = fetch.register_from_url(lib, "https://cdn.discordapp.com/emojis/8.webp")
+
+    assert item["animated"] is False and item["filename"].endswith(".webp")
+    assert item["source_url"] == "https://cdn.discordapp.com/emojis/8.webp"
+
+
+def test_register_from_url_ignores_single_frame_gif_variant(tmp_path, monkeypatch):
+    """GIF 변형이 200으로 오더라도 단일 프레임이면 요청 확장자로 되돌아간다."""
+    lib = Library(str(tmp_path / "d"))
+    buf = io.BytesIO()
+    Image.new("P", (8, 8), 0).save(buf, format="GIF")
+    monkeypatch.setattr(fetch, "download", url_download(
+        {".gif": buf.getvalue(), ".webp": static_webp_bytes()}))
+
+    item = fetch.register_from_url(lib, "https://cdn.discordapp.com/emojis/9.webp")
+
+    assert item["filename"].endswith(".webp") and item["animated"] is False
+
+
+def test_register_from_url_no_leftover_temp_files(tmp_path, monkeypatch):
+    """GIF 변형 탐색 실패 후 임시 파일이 assets 루트에 남지 않아야 한다."""
+    lib = Library(str(tmp_path / "d"))
+    monkeypatch.setattr(fetch, "download",
+                        url_download({".webp": static_webp_bytes()}))
+
+    fetch.register_from_url(lib, "https://cdn.discordapp.com/emojis/10.webp")
+
+    assert [n for n in os.listdir(lib.assets_dir) if n.startswith("_dl")] == []
+
+
+# ---------- 애니메이션 WebP 파일 등록 ----------
+def test_register_from_file_animated_webp_converts_to_gif(tmp_path):
+    """디스코드에서 받은 애니메이션 WebP는 GIF로 변환해 저장한다."""
+    lib = Library(str(tmp_path / "d"))
+    src = tmp_path / "beer.webp"
+    src.write_bytes(animated_webp_bytes())
+
+    item = fetch.register_from_file(lib, str(src), "gif")
+
+    assert item["animated"] is True and item["filename"].endswith(".gif")
+    assert item["convert_warning"] is False
+    with Image.open(lib.asset_path(item)) as im:
+        assert im.format == "GIF" and im.n_frames > 1
+
+
+def test_register_from_url_writes_into_requested_collection(tmp_path, monkeypatch):
+    """URL 등록도 지정한 컬렉션 폴더에 처음부터 저장한다."""
+    lib = Library(str(tmp_path / "d"))
+    monkeypatch.setattr(fetch, "download",
+                        url_download({".png": png_bytes()}))
+
+    item = fetch.register_from_url(lib, "https://cdn.discordapp.com/emojis/11.png",
+                                   collection="MyBeers")
+
+    assert item["collection"] == "MyBeers"
+    assert os.path.basename(os.path.dirname(lib.asset_path(item))) == "MyBeers"
+    assert os.path.exists(lib.asset_path(item))
+
+
+def test_register_from_url_honours_explicit_type(tmp_path, monkeypatch):
+    """GIFs 탭에서 등록한 이모지가 Emoji 탭으로 사라지는 회귀를 잡는다."""
+    lib = Library(str(tmp_path / "d"))
+    monkeypatch.setattr(fetch, "download", url_download({".png": png_bytes()}))
+
+    typed = fetch.register_from_url(lib, "https://cdn.discordapp.com/emojis/12.png",
+                                    type_="gif")
+    default = fetch.register_from_url(lib, "https://cdn.discordapp.com/emojis/13.png")
+
+    assert typed["type"] == "gif"
+    assert default["type"] == "emoji"  # 지정이 없으면 기존 규칙 유지
+
+
+def test_register_from_file_writes_into_requested_collection(tmp_path):
+    lib = Library(str(tmp_path / "d"))
+    src = tmp_path / "z.gif"
+    src.write_bytes(gif_bytes())
+
+    item = fetch.register_from_file(lib, str(src), "gif", collection="MyBeers")
+
+    assert item["collection"] == "MyBeers"
+    assert os.path.basename(os.path.dirname(lib.asset_path(item))) == "MyBeers"
+
+
+def test_register_from_file_static_webp_stays_webp(tmp_path):
+    lib = Library(str(tmp_path / "d"))
+    src = tmp_path / "flat.webp"
+    src.write_bytes(static_webp_bytes())
+
+    item = fetch.register_from_file(lib, str(src), "emoji")
+
+    assert item["animated"] is False and item["filename"].endswith(".webp")
 
 
 def test_register_png_bytes_writes_directly_to_collection(tmp_path):

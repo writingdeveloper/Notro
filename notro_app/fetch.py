@@ -56,6 +56,11 @@ def canonical_url(p: ParsedAsset) -> str:
     return f"https://cdn.discordapp.com/{kind_path}/{p.asset_id}.{p.ext}"
 
 
+def gif_url(p: ParsedAsset) -> str:
+    """같은 자산의 GIF 변형 URL. 애니메이션 자산에만 존재한다."""
+    return canonical_url(ParsedAsset(p.kind, p.asset_id, "gif"))
+
+
 def download(url: str, dest_path: str, timeout: int = 10) -> None:
     req = urllib.request.Request(
         url, headers={"User-Agent": f"Notro/{__version__}"})
@@ -80,8 +85,18 @@ def sniff_animated(path: str) -> bool:
         return False
 
 
+def is_animated_gif(path: str) -> bool:
+    """GIF 형식이면서 실제로 여러 프레임인지 (GIF 변형 존재 확인용)."""
+    try:
+        with Image.open(path) as im:
+            return im.format == "GIF" and getattr(im, "n_frames", 1) > 1
+    except Exception:
+        return False
+
+
 def apng_to_gif(src: str, dest: str) -> None:
-    """APNG → GIF. GIF 투명도는 1비트라 알파<128은 완전 투명으로 처리."""
+    """애니메이션 이미지(APNG·WebP) → GIF. GIF 투명도는 1비트라 알파<128은
+    완전 투명으로 처리."""
     with Image.open(src) as im:
         frames, durations = [], []
         for frame in ImageSequence.Iterator(im):
@@ -103,16 +118,29 @@ def _first_frame_png(src: str, dest: str) -> None:
         im.convert("RGBA").save(dest, format="PNG")
 
 
+def _needs_gif_conversion(path: str, ext: str) -> bool:
+    """디스코드가 애니메이션으로 재생하지 않는 형식인지.
+
+    APNG(.png)에 더해 애니메이션 WebP도 대상이다 — 디스코드에서 받은 이모지
+    파일은 대부분 .webp이고, 첨부로 올리면 클라이언트에 따라 정지 이미지로
+    보인다. GIF로 변환하면 어디서든 움직인다."""
+    if ext == ".png":
+        return is_apng(path)
+    if ext == ".webp":
+        return sniff_animated(path)
+    return False
+
+
 def _finalize_asset(library, tmp_path: str, ext: str,
                     collection: str = "") -> tuple[str, bool, bool]:
-    """APNG면 GIF로 변환해 저장, 아니면 그대로.
+    """APNG·애니메이션 WebP면 GIF로 변환해 저장, 아니면 그대로.
 
     (최종 파일명, animated, convert_failed) 반환. collection이 없으면 기존처럼
     미분류 폴더에 쓰고, 지정되면 해당 컬렉션에 처음부터 저장한다.
     APNG→GIF 변환이 실패하면 정지 PNG(첫 프레임)로 폴백하고 convert_failed=True
     (스펙 §7 — 등록 자체는 성공시키고 항목에 경고 배지를 남긴다)."""
     dest_dir = library.collection_dir(collection)
-    if ext == ".png" and is_apng(tmp_path):
+    if _needs_gif_conversion(tmp_path, ext):
         gif_name = library.new_asset_filename(".gif")
         gif_path = os.path.join(dest_dir, gif_name)
         try:
@@ -132,39 +160,72 @@ def _finalize_asset(library, tmp_path: str, ext: str,
     return filename, ext == ".gif" or sniff_animated(final), False
 
 
-def register_from_url(library, url: str, name: str = "", keywords=None) -> dict:
+def _download_asset(library, p: ParsedAsset) -> tuple[str, str, str]:
+    """자산을 임시 파일로 내려받고 (임시경로, 확장자, 실제 URL)를 반환한다.
+
+    디스코드 CDN은 쿼리 없는 `.webp`/`.png`에 애니메이션 이모지의 **첫 프레임만**
+    돌려준다 (`?animated=true`가 있어야 움직이는 WebP). 그래서 GIF 변형을 먼저
+    시도하고, 실제로 여러 프레임인 GIF가 오면 그것을 원본으로 삼는다. 정지
+    자산은 GIF 변형이 없거나(415/404) 단일 프레임이므로 요청된 확장자로 되돌아가
+    기존과 동일하게 작은 정지 파일을 받는다.
+    """
+    if p.ext != "gif":
+        url = gif_url(p)
+        tmp = os.path.join(library.assets_dir,
+                           "_dl" + library.new_asset_filename(".gif"))
+        try:
+            download(url, tmp)
+            if is_animated_gif(tmp):
+                return tmp, ".gif", url
+        except Exception:
+            pass
+        if os.path.exists(tmp):
+            os.remove(tmp)
+    ext = "." + p.ext
+    url = canonical_url(p)
+    tmp = os.path.join(library.assets_dir, "_dl" + library.new_asset_filename(ext))
+    download(url, tmp)
+    return tmp, ext, url
+
+
+def register_from_url(library, url: str, name: str = "", keywords=None,
+                      collection: str = "", type_: str = "") -> dict:
+    """type_을 주면 그 탭에 등록한다 (파일 드롭과 같은 규칙 — 사용자가 보고 있던
+    탭). 비우면 예전처럼 디스코드 자산 종류를 따른다."""
     p = parse_discord_url(url)
     if p is None:
         raise ValueError("not a discord asset url")
-    ext = "." + p.ext
-    tmp = os.path.join(library.assets_dir, "_dl" + library.new_asset_filename(ext))
+    tmp, ext, source_url = _download_asset(library, p)
     try:
-        download(canonical_url(p), tmp)
-        filename, animated, convert_failed = _finalize_asset(library, tmp, ext)
+        filename, animated, convert_failed = _finalize_asset(
+            library, tmp, ext, collection)
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
-    type_ = "emoji" if p.kind == "emoji" else "sticker"
+    type_ = type_ or ("emoji" if p.kind == "emoji" else "sticker")
     return library.add_item(type_, name or p.asset_id, keywords or [],
-                            "discord-cdn", canonical_url(p), filename, animated,
-                            convert_failed)
+                            "discord-cdn", source_url, filename, animated,
+                            convert_failed, collection=collection)
 
 
 def register_from_file(library, src_path: str, type_: str,
-                       name: str = "", keywords=None) -> dict:
+                       name: str = "", keywords=None,
+                       collection: str = "") -> dict:
     ext = os.path.splitext(src_path)[1].lower()
     if ext not in ACCEPT_FILE_EXTS:
         raise ValueError(f"unsupported extension: {ext}")
     tmp = os.path.join(library.assets_dir, "_cp" + library.new_asset_filename(ext))
     try:
         shutil.copyfile(src_path, tmp)
-        filename, animated, convert_failed = _finalize_asset(library, tmp, ext)
+        filename, animated, convert_failed = _finalize_asset(
+            library, tmp, ext, collection)
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
     stem = os.path.splitext(os.path.basename(src_path))[0]
     return library.add_item(type_, name or stem, keywords or [],
-                            "local", "", filename, animated, convert_failed)
+                            "local", "", filename, animated, convert_failed,
+                            collection=collection)
 
 
 def register_from_png_bytes(library, data: bytes, type_: str,

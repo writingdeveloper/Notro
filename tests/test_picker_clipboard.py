@@ -146,12 +146,47 @@ def test_register_files_reports_failures(tmp_path, monkeypatch):
     api = window.PickerApi(library=Library(str(tmp_path / "d")))
     monkeypatch.setattr(
         fetch, "register_from_file",
-        lambda lib, path, type_: (_ for _ in ()).throw(ValueError(path))
+        lambda lib, path, type_, collection="":
+        (_ for _ in ()).throw(ValueError(path))
         if path == "bad" else {"id": path})
 
     assert api.register_files(["good", "bad"], "emoji") == {
         "ok": True, "count": 1, "failed": 1,
     }
+
+
+def test_register_files_routes_to_selected_collection(tmp_path, monkeypatch):
+    """드롭한 파일이 보고 있던 컬렉션 대신 미분류로 새는 회귀를 잡는다."""
+    api = window.PickerApi(library=Library(str(tmp_path / "d")))
+    seen = []
+    monkeypatch.setattr(
+        fetch, "register_from_file",
+        lambda lib, path, type_, collection="": seen.append(collection))
+
+    api.register_files(["a"], "emoji", "MyBeers")
+    api.register_files(["b"], "emoji", "__all__")  # 가상 항목은 미분류
+
+    assert seen == ["MyBeers", ""]
+
+
+def test_register_url_routes_to_selected_collection(tmp_path, monkeypatch):
+    lib = Library(str(tmp_path / "d"))
+    api = window.PickerApi(library=lib, asset_server=FakeServer())
+    seen = []
+
+    def fake(library, url, name, keywords, collection, type_):
+        seen.append((collection, type_))
+        return library.add_item(type_ or "emoji", "x", [], "discord-cdn", url,
+                                "x.png", False, collection=collection)
+
+    monkeypatch.setattr(fetch, "register_from_url", fake)
+
+    res = api.register_url("https://cdn.discordapp.com/emojis/1.png",
+                           collection="MyBeers", type_="gif")
+
+    assert seen == [("MyBeers", "gif")] and res["ok"] is True
+    assert res["item"]["collection"] == "MyBeers"
+    assert res["item"]["type"] == "gif"  # 보고 있던 탭에 등록
 
 
 def test_register_clipboard_uses_bitmap_fallback(tmp_path, monkeypatch):

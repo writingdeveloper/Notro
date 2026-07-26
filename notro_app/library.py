@@ -20,9 +20,34 @@ SCHEMA_VERSION = 1
 
 _INVALID_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
+# fetch.py가 다운로드/복사 중 assets 루트에 남기는 임시 파일 접두사 — 자동 인식
+# 대상에서 제외한다.
+_TEMP_PREFIXES = ("_dl", "_cp", "_pb")
+
+# APNG는 IHDR 직후 acTL, 애니메이션 WebP는 VP8X 직후 ANIM 청크를 갖는다.
+# PIL 없이 헤더만 읽어 애니메이션 여부를 판정한다 (폴더 스캔은 매 표시마다
+# 수십~수백 파일을 훑으므로 디코딩 비용을 피한다).
+_ANIM_MARKERS = {".png": b"acTL", ".webp": b"ANIM"}
+
 
 def _now() -> float:
     return time.time()
+
+
+def file_is_animated(path: str) -> bool:
+    """확장자 + 헤더 스니핑으로 애니메이션 여부 판정 (실패 시 False)."""
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".gif":
+        return True
+    marker = _ANIM_MARKERS.get(ext)
+    if not marker:
+        return False
+    try:
+        with open(path, "rb") as f:
+            head = f.read(65536)
+    except OSError:
+        return False
+    return marker in head
 
 
 def _slug(name) -> str:
@@ -41,6 +66,7 @@ class Library:
         self._items: dict[str, dict] = {}
         self._folders: list[dict] = []
         self._scan_cache: dict[str, tuple[tuple, list[dict]]] = {}
+        self._asset_scan_cache: dict[str, tuple[tuple, list[dict]]] = {}
         # 자산 HTTP 서버(다중 요청 스레드)와 피커 js_api 스레드가 항목·폴더·
         # 스캔 캐시에 동시 접근하므로, 순회 중 변경으로 인한 오류(RuntimeError:
         # dictionary changed size 등)를 막기 위해 재진입 락으로 상태 접근을 보호한다.
@@ -206,12 +232,15 @@ class Library:
             self._save()
 
     def collections(self) -> list[str]:
-        """세로 바용 컬렉션 목록: 등록 항목의 collection(빈 값 제외) + 감시 폴더 basename."""
+        """세로 바용 컬렉션 목록: 등록 항목의 collection(빈 값 제외) + 감시 폴더
+        basename + assets\\ 하위에서 자동 인식된 폴더명."""
         with self._lock:
             regs = {i.get("collection", "") for i in self._items.values()}
             folders = {os.path.basename(f["path"]) for f in self._folders}
+        scanned = {i["collection"] for i in self.scan_asset_dirs()}
         regs.discard("")
-        return sorted(regs | folders)
+        scanned.discard("")
+        return sorted(regs | folders | scanned)
 
     def collection_icon(self, name: str) -> str | None:
         """세로 바 대표 아이콘용 첫 항목 id. 등록 항목을 먼저, 그다음 감시
@@ -281,20 +310,85 @@ class Library:
             if cached and cached[0] == sig:
                 out.extend(cached[1])
                 continue
-            items = []
-            for n in names:
-                ap = os.path.join(path, n)
-                stem, ext = os.path.splitext(n)
-                items.append({
-                    "id": "folder:" + ap, "type": dtype, "name": stem,
-                    "keywords": [], "source_kind": "folder", "source_url": "",
-                    "filename": n, "abs_path": ap,
-                    "animated": ext.lower() == ".gif",
-                    "collection": os.path.basename(path),
-                    "added_at": 0, "use_count": 0, "last_used": 0,
-                })
+            items = [self._scan_item(path, n, dtype, os.path.basename(path))
+                     for n in names]
             with self._lock:
                 self._scan_cache[path] = (sig, items)
+            out.extend(items)
+        return out
+
+    @staticmethod
+    def _scan_item(dir_path: str, name: str, type_: str | None,
+                   collection: str) -> dict:
+        """스캔 항목 dict. type_이 None이면 애니메이션 여부로 탭을 추정한다
+        (움직이는 파일 → gif 탭, 정지 → emoji 탭)."""
+        ap = os.path.join(dir_path, name)
+        animated = file_is_animated(ap)
+        return {
+            "id": "folder:" + ap, "type": type_ or ("gif" if animated else "emoji"),
+            "name": os.path.splitext(name)[0],
+            "keywords": [], "source_kind": "folder", "source_url": "",
+            "filename": name, "abs_path": ap, "animated": animated,
+            "collection": collection,
+            "added_at": 0, "use_count": 0, "last_used": 0,
+        }
+
+    # ---------- assets 하위 자동 인식 ----------
+    def _owned_filenames(self) -> dict[str, set[str]]:
+        """폴더 slug -> 등록 항목이 소유한 파일명 집합 (중복 표시 방지용)."""
+        owned: dict[str, set[str]] = {}
+        with self._lock:
+            for i in self._items.values():
+                owned.setdefault(_slug(i.get("collection", "")),
+                                 set()).add(i["filename"])
+        return owned
+
+    def _asset_scan_dirs(self) -> list[str]:
+        """스캔 대상: assets 루트 + 감시 폴더로 등록되지 않은 모든 하위 폴더."""
+        with self._lock:
+            watched = {os.path.normcase(f["path"]) for f in self._folders}
+        dirs = [self.assets_dir]
+        try:
+            entries = sorted(os.listdir(self.assets_dir))
+        except OSError:
+            return []
+        for n in entries:
+            p = os.path.join(self.assets_dir, n)
+            if os.path.isdir(p) and os.path.normcase(p) not in watched:
+                dirs.append(p)
+        return dirs
+
+    def scan_asset_dirs(self) -> list[dict]:
+        """사용자가 assets\\ 아래에 직접 만든 폴더·넣은 파일을 등록 없이 표시한다.
+
+        등록 항목이 소유한 파일은 제외하므로 기존 컬렉션 폴더에 파일을 하나
+        떨어뜨려도 중복 없이 그 파일만 추가로 보인다. 폴더명이 곧 컬렉션명이며
+        `_uncategorized`와 루트는 미분류로 취급한다.
+        """
+        out: list[dict] = []
+        owned = self._owned_filenames()
+        for d in self._asset_scan_dirs():
+            root = os.path.normcase(d) == os.path.normcase(self.assets_dir)
+            base = os.path.basename(d)
+            collection = "" if root or base == "_uncategorized" else base
+            skip = set() if root else owned.get(_slug(collection), set())
+            try:
+                entries = sorted(os.listdir(d))
+            except OSError:
+                continue
+            names = [n for n in entries
+                     if os.path.splitext(n)[1].lower() in SUPPORTED_EXTS
+                     and n not in skip
+                     and not n.startswith(_TEMP_PREFIXES)]
+            sig = (self._dir_sig(d), tuple(names))
+            with self._lock:
+                cached = self._asset_scan_cache.get(d)
+            if cached and cached[0] == sig:
+                out.extend(cached[1])
+                continue
+            items = [self._scan_item(d, n, None, collection) for n in names]
+            with self._lock:
+                self._asset_scan_cache[d] = (sig, items)
             out.extend(items)
         return out
 
@@ -306,7 +400,15 @@ class Library:
             return 0
 
     def all_display_items(self) -> list[dict]:
-        return self.items() + self.scan_folders()
+        return self.items() + self.scan_folders() + self.scan_asset_dirs()
+
+    def resolve(self, item_id: str) -> dict | None:
+        """등록 항목 우선, 없으면 스캔 항목(감시 폴더 + assets 자동 인식)에서 조회."""
+        item = self._items.get(item_id)
+        if item is None and item_id.startswith("folder:"):
+            item = next((i for i in self.scan_folders() + self.scan_asset_dirs()
+                         if i["id"] == item_id), None)
+        return item
 
     # ---------- 검색 ----------
     # 정식 검색 책임(스펙 §3)은 여기 있다. 프런트엔드 app.js filtered()는
