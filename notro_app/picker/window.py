@@ -124,6 +124,8 @@ PICKER_STRING_KEYS = [
     "picker_search", "picker_tab_emoji", "picker_tab_sticker", "picker_tab_gif",
     "picker_recent", "picker_empty", "picker_hint", "picker_add_title",
     "picker_add_url_ph", "picker_add_name_ph", "picker_add_kw_ph",
+    "picker_add_collection_ph", "picker_col_uncategorized",
+    "picker_add_collection_new", "picker_add_collection_new_ph",
     "picker_add_note", "picker_add_submit", "picker_cancel",
     "picker_folders_title", "picker_add_folder", "picker_drop_hint",
     "picker_ctx_file", "picker_ctx_url", "picker_ctx_delete",
@@ -139,6 +141,13 @@ PICKER_STRING_KEYS = [
     "picker_settings_title", "picker_folders_subtitle",
     "picker_drop_partial", "picker_drop_failed",
 ]
+
+
+def _collection(name) -> str:
+    """UI가 넘긴 컬렉션 값 정규화. 세로 바의 가상 항목(전체/즐겨찾기)은
+    실제 컬렉션이 아니므로 미분류로 취급한다."""
+    name = (name or "").strip()
+    return "" if name in ("__all__", "__fav__") else name
 
 
 class PickerApi:
@@ -200,12 +209,14 @@ class PickerApi:
             self._ctrl.select(item_id, mode)
         return True
 
-    def register_url(self, url: str, name: str = "", keywords: str = "") -> dict:
+    def register_url(self, url: str, name: str = "", keywords: str = "",
+                     collection: str = "", type_: str = "") -> dict:
         from .. import fetch
         kws = [k.strip() for k in (keywords or "").replace(",", " ").split()
                if k.strip()]
         try:
-            item = fetch.register_from_url(self._library, url, name, kws)
+            item = fetch.register_from_url(self._library, url, name, kws,
+                                           _collection(collection), type_)
         except fetch.UnsupportedAssetError:
             return {"ok": False, "error": "lottie"}
         except ValueError:
@@ -214,13 +225,15 @@ class PickerApi:
             return {"ok": False, "error": "download"}
         return {"ok": True, "item": self._display(item)}
 
-    def register_files(self, paths, type_: str) -> dict:
+    def register_files(self, paths, type_: str, collection: str = "") -> dict:
         from .. import fetch
         n = 0
         failed = 0
+        target = _collection(collection)
         for p in paths or []:
             try:
-                fetch.register_from_file(self._library, p, type_)
+                fetch.register_from_file(self._library, p, type_,
+                                         collection=target)
                 n += 1
             except Exception:
                 failed += 1
@@ -242,7 +255,7 @@ class PickerApi:
         config.set_setting_flag("auto_capture_save", bool(enabled))
         return config.get_setting_flag("auto_capture_save")
 
-    def register_clipboard(self, type_: str) -> dict:
+    def register_clipboard(self, type_: str, collection: str = "") -> dict:
         """클립보드의 PNG 이미지를 라이브러리에 등록 (스펙 §5 — 디스코드/브라우저
         에서 이미지를 복사한 뒤 붙여넣는 주 경로). 재인코딩 추정이 아닌 클립보드
         원본 PNG 바이트를 그대로 캐시한다. 이미지가 없으면 ok=False."""
@@ -255,7 +268,8 @@ class PickerApi:
         name = datetime.now().strftime("clip-%Y%m%d-%H%M%S")
         try:
             fetch.register_from_png_bytes(
-                self._library, read.data, type_, name=name)
+                self._library, read.data, type_, name=name,
+                collection=_collection(collection))
         except Exception:
             return {"ok": False, "error": "register"}
         return {"ok": True}
@@ -307,11 +321,7 @@ class PickerController:
         self._api = api
 
     def _resolve(self, item_id: str) -> dict | None:
-        item = self.library.get(item_id)
-        if item is None and item_id.startswith("folder:"):
-            item = next((i for i in self.library.scan_folders()
-                         if i["id"] == item_id), None)
-        return item
+        return self.library.resolve(item_id)
 
     def _notify(self, msg: str) -> None:
         if self.on_notify:

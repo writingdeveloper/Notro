@@ -55,3 +55,7 @@ jobs:
             dist/NotroSetup.exe
             dist/NotroSetup.exe.sha256
           generate_release_notes: true
+          # 초안으로 만들어 두고 사람이 확인한 뒤 publish 한다. 업데이터는
+          # releases/latest를 보므로, publish 전까지는 기존 사용자에게 배포되지
+          # 않는다. 태그 즉시 공개하려면 이 줄을 지우면 된다.
+          draft: true

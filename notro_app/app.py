@@ -137,10 +137,7 @@ def main():
     from .picker.window import PickerApi, PickerController
 
     def _resolve_asset(item_id: str):
-        item = library.get(item_id)
-        if item is None and item_id.startswith("folder:"):
-            item = next((i for i in library.scan_folders()
-                         if i["id"] == item_id), None)
+        item = library.resolve(item_id)
         return library.asset_path(item) if item else None
 
     asset_server = AssetServer(_resolve_asset)

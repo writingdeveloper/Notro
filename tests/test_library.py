@@ -385,3 +385,81 @@ def test_folder_items_collection_is_basename(tmp_path):
     items = lib.scan_folders()
     assert items and items[0]["collection"] == "gifs"
     assert "gifs" in lib.collections()
+
+
+# ---------- assets 하위 자동 인식 ----------
+def animated_webp(path):
+    f1 = Image.new("RGBA", (8, 8), (255, 0, 0, 255))
+    f2 = Image.new("RGBA", (8, 8), (0, 0, 255, 255))
+    f1.save(path, format="WEBP", save_all=True, append_images=[f2], duration=80)
+
+
+def test_asset_dir_scan_picks_up_manual_folder(tmp_path):
+    """사용자가 assets 아래에 직접 만든 폴더를 등록 없이 인식한다."""
+    lib = make_lib(tmp_path)
+    d = os.path.join(lib.assets_dir, "MyBeers")
+    os.makedirs(d)
+    animated_webp(os.path.join(d, "beer.webp"))
+    Image.new("RGB", (4, 4)).save(os.path.join(d, "flat.png"))
+
+    items = sorted(lib.scan_asset_dirs(), key=lambda i: i["name"])
+
+    assert [i["name"] for i in items] == ["beer", "flat"]
+    assert all(i["collection"] == "MyBeers" for i in items)
+    assert all(i["source_kind"] == "folder" for i in items)
+    # 애니메이션 WebP는 gif 탭, 정지 이미지는 emoji 탭으로 추정
+    assert items[0]["type"] == "gif" and items[0]["animated"] is True
+    assert items[1]["type"] == "emoji" and items[1]["animated"] is False
+    assert "MyBeers" in lib.collections()
+    assert lib.resolve(items[0]["id"])["name"] == "beer"
+
+
+def test_asset_dir_scan_excludes_registered_files(tmp_path):
+    """등록 항목이 소유한 파일은 중복 표시하지 않고, 같은 폴더에 사용자가
+    직접 넣은 파일만 추가로 보인다."""
+    lib = make_lib(tmp_path)
+    fn = put_asset(lib, "reg.png", collection="cats")
+    lib.add_item("emoji", "reg", [], "local", "", fn, False, collection="cats")
+    Image.new("RGB", (4, 4)).save(os.path.join(lib.assets_dir, "cats", "manual.png"))
+
+    scanned = lib.scan_asset_dirs()
+
+    assert [i["name"] for i in scanned] == ["manual"]
+    assert len(lib.all_display_items()) == 2
+
+
+def test_asset_dir_scan_skips_watched_folder_duplicates(tmp_path):
+    """감시 폴더로 이미 등록된 assets 하위 폴더는 두 번 스캔하지 않는다."""
+    lib = make_lib(tmp_path)
+    d = os.path.join(lib.assets_dir, "watched")
+    os.makedirs(d)
+    Image.new("RGB", (4, 4)).save(os.path.join(d, "x.png"))
+    lib.add_folder(d, "sticker")
+
+    assert lib.scan_asset_dirs() == []
+    assert len(lib.all_display_items()) == 1
+
+
+def test_asset_dir_scan_cache_invalidates_on_new_file(tmp_path):
+    lib = make_lib(tmp_path)
+    d = os.path.join(lib.assets_dir, "col")
+    os.makedirs(d)
+    Image.new("RGB", (4, 4)).save(os.path.join(d, "1.png"))
+    assert len(lib.scan_asset_dirs()) == 1
+    time.sleep(0.01)
+    Image.new("RGB", (4, 4)).save(os.path.join(d, "2.png"))
+    assert len(lib.scan_asset_dirs()) == 2
+
+
+def test_folder_scan_detects_animated_webp(tmp_path):
+    """감시 폴더의 애니메이션 WebP도 animated=True로 표시한다."""
+    lib = make_lib(tmp_path)
+    folder = tmp_path / "f"
+    folder.mkdir()
+    animated_webp(str(folder / "a.webp"))
+    Image.new("RGB", (4, 4)).save(folder / "b.webp")
+    lib.add_folder(str(folder), "gif")
+
+    items = {i["name"]: i["animated"] for i in lib.scan_folders()}
+
+    assert items == {"a": True, "b": False}

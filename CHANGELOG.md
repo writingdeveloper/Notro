@@ -3,6 +3,33 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.8.0] - 2026-07-26
+
+### Added
+- **Folders you create under `%APPDATA%\Notro\assets` are picked up automatically.** Drop a
+  folder of images in there and it shows up as a collection in the picker with no registration
+  step; a file dropped into an existing collection folder appears alongside its registered
+  items without duplicating them. Animated files land in the GIF tab, still images in the
+  Emoji tab.
+- **Pick the destination collection when adding.** The add-by-URL dialog now has a collection
+  dropdown listing every existing collection, plus a "New collection…" entry for naming a new
+  one. It defaults to the collection you are viewing. Dropped files and
+  <kbd>Ctrl</kbd>+<kbd>V</kbd> registrations follow the selected collection too, instead of
+  always landing in the uncategorized bucket.
+
+### Changed
+- Items added by URL now go to the tab you are viewing, matching how dropped files already
+  behaved. Previously an animated emoji added from the GIFs tab silently landed in Emoji.
+- The picker's native dropdowns and scrollbars now render in dark mode.
+
+### Fixed
+- **Animated emoji added by URL no longer freeze.** Discord's CDN serves only the first frame
+  for a query-less `.webp`/`.png`, so Notro now prefers the animated `.gif` variant and falls
+  back to the requested extension for still assets.
+- **Animated WebP files are converted to GIF on registration**, the same as APNG. Emoji saved
+  from Discord are usually WebP, which some clients render as a still image when re-uploaded.
+- Watched-folder items now detect animated WebP and APNG instead of assuming only `.gif` moves.
+
 ## [2.7.0] - 2026-07-23
 
 ### Added
