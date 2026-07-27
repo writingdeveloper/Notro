@@ -7,6 +7,7 @@ APNG는 등록 시 GIF로 변환해 저장한다 — FakeNitro와 동일한 해�
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import shutil
@@ -34,6 +35,42 @@ FORMAT_EXTS = {"PNG": ".png", "GIF": ".gif", "WEBP": ".webp", "JPEG": ".jpg"}
 
 class UnsupportedAssetError(Exception):
     """Lottie(.json) 스티커 등 지원 불가 자산."""
+
+
+class DuplicateAssetError(Exception):
+    """같은 탭·컬렉션에 이미 있는 그림. `.item`이 기존 항목."""
+
+    def __init__(self, item: dict):
+        super().__init__(item.get("name", ""))
+        self.item = item
+
+
+def file_digest(path: str) -> str:
+    """저장된 파일 바이트의 SHA-256. 같은 그림을 여러 번 등록하는 것을 막는 키다."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 16), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _reject_duplicate(library, digest: str, type_: str, collection: str,
+                      final_path: str) -> None:
+    """이미 같은 바이트가 있으면 방금 쓴 파일을 지우고 중단한다.
+
+    같은 그림이라도 **다른 탭이나 다른 컬렉션**에 두는 건 정상적인 사용이므로
+    (탭마다 붙여넣기 크기가 다르다), 검사는 (해시, 타입, 컬렉션)으로 한정한다.
+    """
+    if not digest:
+        return
+    existing = library.find_by_content_hash(digest, type_, collection)
+    if existing is None:
+        return
+    try:
+        os.remove(final_path)
+    except OSError:
+        pass
+    raise DuplicateAssetError(existing)
 
 
 @dataclass
@@ -233,10 +270,14 @@ def register_from_url(library, url: str, name: str = "", keywords=None,
         if os.path.exists(tmp):
             os.remove(tmp)
     type_ = type_ or ("emoji" if p.kind == "emoji" else "sticker")
+    final = os.path.join(library.collection_dir(collection), filename)
+    digest = file_digest(final)
+    _reject_duplicate(library, digest, type_, collection, final)
     # 이름은 사용자 입력 > 이모지 텍스트에 들어 있던 이름 > 자산 id 순.
     return library.add_item(type_, name or p.name or p.asset_id, keywords or [],
                             "discord-cdn", source_url, filename, animated,
-                            convert_failed, collection=collection)
+                            convert_failed, collection=collection,
+                            content_hash=digest)
 
 
 def register_from_file(library, src_path: str, type_: str,
@@ -253,10 +294,13 @@ def register_from_file(library, src_path: str, type_: str,
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
+    final = os.path.join(library.collection_dir(collection), filename)
+    digest = file_digest(final)
+    _reject_duplicate(library, digest, type_, collection, final)
     stem = os.path.splitext(os.path.basename(src_path))[0]
     return library.add_item(type_, name or stem, keywords or [],
                             "local", "", filename, animated, convert_failed,
-                            collection=collection)
+                            collection=collection, content_hash=digest)
 
 
 def register_from_png_bytes(library, data: bytes, type_: str,
@@ -266,18 +310,26 @@ def register_from_png_bytes(library, data: bytes, type_: str,
     클립보드 이미지 붙여넣기: 스티커를 수동 저장한 경우의 주 경로).
 
     파일 등록과 동일하게 _finalize_asset을 재사용해 정지/애니메이션(APNG→GIF)을
-    판정한다. 원본 파일이 없으므로 source_kind는 파일 드롭과 같은 'local'."""
+    판정한다. 원본 파일이 없으므로 source_kind는 파일 드롭과 같은 'local'.
+
+    중복 판정 키는 **저장된 파일이 아니라 넘겨받은 원본 바이트**의 해시다 —
+    APNG는 GIF로 바뀌어 저장되므로, 파일 해시를 쓰면 같은 클립보드 이미지를
+    다시 붙여넣어도 매번 새 항목이 된다. 호출자가 해시를 주면 그대로 쓴다
+    (캡처 저장이 쓰기 전에 미리 계산해 둔 값)."""
     tmp = os.path.join(library.assets_dir, "_pb" + library.new_asset_filename(".png"))
     filename = ""
+    digest = content_hash or hashlib.sha256(data).hexdigest()
     try:
         with open(tmp, "wb") as f:
             f.write(data)
         filename, animated, convert_failed = _finalize_asset(
             library, tmp, ".png", collection)
+        _reject_duplicate(library, digest, type_, collection,
+                          os.path.join(library.collection_dir(collection), filename))
         try:
             return library.add_item(
                 type_, name, keywords or [], "local", "", filename, animated,
-                convert_failed, collection=collection, content_hash=content_hash)
+                convert_failed, collection=collection, content_hash=digest)
         except Exception:
             if filename:
                 try:

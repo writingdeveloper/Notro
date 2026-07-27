@@ -45,6 +45,21 @@
   </div>
 </div>
 
+<div id="modal-edit" class="modal hidden">
+  <div class="modal-box">
+    <h3 id="edit-title"></h3>
+    <label id="edit-name-label" for="edit-name"></label>
+    <input id="edit-name" type="text" spellcheck="false" autocomplete="off">
+    <label id="edit-kw-label" for="edit-kw"></label>
+    <input id="edit-kw" type="text" spellcheck="false" autocomplete="off">
+    <p id="edit-note" class="note"></p>
+    <div class="row">
+      <button id="edit-submit" class="primary"></button>
+      <button id="edit-cancel"></button>
+    </div>
+  </div>
+</div>
+
 <div id="modal-settings" class="modal hidden">
   <div class="modal-box">
     <h3 id="st-title"></h3>
@@ -54,6 +69,13 @@
         <p id="st-auto-capture-note" class="note"></p>
       </div>
       <input id="st-auto-capture" type="checkbox">
+    </div>
+    <div class="setting-row">
+      <div class="setting-copy">
+        <label id="st-auto-send-label" for="st-auto-send"></label>
+        <p id="st-auto-send-note" class="note"></p>
+      </div>
+      <input id="st-auto-send" type="checkbox">
     </div>
     <h4 id="st-size-subtitle"></h4>
     <p id="st-size-note" class="note"></p>

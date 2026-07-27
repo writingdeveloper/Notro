@@ -28,6 +28,18 @@ _CSS = """
   .bar { margin-top:16px; height:8px; background:#1e1f22; border-radius:4px; overflow:hidden; }
   .bar > i { display:block; height:100%; width:0%; background:#5865f2; transition:width .2s; }
   .status { margin-top:10px; font-size:13px; }
+  .trim { margin-top:14px; padding:10px 12px; background:#2b2d31; border-radius:6px; }
+  .trim label { display:block; font-size:11px; text-transform:uppercase;
+                letter-spacing:.3px; color:#949ba4; margin-bottom:6px; }
+  .trim .fields { display:flex; align-items:center; gap:8px; }
+  .trim input[type=text] { width:74px; background:#1e1f22; border:none; outline:none;
+        color:#dbdee1; padding:6px 8px; border-radius:5px; font-size:13px;
+        font-family:inherit; text-align:center; }
+  .trim .sep { color:#949ba4; }
+  .trim .mute { margin-left:auto; display:flex; align-items:center; gap:6px;
+                font-size:12.5px; color:#dbdee1; cursor:pointer; }
+  .trim input[type=checkbox] { width:16px; height:16px; accent-color:#5865f2; }
+  button:disabled { opacity:.5; cursor:default; }
   .btns { margin-top:18px; display:flex; gap:8px; }
   button { flex:1; padding:10px; border:none; border-radius:6px; font-size:13.5px;
            font-weight:600; cursor:pointer; background:#4e5058; color:#fff; }
@@ -72,12 +84,32 @@ def destroy_all() -> None:
 
 
 class _Api:
-    def __init__(self, accepted: threading.Event, cancelled: threading.Event):
+    def __init__(self, accepted: threading.Event, cancelled: threading.Event,
+                 on_replan=None):
         self.window = None
         self._accepted = accepted
         self._cancelled = cancelled
+        self._on_replan = on_replan
+        # 사용자가 마지막으로 고른 구간·음소거. accept()가 인자로 함께 받아,
+        # 입력 이벤트가 유실돼도 실제 화면 값으로 인코딩한다.
+        self.choice = ("", "", False)
 
-    def accept(self):
+    def replan(self, start: str = "", end: str = "", mute: bool = False) -> dict:
+        """구간·음소거를 바꿀 때마다 예상치를 다시 계산해 돌려준다.
+
+        자르면 같은 용량 예산을 짧은 구간에 쓰므로 해상도가 올라간다 — 그 효과를
+        바로 보여줘야 "얼마나 잘라야 하는지"를 사용자가 판단할 수 있다.
+        """
+        self.choice = (start, end, bool(mute))
+        if self._on_replan is None:
+            return {"ok": True, "estimate": ""}
+        try:
+            return self._on_replan(start, end, bool(mute))
+        except Exception:
+            return {"ok": False, "estimate": tr("video_trim_invalid")}
+
+    def accept(self, start: str = "", end: str = "", mute: bool = False):
+        self.choice = (start, end, bool(mute))
         self._accepted.set()
 
     def cancel(self):
@@ -104,17 +136,25 @@ class VideoWindow:
     destroy()하는 cancel()은 "취소" 버튼에 연결돼 있었다)."""
 
     def __init__(self, headline: str, meta_line: str, estimate: str,
-                 warn: str | None, accept_label: str):
+                 warn: str | None, accept_label: str,
+                 trim: bool = False, on_replan=None, has_audio: bool = True):
         self.accepted = threading.Event()
         self.cancelled = threading.Event()
-        self._api = _Api(self.accepted, self.cancelled)
+        self._api = _Api(self.accepted, self.cancelled, on_replan)
         self._headline = headline
         self._meta_line = meta_line
         self._estimate = estimate
         self._warn = warn
         self._accept_label = accept_label
         self._info = False
+        self._trim = trim
+        self._has_audio = has_audio
         self._win = None
+
+    @property
+    def choice(self) -> tuple[str, str, bool]:
+        """사용자가 고른 (시작, 끝, 음소거). 확인 버튼을 누른 시점의 화면 값이다."""
+        return self._api.choice
 
     @classmethod
     def info(cls, headline: str, meta_line: str, message: str,
@@ -124,6 +164,54 @@ class VideoWindow:
         w = cls(headline, meta_line, message, None, close_label)
         w._info = True
         return w
+
+    def _trim_html(self) -> str:
+        """구간 자르기 + 오디오 제거 컨트롤. 길이를 모르는 경우(ffmpeg 미설치라
+        아직 probe하지 못한 상태)에는 아예 그리지 않는다 — 무엇을 자르는지 보여줄
+        수 없는 상태에서 입력칸만 두면 잘못된 값을 넣게 된다."""
+        if not self._trim:
+            return ""
+        e = _html.escape
+        mute = (
+            f'<label class="mute"><input type="checkbox" id="t-mute">'
+            f'{e(tr("video_mute"))}</label>' if self._has_audio else ""
+        )
+        return (
+            '<div class="trim">'
+            f'  <label for="t-start">{e(tr("video_trim_label"))}</label>'
+            '  <div class="fields">'
+            f'    <input type="text" id="t-start" placeholder="{e(tr("video_trim_start_ph"))}" spellcheck="false">'
+            '    <span class="sep">–</span>'
+            f'    <input type="text" id="t-end" placeholder="{e(tr("video_trim_end_ph"))}" spellcheck="false">'
+            f"    {mute}"
+            "  </div>"
+            "</div>"
+        )
+
+    def _trim_js(self) -> str:
+        if not self._trim:
+            return ("function notroTrim() { return {start:'', end:'', mute:false}; }")
+        return (
+            "function notroTrim() {"
+            '  var m = document.getElementById("t-mute");'
+            "  return {"
+            '    start: document.getElementById("t-start").value,'
+            '    end: document.getElementById("t-end").value,'
+            "    mute: m ? m.checked : false,"
+            "  };"
+            "}"
+            "function notroReplan() {"
+            "  var t = notroTrim();"
+            "  window.pywebview.api.replan(t.start, t.end, t.mute).then(function (r) {"
+            '    document.querySelector(".est").textContent = r.estimate;'
+            '    document.getElementById("ok").disabled = !r.ok;'
+            "  });"
+            "}"
+            'document.getElementById("t-start").addEventListener("input", notroReplan);'
+            'document.getElementById("t-end").addEventListener("input", notroReplan);'
+            'var muteBox = document.getElementById("t-mute");'
+            'if (muteBox) muteBox.addEventListener("change", notroReplan);'
+        )
 
     def _html(self) -> str:
         e = _html.escape
@@ -144,7 +232,8 @@ class VideoWindow:
             )
         else:
             body = (
-                '<div id="prog" class="hidden">'
+                self._trim_html()
+                + '<div id="prog" class="hidden">'
                 '  <div class="bar"><i id="fill"></i></div>'
                 '  <div class="status" id="status"></div>'
                 "</div>"
@@ -153,10 +242,12 @@ class VideoWindow:
                 f'  <button id="no">{e(tr("video_btn_cancel"))}</button>'
                 "</div>"
                 "<script>"
+                + self._trim_js() +
                 'document.getElementById("ok").onclick = function () {'
                 '  document.getElementById("btns").classList.add("hidden");'
                 '  document.getElementById("prog").classList.remove("hidden");'
-                "  window.pywebview.api.accept();"
+                "  window.pywebview.api.accept(notroTrim().start, notroTrim().end,"
+                "                              notroTrim().mute);"
                 "};"
                 'document.getElementById("no").onclick = function () {'
                 "  window.pywebview.api.cancel();"

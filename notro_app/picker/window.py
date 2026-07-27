@@ -16,7 +16,17 @@ from ..capture_store import (CAPTURE_COLLECTION_ID, CaptureStore,
 user32 = ctypes.windll.user32
 
 WIN_W, WIN_H = 500, 420
+# 사용자가 늘려 둔 크기를 기억한다. 하한은 세로 바 + 탭이 겹치지 않는 크기,
+# 상한은 "커서 옆 팝업"이라는 성격을 잃지 않는 선.
+MIN_W, MIN_H = 360, 300
+MAX_W, MAX_H = 1100, 900
 MONITOR_DEFAULTTONEAREST = 2
+GWL_STYLE = -16
+WS_THICKFRAME = 0x00040000
+
+# 자동 전송에서 Ctrl+V와 Enter 사이의 간격. 디스코드가 첨부 미리보기를 만들 때까지
+# 기다린다 — 너무 짧으면 빈 메시지가 나가고, 너무 길면 자동이라는 느낌이 사라진다.
+AUTO_SEND_DELAY = 0.45
 
 _DEBUG_LOG = os.environ.get("NOTRO_DEBUG", "")
 
@@ -52,8 +62,41 @@ user32.SetWindowPos.argtypes = [wt.HWND, wt.HWND, ctypes.c_int, ctypes.c_int,
 user32.FindWindowW.restype = wt.HWND
 user32.FindWindowW.argtypes = [wt.LPCWSTR, wt.LPCWSTR]
 user32.GetWindowRect.argtypes = [wt.HWND, ctypes.POINTER(wt.RECT)]
+user32.MonitorFromWindow.restype = wt.HANDLE
+user32.MonitorFromWindow.argtypes = [wt.HWND, wt.DWORD]
+user32.GetWindowLongW.restype = ctypes.c_long
+user32.GetWindowLongW.argtypes = [wt.HWND, ctypes.c_int]
+user32.SetWindowLongW.restype = ctypes.c_long
+user32.SetWindowLongW.argtypes = [wt.HWND, ctypes.c_int, ctypes.c_long]
 user32.SetForegroundWindow.argtypes = [wt.HWND]
 user32.IsWindowVisible.argtypes = [wt.HWND]
+
+
+def clamp_size(w, h) -> tuple[int, int]:
+    """저장된 창 크기를 쓸 수 있는 범위로 자른다 (깨진 값이면 기본 크기)."""
+    try:
+        w, h = int(w), int(h)
+    except (TypeError, ValueError):
+        return WIN_W, WIN_H
+    if w <= 0 or h <= 0:
+        return WIN_W, WIN_H
+    return (min(max(w, MIN_W), MAX_W), min(max(h, MIN_H), MAX_H))
+
+
+def saved_size() -> tuple[int, int]:
+    """사용자가 마지막으로 남긴 창 크기 (논리 px). 없으면 기본값."""
+    return clamp_size(config.get_setting_int("picker_w", WIN_W),
+                      config.get_setting_int("picker_h", WIN_H))
+
+
+def _monitor_scale(hmon) -> float:
+    try:
+        shcore = ctypes.windll.shcore
+        dx, dy = wt.UINT(), wt.UINT()
+        shcore.GetDpiForMonitor(hmon, 0, ctypes.byref(dx), ctypes.byref(dy))
+        return dx.value / 96.0 or 1.0
+    except Exception:
+        return 1.0
 
 
 def popup_geometry() -> tuple[int, int, int, int]:
@@ -63,15 +106,9 @@ def popup_geometry() -> tuple[int, int, int, int]:
     pt = wt.POINT()
     user32.GetCursorPos(ctypes.byref(pt))
     hmon = user32.MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST)
-    scale = 1.0
-    try:
-        shcore = ctypes.windll.shcore
-        dx, dy = wt.UINT(), wt.UINT()
-        shcore.GetDpiForMonitor(hmon, 0, ctypes.byref(dx), ctypes.byref(dy))
-        scale = dx.value / 96.0
-    except Exception:
-        pass
-    win_w, win_h = int(WIN_W * scale), int(WIN_H * scale)
+    scale = _monitor_scale(hmon)
+    base_w, base_h = saved_size()
+    win_w, win_h = int(base_w * scale), int(base_h * scale)
     mi = _MONITORINFO()
     mi.cbSize = ctypes.sizeof(_MONITORINFO)
     user32.GetMonitorInfoW(hmon, ctypes.byref(mi))
@@ -148,6 +185,9 @@ PICKER_STRING_KEYS = [
     "picker_settings_title", "picker_folders_subtitle",
     "picker_drop_partial", "picker_drop_failed",
     "picker_paste_size", "picker_paste_size_note", "picker_size_original",
+    "picker_auto_send", "picker_auto_send_note",
+    "picker_edit_title", "picker_edit_note", "picker_edit_save",
+    "picker_ctx_edit", "picker_err_duplicate", "picker_drop_duplicate",
 ]
 
 
@@ -210,6 +250,7 @@ class PickerApi:
                         for f in self._library.folders()],
             "collections": cols,
             "auto_capture_save": config.get_setting_flag("auto_capture_save"),
+            "auto_send": config.get_setting_flag("auto_send"),
             "capture_collection": CAPTURE_COLLECTION_ID,
             "paste_sizes": resize.current_targets(),
             "paste_size_choices": list(resize.PX_CHOICES),
@@ -231,6 +272,8 @@ class PickerApi:
                                            _collection(collection), type_)
         except fetch.UnsupportedAssetError:
             return {"ok": False, "error": "lottie"}
+        except fetch.DuplicateAssetError:
+            return {"ok": False, "error": "duplicate"}
         except ValueError:
             return {"ok": False, "error": "not_discord"}
         except Exception:
@@ -241,15 +284,28 @@ class PickerApi:
         from .. import fetch
         n = 0
         failed = 0
+        duplicate = 0
         target = _collection(collection)
         for p in paths or []:
             try:
                 fetch.register_from_file(self._library, p, type_,
                                          collection=target)
                 n += 1
+            except fetch.DuplicateAssetError:
+                duplicate += 1   # 실패가 아니다 — 이미 갖고 있다는 뜻
             except Exception:
                 failed += 1
-        return {"ok": True, "count": n, "failed": failed}
+        return {"ok": True, "count": n, "failed": failed, "duplicate": duplicate}
+
+    def update_item(self, item_id: str, name: str = "",
+                    keywords: str = "") -> dict:
+        """항목 이름·키워드를 고친다 (등록 창과 같은 규칙으로 키워드를 쪼갠다)."""
+        kws = [k.strip() for k in (keywords or "").replace(",", " ").split()
+               if k.strip()]
+        item = self._library.update_item(item_id, name=name, keywords=kws)
+        if item is None:
+            return {"ok": False, "error": "not_editable"}
+        return {"ok": True, "item": self._display(item)}
 
     def register_capture(self) -> dict:
         """현재 클립보드 이미지를 예약 캡처 컬렉션에 한 번만 저장한다."""
@@ -266,6 +322,10 @@ class PickerApi:
     def set_auto_capture_save(self, enabled: bool) -> bool:
         config.set_setting_flag("auto_capture_save", bool(enabled))
         return config.get_setting_flag("auto_capture_save")
+
+    def set_auto_send(self, enabled: bool) -> bool:
+        config.set_setting_flag("auto_send", bool(enabled))
+        return config.get_setting_flag("auto_send")
 
     def set_paste_size(self, type_: str, px) -> dict:
         """탭 종류별 붙여넣기 표시 크기를 저장하고 반영된 값을 돌려준다."""
@@ -288,6 +348,8 @@ class PickerApi:
             fetch.register_from_png_bytes(
                 self._library, read.data, type_, name=name,
                 collection=_collection(collection))
+        except fetch.DuplicateAssetError:
+            return {"ok": False, "error": "duplicate"}
         except Exception:
             return {"ok": False, "error": "register"}
         return {"ok": True}
@@ -371,6 +433,13 @@ class PickerController:
         if ok and focused:
             _t.sleep(0.12)
             cb.send_ctrl_v()
+            # 자동 전송(opt-in): 디스코드가 첨부를 입력창에 붙일 시간을 준 뒤
+            # Enter를 보낸다. 되돌릴 수 없는 동작이라 기본은 꺼짐이고, 링크로
+            # 붙여넣기(mode="url")에는 적용하지 않는다 — 그쪽은 보통 문장 중간에
+            # 끼워 넣는 용도라 바로 보내면 곤란하다.
+            if mode != "url" and config.get_setting_flag("auto_send"):
+                _t.sleep(AUTO_SEND_DELAY)
+                cb.send_enter()
             if warn:
                 self._notify(tr("picker_oversize_warn"))
         elif ok:
@@ -381,15 +450,50 @@ class PickerController:
 
     def create_window(self):
         import webview
+        w, h = saved_size()
         self.window = webview.create_window(
             "Notro Picker", url=ui_index_path(), js_api=self._api,
-            width=WIN_W, height=WIN_H, frameless=True, on_top=True,
-            hidden=True, resizable=False, easy_drag=False,
+            width=w, height=h, frameless=True, on_top=True,
+            hidden=True, resizable=True, easy_drag=False,
         )
         return self.window
 
+    def _remember_size(self) -> None:
+        """사용자가 조절한 창 크기를 논리 px로 저장한다 (다음에 그 크기로 열린다).
+
+        물리 px로 저장하면 DPI가 다른 모니터로 옮겼을 때 창이 그만큼 커지거나
+        작아지므로, 창이 있는 모니터의 배율로 나눠 논리 크기로 되돌려 둔다.
+        """
+        hwnd = self._native_hwnd()
+        if not hwnd:
+            return
+        r = wt.RECT()
+        if not user32.GetWindowRect(hwnd, ctypes.byref(r)):
+            return
+        scale = _monitor_scale(
+            user32.MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST)) or 1.0
+        size = clamp_size(round((r.right - r.left) / scale),
+                          round((r.bottom - r.top) / scale))
+        if size != saved_size():   # 선택할 때마다 hide()가 불리므로 바뀔 때만 쓴다
+            config.set_setting_int("picker_w", size[0])
+            config.set_setting_int("picker_h", size[1])
+
     def _native_hwnd(self) -> int:
         return user32.FindWindowW(None, "Notro Picker")
+
+    @staticmethod
+    def _enable_resize_border(hwnd: int) -> None:
+        """테두리 없는 창에 크기 조절 테두리를 붙인다.
+
+        pywebview는 frameless 창을 FormBorderStyle.None으로 만들고, 이 값이
+        resizable 설정을 덮어쓴다(winforms.py). 그 결과 창 가장자리에 히트
+        테스트 영역이 없어 마우스로 늘릴 수 없다. WS_THICKFRAME만 다시 켜면
+        제목 표시줄 없이 OS가 8방향 크기 조절을 그대로 처리해 준다.
+        멱등이므로 표시할 때마다 불러도 된다.
+        """
+        style = user32.GetWindowLongW(hwnd, GWL_STYLE)
+        if style and not style & WS_THICKFRAME:
+            user32.SetWindowLongW(hwnd, GWL_STYLE, style | WS_THICKFRAME)
 
     def show_at_cursor(self):
         import time as _t
@@ -410,11 +514,14 @@ class PickerController:
         HWND_TOPMOST = -1
         SWP_SHOWWINDOW = 0x0040
         SWP_ASYNCWINDOWPOS = 0x4000
+        SWP_FRAMECHANGED = 0x0020
         for i in range(10):
             hwnd = self._native_hwnd()
             if hwnd:
+                self._enable_resize_border(hwnd)
                 user32.SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h,
-                                    SWP_SHOWWINDOW | SWP_ASYNCWINDOWPOS)
+                                    SWP_SHOWWINDOW | SWP_ASYNCWINDOWPOS
+                                    | SWP_FRAMECHANGED)
                 _t.sleep(0.04)
                 r = wt.RECT()
                 user32.GetWindowRect(hwnd, ctypes.byref(r))
@@ -433,6 +540,10 @@ class PickerController:
             pass
 
     def hide(self):
+        try:
+            self._remember_size()
+        except Exception:
+            pass       # 크기 기억 실패가 창 닫기를 막으면 안 된다
         try:
             self.window.hide()
         except Exception:

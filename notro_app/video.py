@@ -81,20 +81,65 @@ class EncodePlan:
     video_kbps: int
     audio_kbps: int
     warn: bool        # 원본보다 작아졌고 480p 이하 → 화질 저하 경고
+    start: float = 0.0     # 잘라낼 시작 지점(초)
+    duration: float = 0.0  # 잘라낸 길이(초). 0이면 시작 지점부터 끝까지
 
 
-def plan_encode(meta: VideoMeta, limit_bytes: int) -> EncodePlan | None:
+_TIME_TEXT_RE = re.compile(r"^\s*(?:(\d+):)?(\d{1,2}):(\d{1,2}(?:\.\d+)?)\s*$")
+
+
+def parse_time(text) -> float | None:
+    """'1:12' / '1:02:03' / '72' / '72.5' → 초. 비었거나 해석 불가면 None."""
+    if text is None:
+        return None
+    text = str(text).strip()
+    if not text:
+        return None
+    m = _TIME_TEXT_RE.match(text)
+    if m:
+        hours = int(m.group(1) or 0)
+        return hours * 3600 + int(m.group(2)) * 60 + float(m.group(3))
+    try:
+        value = float(text)
+    except ValueError:
+        return None
+    return value if value >= 0 else None
+
+
+def trimmed_span(meta: VideoMeta, start=None, end=None) -> tuple[float, float] | None:
+    """(시작 초, 길이 초). 자르지 않으면 (0, 원본 길이).
+
+    범위가 뒤집혔거나 남는 구간이 없으면 None — 호출자는 이것을 "구간이 잘못됐다"로
+    다루면 된다. 끝을 원본 길이 너머로 적는 것은 오타로 보고 끝까지로 맞춘다.
+    """
+    if meta.duration <= 0:
+        return None
+    begin = max(0.0, start or 0.0)
+    finish = meta.duration if end is None else min(float(end), meta.duration)
+    if begin >= meta.duration or finish <= begin:
+        return None
+    return begin, finish - begin
+
+
+def plan_encode(meta: VideoMeta, limit_bytes: int, start=None, end=None,
+                mute: bool = False) -> EncodePlan | None:
     """목표 용량에 맞는 인코딩 계획. 하한(360p/300kbps) 밑이면 None = '못 줄임'.
 
     60fps는 같은 체감 화질에 약 1.5배 비트레이트를 먹는다 — 여유가 없으면 30fps로 낮춘다.
     원본보다 해상도를 키우지 않는다. 원본이 사다리의 가장 작은 rung(360p)보다도 작으면
     (예: 240p) 모든 rung이 업스케일 금지 규칙에 걸려 스킵되므로, 예산이 하한을 넘길 때는
     원본 해상도 그대로 계획한다 — None은 "예산이 하한 미달"일 때만 쓴다.
+
+    구간을 자르거나(start/end) 오디오를 빼면(mute) 그만큼 예산이 남으므로 해상도·
+    프레임이 올라간다 — 30초 클립에서 좋은 5초만 남기는 것이 화질을 지키는 가장
+    확실한 방법이라 계획 단계에서 함께 다룬다.
     """
-    if meta.duration <= 0:
+    span = trimmed_span(meta, start, end)
+    if span is None:
         return None
-    audio = AUDIO_KBPS if meta.has_audio else 0
-    total_kbps = limit_bytes * 8 / meta.duration / 1000
+    begin, length = span
+    audio = 0 if mute or not meta.has_audio else AUDIO_KBPS
+    total_kbps = limit_bytes * 8 / length / 1000
     video_kbps = int(total_kbps - audio)
     if video_kbps < MIN_VIDEO_KBPS:
         return None
@@ -114,7 +159,10 @@ def plan_encode(meta: VideoMeta, limit_bytes: int) -> EncodePlan | None:
         # 축소가 아닌데도 320 < 321이 참이 되어 warn=True로 잘못 켜진다.
         even_source_height = meta.height - meta.height % 2
         warn = height < even_source_height and height <= 480
-        return EncodePlan(height, fps, video_kbps, audio, warn)
+        # duration은 "자른 구간"일 때만 채운다 — 원본 전체면 0으로 두어 build_args가
+        # -t를 붙이지 않게 한다(부동소수 오차로 마지막 프레임이 잘리지 않도록).
+        trimmed = length if (begin > 0 or length < meta.duration - 0.001) else 0.0
+        return EncodePlan(height, fps, video_kbps, audio, warn, begin, trimmed)
 
     for height, need in _LADDER:
         if height > meta.height:      # 원본보다 키우지 않는다
@@ -146,7 +194,8 @@ def retry_plan(plan: EncodePlan) -> EncodePlan | None:
     reduced = int(plan.video_kbps * 0.8)
     if reduced < MIN_VIDEO_KBPS:
         return None
-    return EncodePlan(plan.height, plan.fps, reduced, plan.audio_kbps, plan.warn)
+    return EncodePlan(plan.height, plan.fps, reduced, plan.audio_kbps, plan.warn,
+                      plan.start, plan.duration)
 
 
 def parse_progress(line: str) -> float | None:
@@ -162,10 +211,19 @@ def build_args(ffmpeg: str, src: str, plan: EncodePlan, dest: str) -> list[str]:
 
     출력은 항상 mp4(H.264+AAC): Discord 인라인 재생·미리보기 호환이 가장 좋다.
     scale=-2:{h}로 가로를 짝수로 맞추고, +faststart로 미리보기를 살린다.
+
+    구간을 자를 때 -ss는 **입력보다 앞에** 둔다: 뒤에 두면 처음부터 전부 디코딩하며
+    버려서 긴 클립에서 훨씬 느리다. 어차피 재인코딩하므로 키프레임 경계에 상관없이
+    정확하다.
     """
     v = plan.video_kbps
-    args = [
-        ffmpeg, "-hide_banner", "-y", "-i", src,
+    args = [ffmpeg, "-hide_banner", "-y"]
+    if plan.start > 0:
+        args += ["-ss", f"{plan.start:.3f}"]
+    args += ["-i", src]
+    if plan.duration > 0:
+        args += ["-t", f"{plan.duration:.3f}"]
+    args += [
         "-c:v", "libx264", "-preset", "veryfast",
         "-b:v", f"{v}k", "-maxrate", f"{int(v * 1.2)}k", "-bufsize", f"{v * 2}k",
         "-vf", f"scale=-2:{plan.height}",

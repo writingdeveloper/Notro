@@ -158,7 +158,9 @@ footer {
 .setting-copy { flex: 1; min-width: 0; }
 .setting-copy label { display: block; font-size: 12px; font-weight: 600; }
 .setting-copy .note { margin-top: 3px; }
-#st-auto-capture { width: 18px; height: 18px; flex: 0 0 18px; accent-color: var(--accent); }
+#st-auto-capture, #st-auto-send {
+  width: 18px; height: 18px; flex: 0 0 18px; accent-color: var(--accent);
+}
 #st-sizes { display: flex; flex-direction: column; gap: 4px; }
 .size-row {
   display: flex; align-items: center; gap: 10px; background: var(--panel);

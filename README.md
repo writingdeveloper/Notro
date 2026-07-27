@@ -56,7 +56,10 @@ with three tabs: **Emoji / Stickers / GIFs**.
   default, and copied image files are excluded.
 - **Use items:** click one — the picker hides, focus returns to Discord, and the
   image is pasted into the message box as an attachment. **You press Enter to
-  send.** Right-click for "paste as link" (CDN items) or remove.
+  send** (or turn on auto-send in settings). Right-click to rename, edit keywords,
+  "paste as link" (CDN items), or remove.
+- Adding an image you already have in that tab and collection is refused rather than
+  silently duplicated. The picker window can be resized and keeps its size.
 - **Consistent size:** Discord draws an attachment at its native pixel size, so Notro
   normalizes the longest edge right before pasting — **48 px** for emoji (the size of a
   jumbo custom emoji), **160 px** for stickers, original size for GIFs. Configurable per
@@ -87,6 +90,11 @@ Copy a game clip that's too big for Discord and Notro **asks whether to compress
 showing what to expect: `52MB · 1:12 · 1080p60 → about 9.5MB · 480p30`. It encodes with
 ffmpeg and puts the compressed `.mp4` back on the clipboard, so <kbd>Ctrl</kbd>+<kbd>V</kbd>
 attaches it in Discord.
+
+You can **trim the clip** (`start – end`, mm:ss) and **drop its audio** right in that window;
+the estimate updates as you type. The same budget spent on a shorter clip buys a much better
+picture — a 30 s 1080p60 capture that would fall back to 1080p30 stays at **1080p60** when
+trimmed to seven seconds.
 
 **ffmpeg is never bundled** — it's downloaded on demand (~30 MB, checksum-verified) the
 first time you compress a video, or taken from your PATH if you already have it. If a clip

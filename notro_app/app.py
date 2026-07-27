@@ -225,9 +225,24 @@ def main():
             w.show()
             return
 
+        def _estimate(p) -> str:
+            return tr("video_estimate", size=fmt_size(config.LIMIT_BYTES),
+                      res=f"{p.height}p{p.fps}")
+
+        def _replan(start_text, end_text, mute):
+            """구간·음소거를 바꿀 때마다 예상 결과를 다시 계산한다 (창이 호출).
+
+            자를수록 같은 용량을 짧은 구간에 쓰므로 해상도가 올라간다 — 그 숫자가
+            바로 보여야 사용자가 어디까지 자를지 판단할 수 있다."""
+            p = video.plan_encode(meta, config.LIMIT_BYTES,
+                                  start=video.parse_time(start_text),
+                                  end=video.parse_time(end_text), mute=mute)
+            if p is None:
+                return {"ok": False, "estimate": tr("video_trim_invalid")}
+            return {"ok": True, "estimate": _estimate(p)}
+
         if ff and meta and plan:
-            est = tr("video_estimate", size=fmt_size(config.LIMIT_BYTES),
-                     res=f"{plan.height}p{plan.fps}")
+            est = _estimate(plan)
             meta_line = tr("video_meta", name=name, size=fmt_size(src_size),
                            dur=fmt_dur(meta.duration), res=f"{meta.height}p{int(meta.fps)}")
             warn = tr("video_warn_quality") if plan.warn else None
@@ -238,7 +253,11 @@ def main():
             warn = None
             accept = tr("video_btn_compress")
 
-        w = VideoWindow(tr("video_confirm_title"), meta_line, est, warn, accept)
+        # 구간 자르기는 길이를 아는 경우에만 보여준다 — ffmpeg를 아직 받지 못해
+        # probe도 못 한 상태에서는 무엇을 자르는지 보여줄 수 없다.
+        w = VideoWindow(tr("video_confirm_title"), meta_line, est, warn, accept,
+                        trim=bool(meta), on_replan=_replan if meta else None,
+                        has_audio=bool(meta and meta.has_audio))
         w.show()
 
         def _work():
@@ -277,6 +296,20 @@ def main():
                     w.finish(tr("video_fail_toobig", limit=fmt_size(config.LIMIT_BYTES)))
                     return
 
+            # 확인 창에서 고른 구간·음소거를 최종 계획에 반영한다. 창이 replan으로
+            # 이미 같은 계산을 해 보여줬지만, 인코딩에 쓰는 계획은 여기서 화면 값으로
+            # 다시 만든다 — 표시용 계산과 실제 인코딩이 갈라지지 않게.
+            start_text, end_text, mute = w.choice
+            if meta is not None and (start_text or end_text or mute):
+                trimmed = video.plan_encode(
+                    meta, config.LIMIT_BYTES, start=video.parse_time(start_text),
+                    end=video.parse_time(end_text), mute=mute)
+                if trimmed is None:
+                    w.finish(tr("video_trim_invalid"))
+                    return
+                plan = trimmed
+            total = plan.duration or meta.duration
+
             # 임시 출력 경로는 호출마다 유일해야 한다: 파일명만으로 경로를 만들면
             # 같은 이름의 오버사이즈 비디오 두 개(카메라가 찍은 VID_20240101.mp4처럼
             # 흔한 경우)가 동시에 감지됐을 때 스레드 둘이 같은 경로에서 부딪혀, 한쪽의
@@ -290,8 +323,9 @@ def main():
                 ok = video.encode(
                     ff, path, plan, out,
                     on_progress=lambda done: w.set_progress(
-                        tr("video_encoding", pct=int(done / meta.duration * 100)),
-                        int(done / meta.duration * 100)),
+                        # 구간을 잘랐다면 ffmpeg의 time=은 잘라낸 길이 기준이다
+                        tr("video_encoding", pct=int(done / total * 100)),
+                        int(done / total * 100)),
                     should_cancel=w.cancelled.is_set)
                 if w.cancelled.is_set():
                     if _os.path.exists(out):
