@@ -92,9 +92,26 @@ ManifestVersion: {MANIFEST_VERSION}
 """
 
 
+def release_date(version: str) -> str:
+    """릴리스 게시일 (YYYY-MM-DD). 모르면 빈 문자열 — 선택 필드라 아예 빼면 된다.
+    값 없이 `ReleaseDate:`만 남기면 winget validate가 실패한다."""
+    api = f"https://api.github.com/repos/{PUBLISHER}/{PACKAGE}/releases/tags/v{version}"
+    try:
+        req = urllib.request.Request(
+            api, headers={"User-Agent": "Notro-winget", "Accept": "application/vnd.github+json"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            import json
+            published = json.load(r).get("published_at") or ""
+        return published[:10]
+    except Exception:
+        return ""
+
+
 def installer_manifest(version: str, sha256: str) -> str:
     # Inno Setup: winget이 /VERYSILENT 등을 자동으로 붙이므로 InstallerSwitches는 비운다.
     # 사용자 범위 설치(%LOCALAPPDATA%)라 Scope는 user.
+    date = release_date(version)
+    date_line = f"ReleaseDate: {date}\n" if date else ""
     return f"""PackageIdentifier: {IDENTIFIER}
 PackageVersion: {version}
 MinimumOSVersion: 10.0.0.0
@@ -105,8 +122,7 @@ InstallModes:
 - silent
 - silentWithProgress
 UpgradeBehavior: install
-ReleaseDate: {os.environ.get("NOTRO_RELEASE_DATE", "")}
-Installers:
+{date_line}Installers:
 - Architecture: x64
   InstallerUrl: {asset_url(version)}
   InstallerSha256: {sha256}
