@@ -421,6 +421,157 @@ def test_normal_confirm_window_flow_is_unchanged():
     html = w._html()
     assert html.count("<button") == 2
     assert 'id="ok"' in html and 'id="no"' in html
-    assert "pywebview.api.accept()" in html
+    # 구간 값을 함께 넘기게 됐지만 여전히 ok가 accept를, no가 cancel을 부른다
+    assert "pywebview.api.accept(" in html
     assert "pywebview.api.cancel()" in html
     assert "notroProgress" in html and "notroFinish" in html
+
+
+
+# --- 구간 자르기 · 오디오 제거 -------------------------------------------------
+# 파일 상단의 _meta(dur, w, h, fps, audio) 헬퍼와 video_mod를 그대로 쓴다.
+
+def test_parse_time_accepts_common_forms():
+    parse = video_mod.parse_time
+    assert parse("1:12") == 72.0
+    assert parse("0:05") == 5.0
+    assert parse("1:02:03") == 3723.0
+    assert parse("72") == 72.0
+    assert parse("72.5") == 72.5
+    assert parse("  1:12  ") == 72.0
+
+
+def test_parse_time_rejects_junk_and_blank():
+    parse = video_mod.parse_time
+    assert parse("") is None       # 빈 칸 = "지정 안 함"
+    assert parse(None) is None
+    assert parse("abc") is None
+    assert parse("-3") is None
+
+
+def test_trimmed_span_computes_start_and_length():
+    m = _meta(60)
+    span = video_mod.trimmed_span
+    assert span(m, None, None) == (0.0, 60.0)
+    assert span(m, 10, None) == (10.0, 50.0)
+    assert span(m, None, 20) == (0.0, 20.0)
+    assert span(m, 10, 25) == (10.0, 15.0)
+    assert span(m, 0, 999) == (0.0, 60.0)     # 끝이 원본 너머면 끝까지로 본다
+
+
+def test_trimmed_span_rejects_empty_or_reversed_range():
+    m = _meta(60)
+    span = video_mod.trimmed_span
+    assert span(m, 30, 30) is None
+    assert span(m, 40, 20) is None
+    assert span(m, 60, None) is None
+
+
+def test_trimming_raises_the_quality_budget():
+    """자를수록 같은 용량을 짧은 구간에 쓰므로 해상도가 올라가야 한다."""
+    whole = plan_encode(_meta(120), LIMIT)
+    quarter = plan_encode(_meta(120), LIMIT, start=0, end=30)
+
+    assert whole.height == 480
+    assert quarter.height > whole.height
+    assert (quarter.start, quarter.duration) == (0.0, 30.0)
+
+
+def test_mute_gives_the_audio_budget_to_video():
+    with_audio = plan_encode(_meta(60), LIMIT)
+    muted = plan_encode(_meta(60), LIMIT, mute=True)
+
+    assert with_audio.audio_kbps == video_mod.AUDIO_KBPS
+    assert muted.audio_kbps == 0
+    assert muted.video_kbps > with_audio.video_kbps
+
+
+def test_mute_is_a_no_op_when_there_is_no_audio():
+    assert plan_encode(_meta(60, audio=False), LIMIT, mute=True).audio_kbps == 0
+
+
+def test_plan_encode_rejects_an_invalid_range():
+    assert plan_encode(_meta(60), LIMIT, start=40, end=20) is None
+
+
+def test_untrimmed_plan_carries_no_duration():
+    """원본 전체면 -t를 붙이지 않는다 (부동소수 오차로 끝이 잘리지 않게)."""
+    p = plan_encode(_meta(20), LIMIT)
+    assert (p.start, p.duration) == (0.0, 0.0)
+
+
+def test_build_args_places_seek_before_input():
+    """-ss가 -i 뒤로 가면 긴 클립에서 처음부터 전부 디코딩해 훨씬 느려진다."""
+    plan = EncodePlan(720, 30, 1500, 96, False, start=12.0, duration=8.0)
+    args = build_args("ffmpeg", "in.mp4", plan, "out.mp4")
+
+    assert args.index("-ss") < args.index("-i")
+    assert args[args.index("-ss") + 1] == "12.000"
+    assert args.index("-t") > args.index("-i")
+    assert args[args.index("-t") + 1] == "8.000"
+
+
+def test_build_args_omits_trim_flags_when_not_trimming():
+    args = build_args("ffmpeg", "in.mp4", EncodePlan(720, 30, 1500, 96, False),
+                      "out.mp4")
+    assert "-ss" not in args and "-t" not in args
+
+
+def test_build_args_drops_audio_when_muted():
+    args = build_args("ffmpeg", "in.mp4", EncodePlan(720, 30, 1500, 0, False),
+                      "out.mp4")
+    assert "-an" in args and "-c:a" not in args
+
+
+def test_retry_plan_keeps_the_trim():
+    """재시도가 구간을 잃으면 사용자가 잘라낸 부분이 조용히 되살아난다."""
+    retried = retry_plan(EncodePlan(720, 30, 1500, 96, False,
+                                    start=5.0, duration=10.0))
+    assert (retried.start, retried.duration) == (5.0, 10.0)
+
+
+def test_trim_controls_hidden_when_duration_is_unknown():
+    """ffmpeg를 아직 못 받아 probe도 못 한 상태에서는 입력칸을 그리지 않는다."""
+    without = VideoWindow("t", "m", "e", None, "go", trim=False)._html()
+    with_trim = VideoWindow("t", "m", "e", None, "go", trim=True)._html()
+
+    assert "t-start" not in without
+    assert "t-start" in with_trim and "t-end" in with_trim and "t-mute" in with_trim
+
+
+def test_mute_checkbox_hidden_when_clip_has_no_audio():
+    """무음 클립에 '오디오 제거'를 보여주면 아무 일도 안 하는 스위치가 된다.
+    (스크립트는 여전히 t-mute를 조회하되 없으면 false로 다루므로, 체크박스
+    엘리먼트 자체가 없는지로 확인한다.)"""
+    html = VideoWindow("t", "m", "e", None, "go", trim=True, has_audio=False)._html()
+    assert 'id="t-start"' in html and 'id="t-mute"' not in html
+
+
+def test_replan_reports_invalid_range_instead_of_raising():
+    def boom(start, end, mute):
+        raise RuntimeError("bad range")
+
+    w = VideoWindow("t", "m", "e", None, "go", trim=True, on_replan=boom)
+    assert w._api.replan("1:00", "0:10", False)["ok"] is False
+
+
+def test_replan_passes_values_through_to_the_planner():
+    seen = []
+
+    def spy(start, end, mute):
+        seen.append((start, end, mute))
+        return {"ok": True, "estimate": "9.5MB · 720p60"}
+
+    w = VideoWindow("t", "m", "e", None, "go", trim=True, on_replan=spy)
+    res = w._api.replan("0:05", "0:20", True)
+
+    assert seen == [("0:05", "0:20", True)]
+    assert res["estimate"] == "9.5MB · 720p60"
+
+
+def test_accept_records_the_chosen_range():
+    """확인 시점의 화면 값이 그대로 인코딩에 쓰여야 한다."""
+    w = VideoWindow("t", "m", "e", None, "go", trim=True)
+    w._api.accept("0:05", "0:20", True)
+    assert w.choice == ("0:05", "0:20", True)
+    assert w.accepted.is_set()

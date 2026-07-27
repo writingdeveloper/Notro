@@ -91,6 +91,11 @@ showing what to expect: `52MB · 1:12 · 1080p60 → about 9.5MB · 480p30`. It 
 ffmpeg and puts the compressed `.mp4` back on the clipboard, so <kbd>Ctrl</kbd>+<kbd>V</kbd>
 attaches it in Discord.
 
+You can **trim the clip** (`start – end`, mm:ss) and **drop its audio** right in that window;
+the estimate updates as you type. The same budget spent on a shorter clip buys a much better
+picture — a 30 s 1080p60 capture that would fall back to 1080p30 stays at **1080p60** when
+trimmed to seven seconds.
+
 **ffmpeg is never bundled** — it's downloaded on demand (~30 MB, checksum-verified) the
 first time you compress a video, or taken from your PATH if you already have it. If a clip
 can't fit under the limit even at 360p, Notro tells you instead of producing a mosaic.

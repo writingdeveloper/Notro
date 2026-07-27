@@ -6,6 +6,16 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ## [2.10.0] - 2026-07-27
 
 ### Added
+- **Trim a clip before compressing, and optionally drop its audio.** The confirm window now
+  has `start – end` fields (mm:ss) and a *Drop audio* checkbox, and the estimate updates as
+  you type — the same 10 MB budget spent on a shorter clip buys a much better picture. A
+  30-second 1080p60 capture that had to fall back to **1080p30** for the whole clip stays at
+  **1080p60** when trimmed to seven seconds. Cutting the good five seconds out of a long clip
+  is the only way to keep quality that resolution and bitrate cannot buy back.
+  - `-ss` is placed *before* `-i` so ffmpeg seeks instead of decoding and discarding the
+    whole head of the clip; re-encoding makes it accurate regardless of keyframes.
+  - Trim controls stay hidden until the clip has actually been probed — with ffmpeg not yet
+    downloaded there is nothing to trim against.
 - **Rename items and edit their keywords.** Right-click → *Rename / keywords…* opens a small
   dialog. Until now a typo at registration meant deleting the item and adding it again.
 - **Duplicate registrations are refused instead of piling up.** Adding an image that is
