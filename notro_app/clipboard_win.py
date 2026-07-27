@@ -160,6 +160,7 @@ KEYEVENTF_KEYUP = 0x0002
 INPUT_KEYBOARD = 1
 VK_CONTROL = 0x11
 VK_V = 0x56
+VK_RETURN = 0x0D
 
 
 class _KEYBDINPUT(ctypes.Structure):
@@ -179,14 +180,24 @@ def get_foreground_window() -> int:
     return user32.GetForegroundWindow()
 
 
-def send_ctrl_v() -> None:
-    """OS 수준 Ctrl+V 입력 (클라이언트 수정·계정 자동화 아님 — Win+. 패널과 동일 방식)."""
-    seq = [(VK_CONTROL, 0), (VK_V, 0), (VK_V, KEYEVENTF_KEYUP), (VK_CONTROL, KEYEVENTF_KEYUP)]
+def _send_keys(seq) -> None:
     arr = (_INPUT * len(seq))()
     for i, (vk, flags) in enumerate(seq):
         arr[i].type = INPUT_KEYBOARD
         arr[i].u.ki = _KEYBDINPUT(vk, 0, flags, 0, 0)
     user32.SendInput(len(seq), arr, ctypes.sizeof(_INPUT))
+
+
+def send_ctrl_v() -> None:
+    """OS 수준 Ctrl+V 입력 (클라이언트 수정·계정 자동화 아님 — Win+. 패널과 동일 방식)."""
+    _send_keys([(VK_CONTROL, 0), (VK_V, 0),
+                (VK_V, KEYEVENTF_KEYUP), (VK_CONTROL, KEYEVENTF_KEYUP)])
+
+
+def send_enter() -> None:
+    """OS 수준 Enter 입력. 자동 전송 설정이 켜졌을 때만 쓴다 — 붙여넣기와 달리
+    되돌릴 수 없는 동작이라 기본은 꺼져 있다."""
+    _send_keys([(VK_RETURN, 0), (VK_RETURN, KEYEVENTF_KEYUP)])
 
 
 def focus_window(hwnd: int) -> bool:

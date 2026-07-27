@@ -1,6 +1,6 @@
 /* Notro Picker UI. pywebview 부재 시(mock) 브라우저 단독 미리보기 지원. */
 const $ = (s) => document.querySelector(s);
-const state = { items: [], recent: [], folders: [], collections: [], strings: {}, tab: "emoji", query: "", collection: "__all__", captureCollection: "__notro_captures__", autoCaptureSave: false, pasteSizes: {}, pasteSizeChoices: [0, 32, 48, 64, 96, 128, 160], cursor: -1 };
+const state = { items: [], recent: [], folders: [], collections: [], strings: {}, tab: "emoji", query: "", collection: "__all__", captureCollection: "__notro_captures__", autoCaptureSave: false, autoSend: false, pasteSizes: {}, pasteSizeChoices: [0, 32, 48, 64, 96, 128, 160], cursor: -1 };
 
 /* 붙여넣기 크기를 고를 수 있는 탭 (백엔드 resize.TARGETS와 같은 순서) */
 const SIZE_TABS = ["emoji", "sticker", "gif"];
@@ -12,7 +12,7 @@ const api = () => window.pywebview && window.pywebview.api;
 async function refresh() {
   if (!api()) { mock(); applyStrings(); renderRail(); render(); renderFolders(); renderSizes(); return; }
   const s = await api().get_state();
-  Object.assign(state, { items: s.items, recent: s.recent, folders: s.folders, collections: s.collections || [], strings: s.strings, captureCollection: s.capture_collection || "__notro_captures__", autoCaptureSave: !!s.auto_capture_save, pasteSizes: s.paste_sizes || {}, pasteSizeChoices: (s.paste_size_choices && s.paste_size_choices.length) ? s.paste_size_choices : state.pasteSizeChoices });
+  Object.assign(state, { items: s.items, recent: s.recent, folders: s.folders, collections: s.collections || [], strings: s.strings, captureCollection: s.capture_collection || "__notro_captures__", autoCaptureSave: !!s.auto_capture_save, autoSend: !!s.auto_send, pasteSizes: s.paste_sizes || {}, pasteSizeChoices: (s.paste_size_choices && s.paste_size_choices.length) ? s.paste_size_choices : state.pasteSizeChoices });
   applyStrings(); renderRail(); render(); renderFolders(); renderSizes();
 }
 
@@ -30,6 +30,7 @@ function mock() {
   state.folders = [{ path: "C:\\mock\\gifs", default_type: "gif", exists: true }];
   state.collections = [{ name: "miku", label: "miku", icon: sq("#39c5bb") }, { name: "gifs", label: "gifs", icon: null }];
   state.autoCaptureSave = false;
+  state.autoSend = false;
   state.pasteSizes = { emoji: 48, sticker: 160, gif: 0 };
   state.strings = {};
 }
@@ -54,10 +55,19 @@ function applyStrings() {
   $("#add-note").textContent = str("picker_add_note");
   $("#add-submit").textContent = str("picker_add_submit");
   $("#add-cancel").textContent = str("picker_cancel");
+  $("#edit-title").textContent = str("picker_edit_title");
+  $("#edit-name-label").textContent = str("picker_add_name_ph");
+  $("#edit-kw-label").textContent = str("picker_add_kw_ph");
+  $("#edit-note").textContent = str("picker_edit_note");
+  $("#edit-submit").textContent = str("picker_edit_save");
+  $("#edit-cancel").textContent = str("picker_cancel");
   $("#st-title").textContent = str("picker_settings_title");
   $("#st-auto-capture-label").textContent = str("picker_auto_capture");
   $("#st-auto-capture-note").textContent = str("picker_auto_capture_note");
   $("#st-auto-capture").checked = state.autoCaptureSave;
+  $("#st-auto-send-label").textContent = str("picker_auto_send");
+  $("#st-auto-send-note").textContent = str("picker_auto_send_note");
+  $("#st-auto-send").checked = state.autoSend;
   $("#st-size-subtitle").textContent = str("picker_paste_size");
   $("#st-size-note").textContent = str("picker_paste_size_note");
   $("#st-folders-subtitle").textContent = str("picker_folders_subtitle");
@@ -264,6 +274,7 @@ function showCtx(e, item) {
   if (!item.is_folder) {
     add(item.favorite ? str("picker_ctx_unfavorite") : str("picker_ctx_favorite"),
         async () => { await api().toggle_favorite(item.id); refresh(); });
+    add(str("picker_ctx_edit"), () => openEdit(item));
     add(str("picker_ctx_collection"), async () => {
       const shown = item.collection_label || item.collection || "";
       const name = window.prompt(str("picker_ctx_collection"), shown);
@@ -284,6 +295,13 @@ function showCtx(e, item) {
   ctx.style.top = y + "px";
 }
 function hideCtx() { $("#ctx").classList.add("hidden"); }
+
+/* 열려 있는 창 하나 (없으면 undefined). 방향키·붙여넣기 처리는 창이 열려 있는
+   동안 그리드를 건드리면 안 된다. */
+function openModal() {
+  return [$("#modal-add"), $("#modal-edit"), $("#modal-settings")]
+    .find((m) => !m.classList.contains("hidden"));
+}
 
 /* ---------- 등록 모달 ---------- */
 /* 세로 바에서 실제 컬렉션을 보고 있으면 그곳을 기본 저장 위치로 쓴다.
@@ -362,11 +380,36 @@ async function submitAdd() {
   }
 }
 
+/* ---------- 이름·키워드 편집 ----------
+   등록할 때 오타를 내면 지우고 다시 넣는 수밖에 없었다. 컬렉션 변경이 쓰는
+   window.prompt는 두 값을 이어 물어야 해서, 등록 창과 같은 모양의 작은 창을
+   따로 둔다. */
+let editingId = "";
+
+function openEdit(item) {
+  editingId = item.id;
+  $("#edit-name").value = item.name || "";
+  $("#edit-kw").value = (item.keywords || []).join(" ");
+  $("#modal-edit").classList.remove("hidden");
+  $("#edit-name").focus();
+  $("#edit-name").select();
+}
+
+async function submitEdit() {
+  if (!editingId || !api()) { $("#modal-edit").classList.add("hidden"); return; }
+  await api().update_item(editingId, $("#edit-name").value,
+                          $("#edit-kw").value);
+  editingId = "";
+  $("#modal-edit").classList.add("hidden");
+  refresh();
+}
+
 function captureErrorKey(error) {
   return ({
     no_image: "picker_capture_no_image",
     read: "picker_capture_read_error",
     register: "picker_capture_register_error",
+    duplicate: "picker_capture_duplicate",   /* 실패가 아니라 이미 갖고 있다는 뜻 */
   })[error] || "picker_capture_register_error";
 }
 
@@ -458,8 +501,14 @@ $("#add-url").addEventListener("keydown", (e) => { if (e.key === "Enter") submit
 $("#add-collection-select").addEventListener("change", syncCollectionInput);
 $("#add-collection").addEventListener("keydown", (e) => { if (e.key === "Enter") submitAdd(); });
 $("#add-cancel").addEventListener("click", () => $("#modal-add").classList.add("hidden"));
+$("#edit-submit").addEventListener("click", submitEdit);
+$("#edit-cancel").addEventListener("click", () => { editingId = ""; $("#modal-edit").classList.add("hidden"); });
+for (const id of ["#edit-name", "#edit-kw"]) {
+  $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") submitEdit(); });
+}
 $("#btn-settings").addEventListener("click", () => {
   $("#st-auto-capture").checked = state.autoCaptureSave;
+  $("#st-auto-send").checked = state.autoSend;
   $("#modal-settings").classList.remove("hidden");
 });
 $("#st-close").addEventListener("click", () => $("#modal-settings").classList.add("hidden"));
@@ -467,6 +516,11 @@ $("#st-auto-capture").addEventListener("change", async (e) => {
   if (!api()) return;
   state.autoCaptureSave = !!(await api().set_auto_capture_save(e.target.checked));
   e.target.checked = state.autoCaptureSave;
+});
+$("#st-auto-send").addEventListener("change", async (e) => {
+  if (!api()) return;
+  state.autoSend = !!(await api().set_auto_send(e.target.checked));
+  e.target.checked = state.autoSend;
 });
 $("#st-addfolder").addEventListener("click", async () => {
   if (api()) { await api().add_folder(state.tab); refresh(); }
@@ -481,9 +535,9 @@ const CURSOR_MOVES = {
   ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowUp: [0, -1],
 };
 window.addEventListener("keydown", (e) => {
-  const modal = [$("#modal-add"), $("#modal-settings")]
-    .find((m) => !m.classList.contains("hidden"));
+  const modal = openModal();
   if (e.key === "Escape") {
+    if (modal && modal.id === "modal-edit") editingId = "";
     if (modal) { modal.classList.add("hidden"); return; }
     if (!$("#ctx").classList.contains("hidden")) { hideCtx(); return; }
     if (api()) api().hide();
@@ -512,6 +566,7 @@ window.addEventListener("drop", async (e) => {
     await refresh();
     if (res.failed && res.count) flashHint("picker_drop_partial", res);
     else if (res.failed) flashHint("picker_drop_failed");
+    else if (res.duplicate) flashHint("picker_drop_duplicate", res);
   }
 });
 
@@ -528,8 +583,8 @@ function flashHint(key, values) {
   hintTimer = setTimeout(() => { f.textContent = str("picker_hint"); }, 1800);
 }
 window.addEventListener("paste", async (e) => {
-  /* 등록 모달이 열려 있으면 URL 등 네이티브 붙여넣기를 방해하지 않는다 */
-  if (!$("#modal-add").classList.contains("hidden")) return;
+  /* 창이 열려 있으면 URL·이름 등 네이티브 붙여넣기를 방해하지 않는다 */
+  if (openModal()) return;
   if (!api()) return;
   /* MIME이 명확한 이미지만 기본 동작을 막는다. 백엔드 호출 자체는 항상 시도해
      MIME이 빠진 CF_DIB 캡처도 저장하되 텍스트 붙여넣기는 그대로 둔다. */

@@ -60,6 +60,26 @@ def test_settings_has_paste_size_section():
     assert "st-sizes" in by_id
 
 
+def test_edit_modal_has_name_and_keyword_fields():
+    """이름·키워드를 고칠 수 없게 되는 회귀를 잡는다."""
+    by_id = {attrs.get("id"): (tag, attrs) for tag, attrs in elements()
+             if attrs.get("id")}
+    assert by_id["edit-name"][0] == "input" and by_id["edit-kw"][0] == "input"
+    assert by_id["edit-name-label"][1].get("for") == "edit-name"
+    assert by_id["edit-kw-label"][1].get("for") == "edit-kw"
+    assert "edit-submit" in by_id and "edit-cancel" in by_id
+
+
+def test_auto_send_uses_native_checkbox_with_description():
+    """되돌릴 수 없는 동작이므로 설명 없이 노출되면 안 된다."""
+    by_id = {attrs.get("id"): (tag, attrs) for tag, attrs in elements()
+             if attrs.get("id")}
+    tag, attrs = by_id["st-auto-send"]
+    assert tag == "input" and attrs.get("type") == "checkbox"
+    assert by_id["st-auto-send-note"][0] == "p"
+    assert by_id["st-auto-send-label"][1].get("for") == "st-auto-send"
+
+
 def test_capture_button_is_a_real_button():
     by_id = {attrs.get("id"): (tag, attrs) for tag, attrs in elements()
              if attrs.get("id")}

@@ -151,7 +151,7 @@ def test_register_files_reports_failures(tmp_path, monkeypatch):
         if path == "bad" else {"id": path})
 
     assert api.register_files(["good", "bad"], "emoji") == {
-        "ok": True, "count": 1, "failed": 1,
+        "ok": True, "count": 1, "failed": 1, "duplicate": 0,
     }
 
 
@@ -248,3 +248,21 @@ def test_paste_size_strings_registered_all_langs():
         assert key in window.PICKER_STRING_KEYS
         for lang in i18n.SUPPORTED_LANGS:
             assert i18n.STRINGS[lang].get(key), f"{lang} missing {key}"
+
+
+def test_editing_and_duplicate_strings_registered_all_langs():
+    """새 UI가 어느 언어에서 키 이름 그대로 노출되는 회귀를 잡는다."""
+    for key in ("picker_ctx_edit", "picker_edit_title", "picker_edit_note",
+                "picker_edit_save", "picker_err_duplicate",
+                "picker_drop_duplicate", "picker_auto_send",
+                "picker_auto_send_note"):
+        assert key in window.PICKER_STRING_KEYS
+        for lang in i18n.SUPPORTED_LANGS:
+            assert i18n.STRINGS[lang].get(key), f"{lang} missing {key}"
+
+
+def test_duplicate_placeholder_matches_across_languages():
+    import re
+    for lang in i18n.SUPPORTED_LANGS:
+        text = i18n.STRINGS[lang]["picker_drop_duplicate"]
+        assert set(re.findall(r"\{(\w+)", text)) == {"duplicate"}, lang

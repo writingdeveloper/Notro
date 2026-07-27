@@ -241,6 +241,23 @@ class Library:
             item["last_used"] = _now()
             self._save()
 
+    def update_item(self, item_id: str, name=None, keywords=None) -> dict | None:
+        """등록 항목의 이름·키워드를 바꾸고 갱신된 항목을 반환한다.
+
+        폴더 스캔 항목은 영속되지 않으므로 무시한다(None). 이름이 비면 기존
+        이름을 유지한다 — 이름 없는 항목은 검색으로도, 눈으로도 찾을 수 없다.
+        """
+        with self._lock:
+            item = self._items.get(item_id)
+            if item is None:
+                return None
+            if name is not None and str(name).strip():
+                item["name"] = str(name).strip()
+            if keywords is not None:
+                item["keywords"] = [str(k).strip() for k in keywords if str(k).strip()]
+            self._save()
+            return dict(item)
+
     def toggle_favorite(self, item_id: str) -> bool:
         """등록 항목의 즐겨찾기를 반전하고 새 값을 반환 (폴더 항목은 무시→False)."""
         with self._lock:

@@ -97,6 +97,11 @@ class CaptureStore:
                 item = fetch.register_from_png_bytes(
                     self._library, data, "emoji", name=name,
                     collection=CAPTURE_COLLECTION_ID, content_hash=digest)
+            except fetch.DuplicateAssetError as dup:
+                # 위 find_by_content_hash가 같은 키를 이미 봤으므로 보통은 여기
+                # 오지 않는다. 두 스레드(수동 버튼 + 자동 저장)가 같은 이미지를
+                # 동시에 저장할 때만 도달하며, 저장 실패가 아니라 중복이다.
+                return CaptureSaveResult(True, True, dup.item["id"], None)
             except Exception:
                 return CaptureSaveResult(False, error="register")
             return CaptureSaveResult(True, False, item["id"], None)

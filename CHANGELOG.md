@@ -3,6 +3,24 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.10.0] - 2026-07-27
+
+### Added
+- **Rename items and edit their keywords.** Right-click → *Rename / keywords…* opens a small
+  dialog. Until now a typo at registration meant deleting the item and adding it again.
+- **Duplicate registrations are refused instead of piling up.** Adding an image that is
+  byte-identical to one you already have — by URL, by file drop, or by
+  <kbd>Ctrl</kbd>+<kbd>V</kbd> — now says so and keeps the existing item. The check is per
+  tab *and* collection, so deliberately keeping the same picture in two places still works.
+- **The picker window can be resized and remembers its size.** pywebview makes frameless
+  windows `FormBorderStyle.None`, which silently overrides `resizable` and leaves no
+  hit-test area at the edges; Notro re-enables `WS_THICKFRAME` on the native window so
+  Windows handles eight-way resizing itself. The size is stored in logical pixels, so
+  moving between monitors with different DPI does not change how big the picker looks.
+- **Optional auto-send after pasting** (off by default). Notro presses <kbd>Enter</kbd> for
+  you ~0.45 s after the paste, once Discord has had time to attach the image. It never
+  applies to *paste as link*, which is usually meant to sit inside a sentence.
+
 ## [2.9.0] - 2026-07-26
 
 ### Added

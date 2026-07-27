@@ -56,7 +56,10 @@ with three tabs: **Emoji / Stickers / GIFs**.
   default, and copied image files are excluded.
 - **Use items:** click one — the picker hides, focus returns to Discord, and the
   image is pasted into the message box as an attachment. **You press Enter to
-  send.** Right-click for "paste as link" (CDN items) or remove.
+  send** (or turn on auto-send in settings). Right-click to rename, edit keywords,
+  "paste as link" (CDN items), or remove.
+- Adding an image you already have in that tab and collection is refused rather than
+  silently duplicated. The picker window can be resized and keeps its size.
 - **Consistent size:** Discord draws an attachment at its native pixel size, so Notro
   normalizes the longest edge right before pasting — **48 px** for emoji (the size of a
   jumbo custom emoji), **160 px** for stickers, original size for GIFs. Configurable per
