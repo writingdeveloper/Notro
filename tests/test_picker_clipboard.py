@@ -213,3 +213,38 @@ def test_paste_no_image_string_registered_all_langs():
 def test_settings_tooltip_string_is_exposed_to_picker():
     """설정 버튼 툴팁이 번역 키 이름 그대로 노출되는 회귀를 잡는다."""
     assert "picker_settings" in window.PICKER_STRING_KEYS
+
+
+# ---------- 붙여넣기 표시 크기 (스펙 §6.8) ----------
+def test_get_state_exposes_paste_sizes(tmp_path, monkeypatch):
+    """UI가 현재 크기 설정을 못 읽어 항상 기본값으로 되돌아가는 회귀를 잡는다."""
+    monkeypatch.setattr(window.config, "get_setting_int",
+                        lambda name, default=0: default, raising=False)
+    api = window.PickerApi(
+        library=Library(str(tmp_path / "d")), asset_server=FakeServer())
+
+    state = api.get_state()
+
+    assert state["paste_sizes"] == {"emoji": 48, "sticker": 160, "gif": 0}
+    assert 48 in state["paste_size_choices"] and 0 in state["paste_size_choices"]
+
+
+def test_set_paste_size_persists_per_tab(tmp_path, monkeypatch):
+    from notro_app import config as real_config
+    saved = {}
+    monkeypatch.setattr(real_config, "set_setting_int",
+                        lambda name, value: saved.__setitem__(name, value))
+    api = window.PickerApi(
+        library=Library(str(tmp_path / "d")), asset_server=FakeServer())
+
+    assert api.set_paste_size("sticker", 96) == {
+        "ok": True, "type": "sticker", "px": 96}
+    assert saved == {"paste_px_sticker": 96}
+
+
+def test_paste_size_strings_registered_all_langs():
+    for key in ("picker_paste_size", "picker_paste_size_note",
+                "picker_size_original"):
+        assert key in window.PICKER_STRING_KEYS
+        for lang in i18n.SUPPORTED_LANGS:
+            assert i18n.STRINGS[lang].get(key), f"{lang} missing {key}"

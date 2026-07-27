@@ -3,6 +3,47 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.9.0] - 2026-07-26
+
+### Added
+- **Korean initial-consonant (초성) search.** Typing `ㅁㅋ` now finds `미쿠` — for Korean
+  names, hitting three jamo beats typing the whole word. Plain queries (English, fully
+  composed Hangul) behave exactly as before; the choseong pass only runs when the query
+  contains jamo and normal matching found nothing.
+- **Keyboard navigation in the picker.** Arrow keys move a cursor through the grid and
+  <kbd>Enter</kbd> pastes the highlighted item, so a hotkey-opened picker can be driven
+  without touching the mouse. Up/Down pick the nearest cell in the row above/below by
+  position, so they work across the Favorites / Recently used sections where the column
+  count differs. (<kbd>Enter</kbd> previously always sent the *first* result.)
+- **Register an emoji straight from its message text.** Paste `<:name:id>` or `<a:name:id>`
+  — what you get by copying an emoji out of a Discord message — into the add dialog; the
+  old "Copy Link" URL still works. The emoji's own name becomes the item name, and
+  `<a:…>` fetches the animated GIF variant.
+
+### Fixed
+- **Pasted emoji are no longer wildly different sizes.** Discord draws an image attachment
+  at its *native pixel size*, so a library holding a 20×20 GIF next to a 1080×1078 PNG
+  pasted one as a speck and the other as a full picture — nothing like a real custom emoji,
+  which is always the same size. Notro now normalizes the longest edge just before pasting:
+  **48 px for emoji** (the size of a jumbo custom emoji), **160 px for stickers** (Discord's
+  sticker size), and the original size for GIFs. Sizes are configurable per tab in picker
+  settings (⚙), including "Original" to restore the old behavior.
+  - Smaller sources are scaled *up* to the target as well — consistency is the point, and a
+    20 px emoji that stays 20 px defeats it.
+  - Animated GIFs keep every frame and their timing; the resized copy is written to the temp
+    folder and cached, so pasting the same item again re-uses it instead of re-encoding.
+  - **Your library files are never modified** — only the copy that goes on the clipboard.
+- **Files whose extension lies about their format are stored correctly.** Registration
+  trusted the extension from the filename or URL, so a `.gif` that actually held a still
+  PNG (real files like this were found in an existing library) was saved as `.gif`,
+  claimed to be animated, and was served with the wrong MIME type. The real format now
+  decides the extension.
+- **The temp folder no longer stops being cleaned up.** `cleanup_temp()` wrapped its whole
+  loop in one `try`, so the first entry it could not delete — in practice the updater's
+  `update` **directory**, which `os.remove` refuses — aborted the sweep and left every file
+  after it in place forever. Each entry is now handled independently and directories are
+  left to whoever owns them.
+
 ## [2.8.0] - 2026-07-26
 
 ### Added

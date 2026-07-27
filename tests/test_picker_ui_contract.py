@@ -51,6 +51,15 @@ def test_add_modal_has_collection_picker():
     assert label_attrs.get("for") == "add-collection-select"
 
 
+def test_settings_has_paste_size_section():
+    """붙여넣기 크기 설정이 사라지거나 설명 없이 노출되는 회귀를 잡는다."""
+    by_id = {attrs.get("id"): (tag, attrs) for tag, attrs in elements()
+             if attrs.get("id")}
+    assert by_id["st-size-subtitle"][0] in {"h4", "p"}
+    assert by_id["st-size-note"][0] == "p"
+    assert "st-sizes" in by_id
+
+
 def test_capture_button_is_a_real_button():
     by_id = {attrs.get("id"): (tag, attrs) for tag, attrs in elements()
              if attrs.get("id")}

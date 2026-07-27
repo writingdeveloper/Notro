@@ -83,13 +83,20 @@ def popup_geometry() -> tuple[int, int, int, int]:
     return x, y, win_w, win_h
 
 
-def prepare_for_paste(path: str, limit_bytes: int, temp_dir: str) -> tuple[str, bool]:
-    """한도 초과 항목 전처리 (스펙 §6.7/§7).
+def prepare_for_paste(path: str, limit_bytes: int, temp_dir: str,
+                      target_px: int = 0) -> tuple[str, bool]:
+    """붙여넣기 전처리 (스펙 §6.7/§6.8/§7).
 
-    정지 이미지: 기존 압축 파이프라인으로 한도 내 재인코딩.
-    GIF(애니메이션): 재압축 품질 저하가 커서 그대로 두고 경고만.
+    1) 표시 크기 정규화: target_px > 0이면 긴 변을 그 크기로 맞춘다 (§6.8).
+       디스코드는 첨부를 원본 픽셀 크기로 그리므로 이 단계가 곧 "보이는 크기"다.
+    2) 한도 초과 처리 —
+       정지 이미지: 기존 압축 파이프라인으로 한도 내 재인코딩.
+       GIF(애니메이션): 재압축 품질 저하가 커서 그대로 두고 경고만.
     반환: (붙여넣을 경로, 한도 초과 경고 여부)
     """
+    from .. import resize
+
+    path = resize.normalize(path, target_px, temp_dir)
     try:
         size = os.path.getsize(path)
     except OSError:
@@ -140,6 +147,7 @@ PICKER_STRING_KEYS = [
     "picker_auto_capture", "picker_auto_capture_note",
     "picker_settings_title", "picker_folders_subtitle",
     "picker_drop_partial", "picker_drop_failed",
+    "picker_paste_size", "picker_paste_size_note", "picker_size_original",
 ]
 
 
@@ -183,7 +191,9 @@ class PickerApi:
         }
 
     def get_state(self) -> dict:
+        from .. import resize
         from ..i18n import tr
+
         cols = []
         for name in self._library.collections():
             icon_id = self._library.collection_icon(name)
@@ -201,6 +211,8 @@ class PickerApi:
             "collections": cols,
             "auto_capture_save": config.get_setting_flag("auto_capture_save"),
             "capture_collection": CAPTURE_COLLECTION_ID,
+            "paste_sizes": resize.current_targets(),
+            "paste_size_choices": list(resize.PX_CHOICES),
             "strings": {k: tr(k) for k in PICKER_STRING_KEYS},
         }
 
@@ -254,6 +266,12 @@ class PickerApi:
     def set_auto_capture_save(self, enabled: bool) -> bool:
         config.set_setting_flag("auto_capture_save", bool(enabled))
         return config.get_setting_flag("auto_capture_save")
+
+    def set_paste_size(self, type_: str, px) -> dict:
+        """탭 종류별 붙여넣기 표시 크기를 저장하고 반영된 값을 돌려준다."""
+        from .. import resize
+
+        return {"ok": True, "type": type_, "px": resize.set_target_px(type_, px)}
 
     def register_clipboard(self, type_: str, collection: str = "") -> dict:
         """클립보드의 PNG 이미지를 라이브러리에 등록 (스펙 §5 — 디스코드/브라우저
@@ -334,7 +352,7 @@ class PickerController:
         """피커 선택 → 숨김 → 클립보드 → 포커스 복귀 → Ctrl+V. 전송은 사용자."""
         import time as _t
 
-        from .. import config
+        from .. import config, resize
         from ..i18n import tr
 
         item = self._resolve(item_id)
@@ -345,8 +363,9 @@ class PickerController:
         if mode == "url" and item.get("source_url"):
             ok = cb.set_clipboard_text(item["source_url"])
         else:
-            path, warn = prepare_for_paste(self.library.asset_path(item),
-                                           config.LIMIT_BYTES, config.TEMP_DIR)
+            path, warn = prepare_for_paste(
+                self.library.asset_path(item), config.LIMIT_BYTES,
+                config.TEMP_DIR, target_px=resize.target_px_for(item["type"]))
             ok = cb.set_clipboard_file(path)
         focused = cb.focus_window(self.prev_hwnd)
         if ok and focused:
