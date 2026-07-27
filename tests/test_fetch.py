@@ -365,3 +365,108 @@ def test_register_png_bytes_removes_asset_when_metadata_save_fails(
 
     capture_dir = tmp_path / "d" / "assets" / "__notro_captures__"
     assert list(capture_dir.glob("*")) == []
+
+
+# ---------- 이모지 텍스트(<:이름:id>) 등록 ----------
+def test_parse_emoji_tag_static_and_animated():
+    """채팅창에서 복사한 이모지 텍스트를 그대로 등록할 수 있어야 한다."""
+    p = fetch.parse_discord_url("<:miku_smile:123456789012345678>")
+    assert p and p.kind == "emoji" and p.asset_id == "123456789012345678"
+    assert p.ext == "png" and p.name == "miku_smile"
+
+    a = fetch.parse_discord_url("<a:dance:987654321098765432>")
+    assert a and a.ext == "gif" and a.name == "dance"  # 애니메이션은 gif 우선
+
+
+def test_parse_emoji_tag_inside_a_message():
+    p = fetch.parse_discord_url("hey <:wave:111111111111111111> bye")
+    assert p and p.asset_id == "111111111111111111"
+
+
+@pytest.mark.parametrize("text", [
+    ":wave:",                       # 유니코드 이모지 축약형은 자산이 아니다
+    "<:wave:123>",                  # 스노플레이크로 보기엔 너무 짧다
+    "<:일본어이름:123456789012345678>",  # 디스코드 이모지 이름은 영숫자·_ 만
+    "<::123456789012345678>",
+])
+def test_parse_rejects_non_emoji_tags(text):
+    assert fetch.parse_discord_url(text) is None
+
+
+def test_register_from_emoji_tag_uses_its_name(tmp_path, monkeypatch):
+    """이름을 따로 적지 않아도 이모지 텍스트의 이름이 항목명이 된다."""
+    lib = Library(str(tmp_path / "d"))
+    monkeypatch.setattr(fetch, "download", url_download({".png": png_bytes()}))
+
+    item = fetch.register_from_url(lib, "<:wave:123456789012345678>")
+
+    assert item["name"] == "wave"
+    assert item["source_url"] == "https://cdn.discordapp.com/emojis/123456789012345678.png"
+
+
+def test_register_from_emoji_tag_prefers_explicit_name(tmp_path, monkeypatch):
+    lib = Library(str(tmp_path / "d"))
+    monkeypatch.setattr(fetch, "download", url_download({".png": png_bytes()}))
+
+    item = fetch.register_from_url(lib, "<:wave:123456789012345678>", name="인사")
+
+    assert item["name"] == "인사"
+
+
+def test_register_from_animated_emoji_tag_downloads_gif(tmp_path, monkeypatch):
+    lib = Library(str(tmp_path / "d"))
+    monkeypatch.setattr(fetch, "download",
+                        url_download({".gif": multiframe_gif_bytes()}))
+
+    item = fetch.register_from_url(lib, "<a:dance:123456789012345678>")
+
+    assert item["animated"] is True and item["filename"].endswith(".gif")
+
+
+# ---------- 확장자 ≠ 실제 포맷 ----------
+def test_real_ext_uses_content(tmp_path):
+    p = tmp_path / "lying.gif"
+    p.write_bytes(png_bytes())
+    assert fetch.real_ext(str(p), ".gif") == ".png"
+
+    bad = tmp_path / "broken.png"
+    bad.write_bytes(b"nonsense")
+    assert fetch.real_ext(str(bad), ".png") == ".png"   # 못 읽으면 그대로
+
+
+def test_register_from_file_corrects_lying_extension(tmp_path):
+    """실제로는 정지 PNG인 .gif가 GIF 탭에서 애니메이션 행세를 하던 회귀를 잡는다."""
+    lib = Library(str(tmp_path / "d"))
+    src = tmp_path / "still.gif"
+    src.write_bytes(png_bytes())
+
+    item = fetch.register_from_file(lib, str(src), "gif")
+
+    assert item["filename"].endswith(".png")
+    assert item["animated"] is False
+    with Image.open(lib.asset_path(item)) as im:
+        assert im.format == "PNG"
+
+
+def test_register_from_file_corrects_jpeg_named_png(tmp_path):
+    lib = Library(str(tmp_path / "d"))
+    src = tmp_path / "photo.png"
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 8), (10, 20, 30)).save(buf, format="JPEG")
+    src.write_bytes(buf.getvalue())
+
+    item = fetch.register_from_file(lib, str(src), "emoji")
+
+    assert item["filename"].endswith(".jpg")
+    with Image.open(lib.asset_path(item)) as im:
+        assert im.format == "JPEG"
+
+
+def test_register_from_url_corrects_lying_extension(tmp_path, monkeypatch):
+    """CDN이 .webp 요청에 PNG를 돌려줘도 올바른 이름으로 저장한다."""
+    lib = Library(str(tmp_path / "d"))
+    monkeypatch.setattr(fetch, "download", url_download({".webp": png_bytes()}))
+
+    item = fetch.register_from_url(lib, "https://cdn.discordapp.com/emojis/21.webp")
+
+    assert item["filename"].endswith(".png")

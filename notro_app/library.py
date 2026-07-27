@@ -50,6 +50,51 @@ def file_is_animated(path: str) -> bool:
     return marker in head
 
 
+# ---------- 한글 초성 검색 ----------
+# 한글 음절(가~힣)은 (초성×588 + 중성×28 + 종성) 구조라 나눗셈 한 번으로 초성이
+# 나온다. 사용자가 "ㅁㅋ"만 쳐도 "미쿠"가 걸리게 하려는 것 — 한국어 사용자에게는
+# 이름 전체를 치는 것보다 이쪽이 훨씬 빠르다.
+_CHOSEONG = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ"
+_SYLLABLE_FIRST, _SYLLABLE_LAST = 0xAC00, 0xD7A3
+_JAMO_FIRST, _JAMO_LAST = 0x3131, 0x314E  # 호환 자모 ㄱ~ㅎ (IME가 넣는 낱자)
+
+
+def to_choseong(text: str) -> str:
+    """한글 음절을 초성으로 바꾼 소문자 문자열 (그 외 문자는 그대로)."""
+    out = []
+    for ch in text.lower():
+        code = ord(ch)
+        if _SYLLABLE_FIRST <= code <= _SYLLABLE_LAST:
+            out.append(_CHOSEONG[(code - _SYLLABLE_FIRST) // 588])
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def has_jamo(text: str) -> bool:
+    return any(_JAMO_FIRST <= ord(c) <= _JAMO_LAST for c in text)
+
+
+def matches_query(query: str, name: str, keywords) -> bool:
+    """이름·키워드 부분일치. 낱자가 섞인 질의는 초성 검색으로 한 번 더 본다.
+
+    초성 검색은 **일반 일치가 실패했을 때만** 적용한다 — 질의에 낱자가 없으면
+    (영문·완성형 한글) 예전과 정확히 같게 동작한다.
+    """
+    q = (query or "").strip().lower()
+    if not q:
+        return True
+    fields = [(name or "").lower()] + [str(k).lower() for k in (keywords or [])]
+    if any(q in f for f in fields):
+        return True
+    if not has_jamo(q):
+        return False
+    # 질의의 완성형 음절도 초성으로 낮춰 비교한다 — IME 조합 중인 "ㅁ쿠" 같은
+    # 중간 상태에서도 "미쿠"가 계속 걸린다.
+    cq = to_choseong(q)
+    return any(cq in to_choseong(f) for f in fields)
+
+
 def _slug(name) -> str:
     """컬렉션명을 파일시스템 안전 폴더명으로. 빈 값은 미분류 폴더."""
     name = (name or "").strip()
@@ -414,13 +459,11 @@ class Library:
     # 정식 검색 책임(스펙 §3)은 여기 있다. 프런트엔드 app.js filtered()는
     # 타이핑 반응성을 위한 동일 규칙의 미러일 뿐이다.
     def search(self, query: str, type_: str | None = None) -> list[dict]:
-        """이름·키워드 대소문자 무시 부분일치. 빈 쿼리면 type_ 필터만 적용."""
+        """이름·키워드 대소문자 무시 부분일치(+한글 초성). 빈 쿼리면 type_만 적용."""
         items = self.all_display_items()
         if type_ is not None:
             items = [i for i in items if i["type"] == type_]
-        q = (query or "").strip().lower()
-        if not q:
+        if not (query or "").strip():
             return items
         return [i for i in items
-                if q in i["name"].lower()
-                or any(q in k.lower() for k in i["keywords"])]
+                if matches_query(query, i["name"], i["keywords"])]

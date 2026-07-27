@@ -156,14 +156,25 @@ def ensure_single_instance():
 
 
 def cleanup_temp():
+    """1일 이상 지난 임시 파일 정리.
+
+    항목마다 따로 감싼다 — 예전에는 루프 전체를 하나의 try로 감싸서, 지울 수
+    없는 항목 하나(대표적으로 업데이터가 쓰는 `update` **디렉터리**: os.remove가
+    PermissionError를 던진다)에 걸리면 그 뒤 파일은 아예 검사도 되지 않고
+    정리가 통째로 멈췄다. 디렉터리는 소유한 쪽이 관리하므로 건너뛴다."""
     now = time.time()
     try:
-        for name in os.listdir(TEMP_DIR):
-            p = os.path.join(TEMP_DIR, name)
-            if now - os.path.getmtime(p) > 86400:
-                os.remove(p)
-    except Exception:
-        pass
+        names = os.listdir(TEMP_DIR)
+    except OSError:
+        return
+    for name in names:
+        p = os.path.join(TEMP_DIR, name)
+        try:
+            if os.path.isdir(p) or now - os.path.getmtime(p) <= 86400:
+                continue
+            os.remove(p)
+        except OSError:
+            continue
 
 
 # ---------- v2.0 'ClipShrink' → Notro 리브랜딩 데이터 이전 ----------

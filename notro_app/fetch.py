@@ -15,14 +15,21 @@ from dataclasses import dataclass
 
 from PIL import Image, ImageSequence
 
-from . import __version__
+from . import __version__, resize
 
 EMOJI_RE = re.compile(
     r"(?:cdn|media)\.discordapp\.(?:com|net)/emojis/(\d+)\.(png|gif|webp)", re.I)
 STICKER_RE = re.compile(
     r"(?:cdn|media)\.discordapp\.(?:com|net)/stickers/(\d+)\.(png|gif|json)", re.I)
+# 메시지에 쓰는 이모지 텍스트 그대로: <:이름:id> / 애니메이션은 <a:이름:id>.
+# 채팅창에서 복사하면 이 형태로 붙으므로, "링크 복사"보다 흔한 입력이다.
+EMOJI_TAG_RE = re.compile(r"<(a?):([A-Za-z0-9_~]{2,32}):(\d{15,25})>")
 
 ACCEPT_FILE_EXTS = (".png", ".gif", ".webp", ".jpg", ".jpeg")
+
+# 실제 이미지 포맷 → 확장자. 확장자만 믿으면 디스코드에서 .gif로 받았지만 내용은
+# PNG인 파일이 .gif 이름으로 저장돼, 애니메이션으로 오인되고 MIME도 어긋난다.
+FORMAT_EXTS = {"PNG": ".png", "GIF": ".gif", "WEBP": ".webp", "JPEG": ".jpg"}
 
 
 class UnsupportedAssetError(Exception):
@@ -34,18 +41,26 @@ class ParsedAsset:
     kind: str      # "emoji" | "sticker"
     asset_id: str
     ext: str       # 소문자, 점 없음
+    name: str = ""  # 이모지 텍스트에서 얻은 이름 (링크에는 없다)
 
 
-def parse_discord_url(url: str) -> ParsedAsset | None:
-    m = EMOJI_RE.search(url)
+def parse_discord_url(text: str) -> ParsedAsset | None:
+    """CDN 링크 또는 메시지의 이모지 텍스트(`<:이름:id>`)를 자산으로 해석한다."""
+    m = EMOJI_RE.search(text)
     if m:
         return ParsedAsset("emoji", m.group(1), m.group(2).lower())
-    m = STICKER_RE.search(url)
+    m = STICKER_RE.search(text)
     if m:
         ext = m.group(2).lower()
         if ext == "json":
             raise UnsupportedAssetError("lottie")
         return ParsedAsset("sticker", m.group(1), ext)
+    m = EMOJI_TAG_RE.search(text)
+    if m:
+        # <a:...>면 애니메이션이므로 gif를 먼저 요청한다. 정지 이모지의 gif 변형은
+        # 존재하지 않거나 단일 프레임이라 _download_asset이 알아서 되돌아간다.
+        ext = "gif" if m.group(1) else "png"
+        return ParsedAsset("emoji", m.group(3), ext, name=m.group(2))
     return None
 
 
@@ -95,20 +110,14 @@ def is_animated_gif(path: str) -> bool:
 
 
 def apng_to_gif(src: str, dest: str) -> None:
-    """애니메이션 이미지(APNG·WebP) → GIF. GIF 투명도는 1비트라 알파<128은
-    완전 투명으로 처리."""
+    """애니메이션 이미지(APNG·WebP) → GIF. 팔레트/투명도 처리는 붙여넣기 크기
+    정규화와 같은 writer(resize.save_gif)를 쓴다."""
     with Image.open(src) as im:
         frames, durations = [], []
         for frame in ImageSequence.Iterator(im):
-            f = frame.convert("RGBA")
-            alpha = f.getchannel("A")
-            p = f.convert("RGB").convert("P", palette=Image.ADAPTIVE, colors=255)
-            mask = alpha.point(lambda a: 255 if a < 128 else 0)
-            p.paste(255, mask)
-            frames.append(p)
+            frames.append(frame.convert("RGBA"))
             durations.append(int(frame.info.get("duration", 50)) or 50)
-    frames[0].save(dest, format="GIF", save_all=True, append_images=frames[1:],
-                   duration=durations, loop=0, disposal=2, transparency=255)
+    resize.save_gif(frames, durations, dest)
 
 
 def _first_frame_png(src: str, dest: str) -> None:
@@ -116,6 +125,21 @@ def _first_frame_png(src: str, dest: str) -> None:
     with Image.open(src) as im:
         im.seek(0)
         im.convert("RGBA").save(dest, format="PNG")
+
+
+def real_ext(path: str, fallback: str) -> str:
+    """내용으로 판정한 확장자 (읽지 못하면 fallback 그대로).
+
+    디스코드 CDN도, 사용자가 끌어다 놓는 파일도 확장자와 실제 포맷이 어긋나는
+    경우가 있다 — 실제로 라이브러리에 `.gif`인데 정지 PNG인 파일, `.png`인데
+    JPEG인 파일이 쌓여 있었다. 그대로 저장하면 정지 이미지가 GIF 탭에서
+    애니메이션 취급을 받고, 자산 서버가 내려주는 MIME도 어긋난다.
+    """
+    try:
+        with Image.open(path) as im:
+            return FORMAT_EXTS.get(im.format or "", fallback)
+    except Exception:
+        return fallback
 
 
 def _needs_gif_conversion(path: str, ext: str) -> bool:
@@ -138,7 +162,11 @@ def _finalize_asset(library, tmp_path: str, ext: str,
     (최종 파일명, animated, convert_failed) 반환. collection이 없으면 기존처럼
     미분류 폴더에 쓰고, 지정되면 해당 컬렉션에 처음부터 저장한다.
     APNG→GIF 변환이 실패하면 정지 PNG(첫 프레임)로 폴백하고 convert_failed=True
-    (스펙 §7 — 등록 자체는 성공시키고 항목에 경고 배지를 남긴다)."""
+    (스펙 §7 — 등록 자체는 성공시키고 항목에 경고 배지를 남긴다).
+
+    확장자는 파일 내용으로 다시 판정한다 — 넘겨받은 ext는 원본 이름/URL에서
+    온 값이라 실제 포맷과 다를 수 있다."""
+    ext = real_ext(tmp_path, ext)
     dest_dir = library.collection_dir(collection)
     if _needs_gif_conversion(tmp_path, ext):
         gif_name = library.new_asset_filename(".gif")
@@ -190,7 +218,9 @@ def _download_asset(library, p: ParsedAsset) -> tuple[str, str, str]:
 
 def register_from_url(library, url: str, name: str = "", keywords=None,
                       collection: str = "", type_: str = "") -> dict:
-    """type_을 주면 그 탭에 등록한다 (파일 드롭과 같은 규칙 — 사용자가 보고 있던
+    """CDN 링크 또는 `<:이름:id>` 이모지 텍스트로 등록한다.
+
+    type_을 주면 그 탭에 등록한다 (파일 드롭과 같은 규칙 — 사용자가 보고 있던
     탭). 비우면 예전처럼 디스코드 자산 종류를 따른다."""
     p = parse_discord_url(url)
     if p is None:
@@ -203,7 +233,8 @@ def register_from_url(library, url: str, name: str = "", keywords=None,
         if os.path.exists(tmp):
             os.remove(tmp)
     type_ = type_ or ("emoji" if p.kind == "emoji" else "sticker")
-    return library.add_item(type_, name or p.asset_id, keywords or [],
+    # 이름은 사용자 입력 > 이모지 텍스트에 들어 있던 이름 > 자산 id 순.
+    return library.add_item(type_, name or p.name or p.asset_id, keywords or [],
                             "discord-cdn", source_url, filename, animated,
                             convert_failed, collection=collection)
 

@@ -39,7 +39,8 @@ Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> (configurable from the tray)
 while typing in Discord — a Discord-styled dark popup opens near your cursor
 with three tabs: **Emoji / Stickers / GIFs**.
 
-- **Add items:** press **＋** and paste a Discord *"Copy Link"* emoji URL, or
+- **Add items:** press **＋** and paste a Discord *"Copy Link"* emoji URL — or the
+  `<:name:id>` text you get by copying an emoji out of a message — or
   drag & drop image files onto the picker, or add **watched folders** (⚙) whose
   PNG/GIF/WebP/APNG files appear automatically in the current tab.
 - **Choose where it goes:** the add dialog has a collection dropdown (plus a "New
@@ -56,9 +57,17 @@ with three tabs: **Emoji / Stickers / GIFs**.
 - **Use items:** click one — the picker hides, focus returns to Discord, and the
   image is pasted into the message box as an attachment. **You press Enter to
   send.** Right-click for "paste as link" (CDN items) or remove.
+- **Consistent size:** Discord draws an attachment at its native pixel size, so Notro
+  normalizes the longest edge right before pasting — **48 px** for emoji (the size of a
+  jumbo custom emoji), **160 px** for stickers, original size for GIFs. Configurable per
+  tab in picker settings (⚙), "Original" included. **Your library files are untouched** —
+  only the copy that goes on the clipboard is resized.
 - Animated APNG stickers are converted to GIF on registration, because Discord
   doesn't animate uploaded APNGs.
-- Search by name/keywords; a "Recently used" row keeps favorites close.
+- Search by name/keywords, including **Korean initial consonants** (`ㅁㅋ` → `미쿠`);
+  a "Recently used" row keeps favorites close.
+- **Keyboard only:** arrow keys move through the grid, <kbd>Enter</kbd> pastes the
+  highlighted item, <kbd>Esc</kbd> closes — no mouse needed after the hotkey.
 - Items over the upload limit: static images are auto-compressed; oversized
   GIFs are sent as-is with a warning.
 

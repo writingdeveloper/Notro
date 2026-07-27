@@ -463,3 +463,60 @@ def test_folder_scan_detects_animated_webp(tmp_path):
     items = {i["name"]: i["animated"] for i in lib.scan_folders()}
 
     assert items == {"a": True, "b": False}
+
+
+# ---------- 한글 초성 검색 ----------
+def test_to_choseong_extracts_initials():
+    from notro_app.library import to_choseong
+    assert to_choseong("미쿠") == "ㅁㅋ"
+    assert to_choseong("하츠네 미쿠") == "ㅎㅊㄴ ㅁㅋ"
+    assert to_choseong("맥주 Beer") == "ㅁㅈ beer"   # 한글만 바뀌고 나머지는 소문자
+    assert to_choseong("ㅁㅋ") == "ㅁㅋ"             # 이미 낱자면 그대로
+
+
+def test_has_jamo_only_for_compat_jamo():
+    from notro_app.library import has_jamo
+    assert has_jamo("ㅁㅋ") is True
+    assert has_jamo("미쿠") is False
+    assert has_jamo("miku") is False
+
+
+@pytest.mark.parametrize("query,expected", [
+    ("ㅁㅋ", True),        # 초성만
+    ("ㅎㅊㄴ", True),      # 이름 앞부분 초성
+    ("ㅁ쿠", True),        # IME 조합 중간 상태
+    ("미쿠", True),        # 완성형은 예전 그대로
+    ("miku", True),        # 키워드 일치
+    ("ㅋㅋ", False),       # 초성이 안 맞으면 제외
+    ("xyz", False),
+])
+def test_matches_query_choseong(query, expected):
+    from notro_app.library import matches_query
+    assert matches_query(query, "하츠네 미쿠", ["miku"]) is expected
+
+
+def test_matches_query_empty_matches_everything():
+    from notro_app.library import matches_query
+    assert matches_query("   ", "anything", []) is True
+
+
+def test_search_finds_by_choseong(tmp_path):
+    """한국어 사용자가 이름 전체를 치지 않아도 찾을 수 있어야 한다."""
+    lib = make_lib(tmp_path)
+    lib.add_item("emoji", "하츠네 미쿠", [], "local", "", put_asset(lib), False)
+    lib.add_item("emoji", "맥주", [], "local", "", put_asset(lib, "b.png"), False)
+
+    assert [i["name"] for i in lib.search("ㅁㅋ")] == ["하츠네 미쿠"]
+    assert [i["name"] for i in lib.search("ㅁㅈ")] == ["맥주"]
+    assert [i["name"] for i in lib.search("ㅎ")] == ["하츠네 미쿠"]
+
+
+def test_search_choseong_does_not_change_plain_queries(tmp_path):
+    """낱자가 없는 질의는 기존 부분일치와 정확히 같게 동작한다."""
+    lib = make_lib(tmp_path)
+    lib.add_item("emoji", "miku smile", ["happy"], "local", "",
+                 put_asset(lib), False)
+
+    assert len(lib.search("MIKU")) == 1      # 대소문자 무시
+    assert len(lib.search("happy")) == 1     # 키워드
+    assert lib.search("nope") == []
