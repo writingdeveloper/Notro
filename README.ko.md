@@ -33,7 +33,7 @@
 네이티브 인라인 이모지가 아니라 이미지 첨부로 보입니다.
 
 <p align="center">
-  <img src="docs/picker.png" width="420" alt="Notro 피커: 이모지/스티커/GIF 탭, 왼쪽 컬렉션 바, 상단 검색">
+  <img src="docs/picker.png" width="620" alt="커스텀 이모지가 담긴 Notro 피커 — 이모지/스티커/GIF 탭, 왼쪽 컬렉션 바, 상단에 즐겨찾기와 최근 사용">
 </p>
 
 <p align="center">
