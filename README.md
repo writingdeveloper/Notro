@@ -169,6 +169,25 @@ Edit the values in `notro_app/config.py` (limits) and
 | `WEBP_QUALITIES` | 90–50 | WebP quality steps |
 | `MIN_SCALE` | 0.4 | Lower bound for downscaling |
 
+## Privacy
+
+Notro watches your clipboard, so it is fair to ask what it does with it.
+
+- **Nothing you copy is ever transmitted.** There is no telemetry, analytics, crash
+  reporting, or account of any kind.
+- **Nothing you copy is stored unless you ask.** *Automatically save new clipboard
+  images* is off by default; with it off, only items you register explicitly are saved.
+- Notro contacts exactly four endpoints: GitHub (update check), the GitHub release
+  asset (the installer, verified against its SHA-256 before running),
+  `cdn.discordapp.com` (only when you add an emoji by link), and PyPI (only the first
+  time you compress a video, to obtain ffmpeg, also SHA-256 verified).
+- It never touches the Discord client, your account, or your token.
+- **Uninstalling deliberately keeps your library** in `%APPDATA%\Notro` and your
+  settings in `HKCU\Software\Notro`, so reinstalling doesn't lose your emoji. Delete
+  them by hand if you want them gone.
+
+Full details, including where every file lives, are in [SECURITY.md](SECURITY.md).
+
 ## Notes
 
 - Compressed files are written to `%TEMP%\Notro` and auto-deleted after 1 day.
@@ -186,7 +205,9 @@ pytest
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE). Bundled third-party components and their licenses — including
+pystray, which is LGPL-3.0 — are listed in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 > Notro is an unofficial tool — **not affiliated with, endorsed by, or sponsored by
 > Discord Inc.** "Discord" is a trademark of Discord Inc.

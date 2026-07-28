@@ -14,6 +14,13 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher=writingdeveloper
 AppSupportURL=https://github.com/writingdeveloper/Notro
+; 인스톨러 자체에도 버전 리소스를 심는다. 없으면 NotroSetup.exe 속성창이 비어 보이고,
+; 서명 없는 배포물에서 그 공백은 신뢰를 더 깎는다 (앱 exe는 version_info.txt로 이미 채운다).
+VersionInfoVersion={#AppVersion}
+VersionInfoCompany=writingdeveloper
+VersionInfoDescription=Notro Setup
+VersionInfoProductName=Notro
+VersionInfoCopyright=MIT License
 DefaultDirName={localappdata}\Programs\Notro
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest

@@ -1,0 +1,72 @@
+# Security policy
+
+## Reporting a vulnerability
+
+Please report security issues privately through
+[GitHub's private vulnerability reporting](https://github.com/writingdeveloper/Notro/security/advisories/new)
+rather than opening a public issue. Include the Notro version, your Windows
+version, and steps to reproduce. Expect a first response within a few days; this
+is a hobby project maintained by one person.
+
+## What Notro does on your machine
+
+Notro is a clipboard utility, so it is fair to ask exactly what it touches.
+
+**It reads your clipboard continuously.** A background thread polls the clipboard
+sequence number every 0.4 s and reads the contents only when they change. Images
+larger than the upload limit are re-encoded to a file in `%TEMP%\Notro`, and the
+clipboard is replaced with that file. Everything else is ignored and never stored.
+
+**It does not store clipboard contents unless you ask it to.** "Automatically save
+new clipboard images" in picker settings is **off by default**. With it off, the
+only images written to your library are the ones you register explicitly.
+
+**It simulates <kbd>Ctrl</kbd>+<kbd>V</kbd>** (and <kbd>Enter</kbd>, if you turn on
+auto-send) using the Windows `SendInput` API — the same mechanism as the built-in
+Windows emoji panel. It does not read your keystrokes.
+
+**It never touches the Discord client, your account, or your token.** There is no
+self-bot behaviour, no injection, and no patching of any application.
+
+## Network access
+
+Notro contacts exactly four endpoints, and nothing else:
+
+| Endpoint | When | Why |
+|---|---|---|
+| `api.github.com/repos/writingdeveloper/Notro/releases/latest` | Every 24 h (can be disabled in the tray menu) | Check for updates |
+| `github.com/.../releases/download/...` | When an update is found | Download the installer, **verified against its published SHA-256 before running** |
+| `cdn.discordapp.com` | Only when you register an emoji or sticker by link | Download that image |
+| `pypi.org/pypi/imageio-ffmpeg/json` + the wheel URL | Only the first time you compress a video, after you confirm | Obtain ffmpeg, **verified against the SHA-256 published by PyPI** |
+
+**There is no telemetry, analytics, crash reporting, or account of any kind.** No
+clipboard content, file name, or usage data is ever transmitted.
+
+A local HTTP server binds to `127.0.0.1` on a random port while the picker is
+running, so the WebView2 control can display your library images. It serves only
+files already in your own library and is not reachable from outside your machine.
+
+## Where your data lives
+
+| Path | Contents |
+|---|---|
+| `%APPDATA%\Notro` | Your emoji/sticker library, `library.json`, and downloaded ffmpeg |
+| `%TEMP%\Notro` | Compressed output and resized paste copies, auto-deleted after one day |
+| `HKCU\Software\Notro` | Settings (hotkey, language, upload limit, paste sizes) |
+
+Uninstalling removes the program but **deliberately keeps `%APPDATA%\Notro` and
+the registry settings**, so reinstalling does not lose your library. Delete them
+manually if you want them gone.
+
+## Code signing
+
+Releases are currently **unsigned**, so Windows SmartScreen may warn and some
+antivirus products may flag the installer as a false positive. Verify what you
+downloaded against the `NotroSetup.exe.sha256` published with each release:
+
+```powershell
+(Get-FileHash NotroSetup.exe -Algorithm SHA256).Hash
+```
+
+Reproducing a build from source is also possible: `pip install -r requirements.txt`
+then `build.bat`.
