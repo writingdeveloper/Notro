@@ -19,7 +19,10 @@ WIN_W, WIN_H = 500, 420
 # 사용자가 늘려 둔 크기를 기억한다. 하한은 세로 바 + 탭이 겹치지 않는 크기,
 # 상한은 "커서 옆 팝업"이라는 성격을 잃지 않는 선.
 MIN_W, MIN_H = 360, 300
-MAX_W, MAX_H = 1100, 900
+# 상한은 "저장된 값이 터무니없지 않은지"만 본다. 실제로 화면에 넘치는지는 열 때
+# 모니터 작업 영역으로 다시 맞추므로(popup_geometry), 여기서 좁게 잡으면 큰 모니터
+# 사용자가 늘려 둔 크기가 다음에 열 때 조용히 줄어드는 것처럼 보인다.
+MAX_W, MAX_H = 3840, 2160
 MONITOR_DEFAULTTONEAREST = 2
 GWL_STYLE = -16
 WS_THICKFRAME = 0x00040000
@@ -125,6 +128,10 @@ def popup_geometry() -> tuple[int, int, int, int]:
     mi.cbSize = ctypes.sizeof(_MONITORINFO)
     user32.GetMonitorInfoW(hmon, ctypes.byref(mi))
     work = mi.rcWork
+    # 넓은 모니터에서 늘려 둔 창이 작은 모니터에서 화면 밖으로 나가지 않게 맞춘다.
+    # 저장값 자체는 그대로 두므로 원래 모니터로 돌아오면 원래 크기로 열린다.
+    win_w = min(win_w, work.right - work.left)
+    win_h = min(win_h, work.bottom - work.top)
     x = min(max(pt.x - win_w // 2, work.left), max(work.left, work.right - win_w))
     y = pt.y - win_h - 16
     if y < work.top:

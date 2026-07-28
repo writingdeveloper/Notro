@@ -168,7 +168,7 @@ def test_capture_hash_still_wins_for_clipboard_path(tmp_path):
 @pytest.mark.parametrize("given,expected", [
     ((700, 600), (700, 600)),
     ((100, 100), (window.MIN_W, window.MIN_H)),     # 너무 작으면 하한
-    ((5000, 5000), (window.MAX_W, window.MAX_H)),   # 너무 크면 상한
+    ((9999, 9999), (window.MAX_W, window.MAX_H)),   # 터무니없는 값만 상한
     ((0, 0), (window.WIN_W, window.WIN_H)),         # 깨진 값이면 기본값
     (("x", None), (window.WIN_W, window.WIN_H)),
 ])
@@ -256,3 +256,10 @@ def test_picker_window_has_a_minimum_size():
     """WS_THICKFRAME을 켠 뒤로는 OS가 크기 조절을 맡으므로, 최소 크기를 걸지 않으면
     사용자가 레이아웃이 무너질 만큼 줄일 수 있다."""
     assert (window.MIN_W, window.MIN_H) == window.clamp_size(1, 1)
+
+
+def test_large_saved_size_survives_a_reopen(tmp_path, monkeypatch):
+    """넓은 모니터에서 늘려 둔 크기가 다시 열 때 조용히 줄어들면 안 된다.
+    화면에 맞추는 일은 popup_geometry가 열 때 하므로, 저장값은 보존한다."""
+    assert window.clamp_size(1600, 1200) == (1600, 1200)
+    assert window.clamp_size(2560, 1440) == (2560, 1440)
