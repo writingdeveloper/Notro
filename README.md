@@ -1,215 +1,200 @@
-# Notro
+<p align="center">
+  <img src="docs/icon.png" width="88" alt="Notro">
+</p>
+
+<h1 align="center">Notro</h1>
 
 <p align="center">
-  <img src="docs/icon.png" width="96" alt="Notro icon">
+  <b>Custom emoji and big files on Discord — without Nitro, and without touching the Discord client.</b>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/platform-Windows-blue.svg" alt="Platform: Windows">
-  <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python 3.10+">
-  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT">
+  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/writingdeveloper/Notro?label=download&color=5865F2" alt="Latest release"></a>
+  <a href="../../releases"><img src="https://img.shields.io/github/downloads/writingdeveloper/Notro/total?color=57F287" alt="Downloads"></a>
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4" alt="Windows 10 or 11">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT"></a>
 </p>
 
 <p align="center"><b>English</b> | <a href="README.ko.md">한국어</a> | <a href="README.ja.md">日本語</a> | <a href="README.zh.md">中文</a> | <a href="README.es.md">Español</a></p>
 
-A tiny Windows tray app for Discord free users. It **auto-compresses clipboard
-images** that exceed Discord's free upload limit (10 MB), and ships an
-**emoji / sticker / GIF picker** (hotkey popup) that fills the Nitro gap
-**without modifying the Discord client**. Just paste with <kbd>Ctrl</kbd>+<kbd>V</kbd>.
+---
+
+Two things Discord charges for, solved from outside the app:
+
+- **Your image is 14 MB and the free limit is 10 MB.** Notro notices the moment you copy
+  it, shrinks it, and puts it back on your clipboard. You just press <kbd>Ctrl</kbd>+<kbd>V</kbd>.
+- **You want to use custom emoji anywhere.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>,
+  pick one, and it lands in the message box.
+
+**Nothing is patched, injected, or logged into.** Notro is a tray app that prepares your
+clipboard and presses <kbd>Ctrl</kbd>+<kbd>V</kbd> for you — the same kind of input
+automation as the Windows emoji panel (<kbd>Win</kbd>+<kbd>.</kbd>). It never modifies the
+Discord client and never sees your account or token. The honest trade-off: recipients see
+your emoji as image attachments, not as native inline emoji.
 
 <p align="center">
-  <img src="docs/picker.png" width="430" alt="The Notro picker: emoji / sticker / GIF tabs, favorites and collections">
+  <img src="docs/picker.png" width="420" alt="The Notro picker: emoji / sticker / GIF tabs, collections down the left, search at the top">
 </p>
-
-## How it works (auto-compression)
-
-1. Lives in the system tray and watches the clipboard.
-2. When a new image is copied, it computes the **PNG size Discord would produce** on paste.
-3. **At or under 10 MB → does nothing** (paste the original as usual).
-4. Over the limit → re-encodes to **WebP → JPEG**, lowering quality until it fits under
-   ~9.5 MB; if it's still too big, it **scales the resolution down** step by step.
-5. The compressed image is placed on the clipboard **as a file**, so <kbd>Ctrl</kbd>+<kbd>V</kbd>
-   in Discord uploads it as a file attachment. A tray notification confirms the result.
-
-> Your original capture files on disk are never touched — only the clipboard is replaced.
-
-## The picker (v2.0)
-
-Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> (configurable from the tray)
-while typing in Discord — a Discord-styled dark popup opens near your cursor
-with three tabs: **Emoji / Stickers / GIFs**.
-
-- **Add items:** press **＋** and paste a Discord *"Copy Link"* emoji URL — or the
-  `<:name:id>` text you get by copying an emoji out of a message — or
-  drag & drop image files onto the picker, or add **watched folders** (⚙) whose
-  PNG/GIF/WebP/APNG files appear automatically in the current tab.
-- **Choose where it goes:** the add dialog has a collection dropdown (plus a "New
-  collection…" entry) that defaults to the one you are viewing; drag & drop and
-  <kbd>Ctrl</kbd>+<kbd>V</kbd> registrations follow the same selection, and added items
-  land in the tab you are viewing.
-- **Drop in a whole folder:** create a folder under `%APPDATA%\Notro\assets` and put
-  images in it — the folder name shows up as a collection with no registration step.
-  Animated files land in the GIF tab, still images in the Emoji tab.
-- **Save captures:** press the clipboard button to save the current image directly
-  to the **Captures** emoji collection (or keep using <kbd>Ctrl</kbd>+<kbd>V</kbd>).
-  Picker settings can automatically save each new clipboard image; this is off by
-  default, and copied image files are excluded.
-- **Use items:** click one — the picker hides, focus returns to Discord, and the
-  image is pasted into the message box as an attachment. **You press Enter to
-  send** (or turn on auto-send in settings). Right-click to rename, edit keywords,
-  "paste as link" (CDN items), or remove.
-- Adding an image you already have in that tab and collection is refused rather than
-  silently duplicated. The picker window can be resized and keeps its size.
-- **Consistent size:** Discord draws an attachment at its native pixel size, so Notro
-  normalizes the longest edge right before pasting — **48 px** for emoji (the size of a
-  jumbo custom emoji), **160 px** for stickers, original size for GIFs. Configurable per
-  tab in picker settings (⚙), "Original" included. **Your library files are untouched** —
-  only the copy that goes on the clipboard is resized.
-- Animated APNG stickers are converted to GIF on registration, because Discord
-  doesn't animate uploaded APNGs.
-- Search by name/keywords, including **Korean initial consonants** (`ㅁㅋ` → `미쿠`);
-  a "Recently used" row keeps favorites close.
-- **Keyboard only:** arrow keys move through the grid, <kbd>Enter</kbd> pastes the
-  highlighted item, <kbd>Esc</kbd> closes — no mouse needed after the hotkey.
-- Items over the upload limit: static images are auto-compressed; oversized
-  GIFs are sent as-is with a warning.
-
-**ToS safety, by design:** Notro never patches the Discord client and never
-touches your account or token (no self-bot behavior). It only prepares your
-clipboard and simulates a local <kbd>Ctrl</kbd>+<kbd>V</kbd> — the same kind of
-input automation as the Windows emoji panel (<kbd>Win</kbd>+<kbd>.</kbd>).
-The honest trade-off: recipients see your emojis/stickers as image attachments
-or link embeds, not as native inline emojis.
-
-Requires the **WebView2 runtime** (built into Windows 11). Without it, the
-picker is disabled and compression keeps working.
-
-## Video clips (v2.6)
-
-Copy a game clip that's too big for Discord and Notro **asks whether to compress it**,
-showing what to expect: `52MB · 1:12 · 1080p60 → about 9.5MB · 480p30`. It encodes with
-ffmpeg and puts the compressed `.mp4` back on the clipboard, so <kbd>Ctrl</kbd>+<kbd>V</kbd>
-attaches it in Discord.
-
-You can **trim the clip** (`start – end`, mm:ss) and **drop its audio** right in that window;
-the estimate updates as you type. The same budget spent on a shorter clip buys a much better
-picture — a 30 s 1080p60 capture that would fall back to 1080p30 stays at **1080p60** when
-trimmed to seven seconds.
-
-**ffmpeg is never bundled** — it's downloaded on demand (~30 MB, checksum-verified) the
-first time you compress a video, or taken from your PATH if you already have it. If a clip
-can't fit under the limit even at 360p, Notro tells you instead of producing a mosaic.
-
-## Download & run (recommended)
-
-Grab the latest `NotroSetup.exe` from the [**Releases**](../../releases) page and run it.
-It installs to `%LOCALAPPDATA%\Programs\Notro` (no admin rights needed) and adds Start
-Menu / Desktop shortcuts. Uninstall any time from **Settings → Apps** or the Start Menu.
-
-- It runs in the tray. Right-click the icon for: open the picker, change the
-  picker hotkey, pause/resume, recent history, switch the upload limit
-  (10/50/500 MB), change language, open output folder, enable auto-start, and quit.
-- **Auto-start is opt-in** — it's *off by default*. Turn on *"Run at Windows startup"*
-  from the tray menu if you want it.
-- Only one instance runs at a time.
-
-> ⚠️ The EXE is **unsigned**, so Windows SmartScreen or some antivirus tools may warn or
-> flag it as a false positive. Click *"More info → Run anyway"* on SmartScreen, or just
-> run it from source (below). Every release ships a `NotroSetup.exe.sha256` you can check
-> the download against — see [SECURITY.md](SECURITY.md#code-signing) and the
-> [code signing policy](CODE_SIGNING.md).
-
-## First run — where is it?
-
-Notro has **no main window**. After installing it starts silently and lives in the
-**system tray** (bottom-right, next to the clock).
-
-> **Windows 11 hides new tray icons by default.** If you don't see Notro, click the
-> **`^`** arrow next to the clock — then **drag the Notro icon onto the taskbar** to
-> keep it visible.
-
-From there:
-
-- Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> anywhere to open the picker.
-- Copy an image that's too big for Discord — Notro compresses it automatically, then
-  just paste with <kbd>Ctrl</kbd>+<kbd>V</kbd>.
-- **Right-click the tray icon** for every setting (hotkey, upload limit, language, …).
-
-On the very first launch a short **welcome window** explains all of this — and shows a
-picture of the tray icon you're looking for. Close it and Notro keeps running in the tray.
 
 <p align="center">
-  <img src="docs/welcome.png" width="380" alt="Notro's first-run welcome window">
+  <a href="../../releases/latest"><b>⬇ Download NotroSetup.exe</b></a><br>
+  <sub>No admin rights. Installs to your user folder. Uninstall from Settings → Apps.</sub>
 </p>
 
-## Run from source (development)
+---
+
+## The picker
+
+<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> anywhere opens a dark popup at your cursor
+with **Emoji / Stickers / GIFs** tabs.
+
+**They come out the size real emoji are.** Discord draws an attachment at its native pixel
+size, so a library holding a 20×20 GIF next to a 1080×1080 PNG would paste one as a speck
+and the other as a full picture. Notro normalizes the longest edge just before pasting —
+**48 px** for emoji (the size of a jumbo custom emoji), **160 px** for stickers, original
+for GIFs. Your library files are never modified; only the copy on the clipboard is resized.
+
+**Getting emoji in** — paste a *"Copy Link"* URL, or the `<:name:id>` text you get by
+copying an emoji straight out of a message; drag and drop image files; point Notro at a
+**watched folder**; or just drop a folder into `%APPDATA%\Notro\assets` and it becomes a
+collection with no registration step at all.
+
+**Finding them again** — search by name or keyword, including **Korean initial consonants**
+(`ㅁㅋ` finds `미쿠`). Favorites and a recently-used row stay at the top.
+
+**Without the mouse** — arrow keys move through the grid, <kbd>Enter</kbd> pastes,
+<kbd>Esc</kbd> closes. After the hotkey your hands never leave the keyboard.
+
+<details>
+<summary>More picker behaviour</summary>
+
+- Right-click an item to rename it, edit its keywords, move it to another collection,
+  paste it as a link (for items added by URL), or remove it.
+- Adding an image you already have in that tab and collection is refused, not silently
+  duplicated.
+- Animated APNG stickers are converted to GIF when registered, because Discord doesn't
+  animate uploaded APNGs.
+- The clipboard button saves the current clipboard image straight into a **Captures**
+  collection. Picker settings can do that automatically for every new clipboard image —
+  off by default.
+- The window can be resized and remembers its size, per monitor DPI.
+- Items over the upload limit: still images are compressed automatically, oversized GIFs
+  are sent as-is with a warning.
+- Optional auto-send presses <kbd>Enter</kbd> for you after pasting — off by default.
+
+</details>
+
+## Automatic compression
+
+Notro watches the clipboard. When a new image appears it computes **the PNG size Discord
+would actually produce**, and if that fits the limit it does nothing at all. Over the
+limit, it re-encodes to WebP, then JPEG, lowering quality and finally resolution until it
+fits under ~9.5 MB, and puts the result back as a file so <kbd>Ctrl</kbd>+<kbd>V</kbd>
+uploads it as an attachment.
+
+> Your original files on disk are never touched — only the clipboard is replaced.
+
+The limit is switchable from the tray for **10 / 50 / 500 MB** (free, Nitro Basic, Nitro).
+
+## Video clips
+
+Copy a game clip that's too big and Notro asks first, showing exactly what to expect:
+
+```
+52MB · 1:12 · 1080p60  →  about 9.5MB · 480p30
+```
+
+You can **trim it** (`start – end`) and **drop the audio** in that same window, and the
+estimate updates as you type. This matters more than any encoder setting: a 30-second
+1080p60 capture has to fall back to **1080p30** as a whole clip, but trimmed to the seven
+seconds you actually wanted, it stays at **1080p60**.
+
+**ffmpeg is never bundled.** It's fetched on demand (~30 MB, SHA-256 verified) the first
+time you compress a video, or taken from your `PATH` if you already have it. If a clip
+can't fit even at 360p, Notro says so instead of producing a mosaic.
+
+## Install
+
+Download **[`NotroSetup.exe`](../../releases/latest)** and run it. No admin rights; it
+installs to `%LOCALAPPDATA%\Programs\Notro`.
+
+> ⚠️ The build is **not code-signed yet**, so SmartScreen will say the publisher is
+> unknown — click *More info → Run anyway*. Every release ships a `NotroSetup.exe.sha256`
+> so you can verify exactly what you downloaded, and you can
+> [build it yourself](#build-it-yourself) from source. See
+> [SECURITY.md](SECURITY.md#code-signing) and the [code signing policy](CODE_SIGNING.md).
+
+**Windows 10 users:** the picker needs the Microsoft Edge WebView2 runtime (Windows 11 has
+it built in). The installer fetches it if it's missing. Without it the picker is disabled
+and compression still works.
+
+### Where did it go?
+
+Notro has **no main window** — it runs in the tray, next to the clock. **Windows 11 hides
+new tray icons by default**, so if you don't see it, click the **`^`** arrow and drag the
+Notro icon onto the taskbar.
+
+<p align="center">
+  <img src="docs/welcome.png" width="360" alt="Notro's first-run welcome window">
+</p>
+
+Right-click the tray icon for everything else: the picker hotkey, pause/resume, recent
+activity, upload limit, language, output folder, and run-at-startup (**off by default**).
+
+## Privacy
+
+Notro watches your clipboard, so it's fair to ask what it does with it.
+
+- **Nothing you copy is ever transmitted.** No telemetry, no analytics, no crash
+  reporting, no account.
+- **Nothing you copy is stored unless you ask.** Automatic capture saving is off by
+  default.
+- It contacts exactly **four** endpoints, all documented: GitHub (update check and the
+  installer, SHA-256 verified), `cdn.discordapp.com` (only when you add an emoji by link),
+  and PyPI (only the first time you compress a video, to get ffmpeg, also SHA-256 verified).
+- Uninstalling **keeps your library** at `%APPDATA%\Notro` on purpose, so reinstalling
+  doesn't lose your emoji.
+
+Every file location and endpoint is listed in [SECURITY.md](SECURITY.md).
+
+## Languages
+
+English, 한국어, 日本語, 中文(简体), Español — auto-detected from Windows, switchable from
+the tray at any time.
+
+<details>
+<summary><a id="build-it-yourself"></a>Run from source, build, and configure</summary>
 
 ```sh
 pip install -r requirements.txt
-pythonw notro.py
+pythonw notro.py           # run
+build.bat                  # build dist\Notro.exe
 ```
 
-Requires **Python 3.10+** on Windows.
+Requires Python 3.10+ on Windows.
 
-## Build the EXE yourself
-
-```sh
-build.bat
-```
-
-Output: `dist\Notro.exe`. Requires Python 3.10+ (the script installs PyInstaller).
-
-## Configuration
-
-Edit the values in `notro_app/config.py` (limits) and
-`notro_app/compress.py` (quality steps):
+Compression behaviour lives in `notro_app/config.py` and `notro_app/compress.py`:
 
 | Setting | Default | Description |
 |---|---|---|
-| `LIMIT_MB` | 10 | Default upload limit in MB — or pick 10/50/500 from the tray **Upload limit** menu |
+| `LIMIT_MB` | 10 | Upload limit — or pick 10/50/500 from the tray menu |
 | `SAFETY` | 0.95 | Safety margin (targets ~9.5 MB) |
 | `WEBP_QUALITIES` | 90–50 | WebP quality steps |
 | `MIN_SCALE` | 0.4 | Lower bound for downscaling |
 
-## Privacy
-
-Notro watches your clipboard, so it is fair to ask what it does with it.
-
-- **Nothing you copy is ever transmitted.** There is no telemetry, analytics, crash
-  reporting, or account of any kind.
-- **Nothing you copy is stored unless you ask.** *Automatically save new clipboard
-  images* is off by default; with it off, only items you register explicitly are saved.
-- Notro contacts exactly four endpoints: GitHub (update check), the GitHub release
-  asset (the installer, verified against its SHA-256 before running),
-  `cdn.discordapp.com` (only when you add an emoji by link), and PyPI (only the first
-  time you compress a video, to obtain ffmpeg, also SHA-256 verified).
-- It never touches the Discord client, your account, or your token.
-- **Uninstalling deliberately keeps your library** in `%APPDATA%\Notro` and your
-  settings in `HKCU\Software\Notro`, so reinstalling doesn't lose your emoji. Delete
-  them by hand if you want them gone.
-
-Full details, including where every file lives, are in [SECURITY.md](SECURITY.md).
-
-## Notes
-
-- Compressed files are written to `%TEMP%\Notro` and auto-deleted after 1 day.
-- Copying an image **file** (<kbd>Ctrl</kbd>+<kbd>C</kbd>) larger than the limit is
-  compressed the same way.
-- **Languages:** English, 한국어, 日本語, 中文(简体), Español. Notro auto-detects
-  your Windows language and can be switched anytime from the tray **Language** menu.
-
-## Development
+Tests:
 
 ```sh
 pip install -r requirements-dev.txt
 pytest
 ```
 
+</details>
+
 ## License
 
-[MIT](LICENSE). Bundled third-party components and their licenses — including
-pystray, which is LGPL-3.0 — are listed in
-[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+[MIT](LICENSE). Bundled third-party components and their licenses — including pystray,
+which is LGPL-3.0 — are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 > Notro is an unofficial tool — **not affiliated with, endorsed by, or sponsored by
 > Discord Inc.** "Discord" is a trademark of Discord Inc.
