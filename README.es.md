@@ -33,8 +33,10 @@ Nunca modifica el cliente de Discord ni ve tu cuenta o tu token. La contrapartid
 quien lo recibe ve tus emojis como imágenes adjuntas, no como emojis integrados.
 
 <p align="center">
-  <img src="docs/picker.png" width="620" alt="El selector de Notro con una colección personal de emojis de Discord — pestañas de emojis, stickers y GIF, colecciones a la izquierda, favoritos y usados recientemente arriba">
+  <img src="docs/demo.gif" width="620" alt="El selector de Notro: al escribir se filtran en vivo los emojis personalizados y las flechas recorren la cuadrícula">
 </p>
+
+<p align="center"><sub>Interfaz real, biblioteca real: filtra al escribir, las flechas recorren y Enter pega.</sub></p>
 
 <p align="center">
   <a href="../../releases/latest"><b>⬇ Descargar NotroSetup.exe</b></a><br>

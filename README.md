@@ -33,8 +33,10 @@ Discord client and never sees your account or token. The honest trade-off: recip
 your emoji as image attachments, not as native inline emoji.
 
 <p align="center">
-  <img src="docs/picker.png" width="620" alt="The Notro picker showing a personal library of custom Discord emoji — Emoji / Stickers / GIFs tabs, collections down the left, favorites and recently used at the top">
+  <img src="docs/demo.gif" width="620" alt="Notro's picker: typing filters a personal library of custom Discord emoji live, and the arrow keys move through the grid">
 </p>
+
+<p align="center"><sub>Real UI, real library — search filters as you type, arrow keys move, Enter pastes.</sub></p>
 
 <p align="center">
   <a href="../../releases/latest"><b>⬇ Download NotroSetup.exe</b></a><br>

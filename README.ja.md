@@ -33,8 +33,10 @@ Discord が課金対象にしている 2 つのことを、アプリの外側か
 ネイティブのインライン絵文字ではなく画像の添付として見えます。
 
 <p align="center">
-  <img src="docs/picker.png" width="620" alt="カスタム絵文字が並ぶ Notro ピッカー — 絵文字/スタンプ/GIF タブ、左にコレクション、上部にお気に入りと最近使ったもの">
+  <img src="docs/demo.gif" width="620" alt="Notro のピッカー: 入力するそばからカスタム絵文字が絞り込まれ、方向キーでグリッドを移動できます">
 </p>
+
+<p align="center"><sub>実際の UI と実際のライブラリ — 入力に応じて絞り込み、方向キーで移動、Enter で貼り付け。</sub></p>
 
 <p align="center">
   <a href="../../releases/latest"><b>⬇ NotroSetup.exe をダウンロード</b></a><br>

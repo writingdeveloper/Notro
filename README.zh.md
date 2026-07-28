@@ -32,8 +32,10 @@ Discord 要收费的两件事，在应用之外解决：
 接收方看到的是图片附件，而不是原生的内嵌表情。
 
 <p align="center">
-  <img src="docs/picker.png" width="620" alt="装满自定义表情的 Notro 选择器 —— 表情/贴纸/GIF 标签页，左侧收藏集，顶部收藏与最近使用">
+  <img src="docs/demo.gif" width="620" alt="Notro 选择器：输入时自定义表情实时筛选，方向键可在网格中移动">
 </p>
+
+<p align="center"><sub>真实界面、真实收藏库 —— 输入即筛选，方向键移动，Enter 粘贴。</sub></p>
 
 <p align="center">
   <a href="../../releases/latest"><b>⬇ 下载 NotroSetup.exe</b></a><br>
