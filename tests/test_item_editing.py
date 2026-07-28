@@ -233,3 +233,26 @@ def test_capture_store_reports_duplicate_not_failure(tmp_path):
     assert first.ok and not first.duplicate
     assert second.ok and second.duplicate and second.item_id == first.item_id
     assert len(lib.items()) == 1
+
+
+def test_auto_send_delay_defaults_and_clamps(monkeypatch):
+    """QA에서 재빌드 없이 조정할 수 있어야 하지만, 오타 하나로 Enter가 즉시
+    날아가거나 몇 분 뒤에 날아가면 안 된다."""
+    values = {}
+    monkeypatch.setattr(window.config, "get_setting_int",
+                        lambda name, default=0: values.get(name, default))
+
+    assert window.auto_send_delay() == window.AUTO_SEND_DELAY   # 미설정 → 기본값
+
+    values["auto_send_delay_ms"] = 900
+    assert window.auto_send_delay() == 0.9
+
+    for bad in (0, -100, 10_000):        # 0.05~5초 밖은 기본값으로 되돌린다
+        values["auto_send_delay_ms"] = bad
+        assert window.auto_send_delay() == window.AUTO_SEND_DELAY
+
+
+def test_picker_window_has_a_minimum_size():
+    """WS_THICKFRAME을 켠 뒤로는 OS가 크기 조절을 맡으므로, 최소 크기를 걸지 않으면
+    사용자가 레이아웃이 무너질 만큼 줄일 수 있다."""
+    assert (window.MIN_W, window.MIN_H) == window.clamp_size(1, 1)

@@ -26,7 +26,19 @@ WS_THICKFRAME = 0x00040000
 
 # 자동 전송에서 Ctrl+V와 Enter 사이의 간격. 디스코드가 첨부 미리보기를 만들 때까지
 # 기다린다 — 너무 짧으면 빈 메시지가 나가고, 너무 길면 자동이라는 느낌이 사라진다.
+# 이 값이 맞는지는 기계·파일 크기에 달려 있어서 코드로 정할 수 없다. 레지스트리
+# (HKCU\Software\Notro, DWORD auto_send_delay_ms)로 재빌드 없이 조정할 수 있게 둔다.
 AUTO_SEND_DELAY = 0.45
+AUTO_SEND_DELAY_MIN, AUTO_SEND_DELAY_MAX = 0.05, 5.0
+
+
+def auto_send_delay() -> float:
+    """Ctrl+V와 Enter 사이 대기(초). 설정이 없거나 범위를 벗어나면 기본값."""
+    ms = config.get_setting_int("auto_send_delay_ms", int(AUTO_SEND_DELAY * 1000))
+    seconds = ms / 1000.0
+    if not AUTO_SEND_DELAY_MIN <= seconds <= AUTO_SEND_DELAY_MAX:
+        return AUTO_SEND_DELAY
+    return seconds
 
 _DEBUG_LOG = os.environ.get("NOTRO_DEBUG", "")
 
@@ -438,7 +450,7 @@ class PickerController:
             # 붙여넣기(mode="url")에는 적용하지 않는다 — 그쪽은 보통 문장 중간에
             # 끼워 넣는 용도라 바로 보내면 곤란하다.
             if mode != "url" and config.get_setting_flag("auto_send"):
-                _t.sleep(AUTO_SEND_DELAY)
+                _t.sleep(auto_send_delay())
                 cb.send_enter()
             if warn:
                 self._notify(tr("picker_oversize_warn"))
@@ -455,6 +467,11 @@ class PickerController:
             "Notro Picker", url=ui_index_path(), js_api=self._api,
             width=w, height=h, frameless=True, on_top=True,
             hidden=True, resizable=True, easy_drag=False,
+            # WS_THICKFRAME을 켜면 OS가 크기 조절을 맡으므로 사용자가 창을 임의로
+            # 작게 줄일 수 있다 — 세로 바(48px)와 탭이 겹쳐 레이아웃이 무너진다.
+            # pywebview의 min_size는 WinForms MinimumSize로 들어가 테두리 스타일과
+            # 무관하게 강제되므로, 저장 시 clamp만 하는 것보다 확실하다.
+            min_size=(MIN_W, MIN_H),
         )
         return self.window
 
