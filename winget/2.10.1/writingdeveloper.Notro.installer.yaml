@@ -1,0 +1,17 @@
+PackageIdentifier: writingdeveloper.Notro
+PackageVersion: 2.10.1
+MinimumOSVersion: 10.0.0.0
+InstallerType: inno
+Scope: user
+InstallModes:
+- interactive
+- silent
+- silentWithProgress
+UpgradeBehavior: install
+ReleaseDate: 2026-07-28
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/writingdeveloper/Notro/releases/download/v2.10.1/NotroSetup.exe
+  InstallerSha256: 0D4F225DE7791FBD0FB43CDA6761D075BE3DD0F1D196746B4D84FD983BE8B1CF
+ManifestType: installer
+ManifestVersion: 1.6.0
