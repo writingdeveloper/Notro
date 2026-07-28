@@ -21,11 +21,14 @@ the project, while it still had essentially no users.
   end to end on a Hangul path.
 
 ### Changed
-- **The install is half the size.** `--collect-all webview` was dragging in numpy
-  (28 MB) and cryptography (9.5 MB), neither of which Notro uses — verified by
-  blocking both from importing and exercising Pillow, pystray and pywebview.
-  Excluding them takes the bundled payload from 74 MB to 37 MB, which also shrinks
-  the surface antivirus engines have to false-positive on.
+- **A build no longer depends on what happens to be installed on the machine doing
+  it.** `--collect-all webview` collects whatever it finds in the build environment,
+  so on a development machine that also has numpy and cryptography installed,
+  PyInstaller bundled both — 37 MB of payload Notro never imports (verified by
+  blocking both from importing and exercising Pillow, pystray and pywebview).
+  Published installers were **not** affected, because CI installs only the declared
+  requirements; but any release built locally would have shipped 37 MB heavier.
+  Both build paths now exclude them explicitly.
 - `NotroSetup.exe` now carries version information, so its properties dialog is no
   longer blank.
 

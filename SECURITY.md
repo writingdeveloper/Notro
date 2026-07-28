@@ -61,8 +61,10 @@ manually if you want them gone.
 ## Code signing
 
 Releases are currently **unsigned**, so Windows SmartScreen may warn and some
-antivirus products may flag the installer as a false positive. Verify what you
-downloaded against the `NotroSetup.exe.sha256` published with each release:
+antivirus products may flag the installer as a false positive. The policy that
+governs how releases are built and signed is in
+[CODE_SIGNING.md](CODE_SIGNING.md). Verify what you downloaded against the
+`NotroSetup.exe.sha256` published with each release:
 
 ```powershell
 (Get-FileHash NotroSetup.exe -Algorithm SHA256).Hash

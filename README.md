@@ -115,7 +115,9 @@ Menu / Desktop shortcuts. Uninstall any time from **Settings → Apps** or the S
 
 > ⚠️ The EXE is **unsigned**, so Windows SmartScreen or some antivirus tools may warn or
 > flag it as a false positive. Click *"More info → Run anyway"* on SmartScreen, or just
-> run it from source (below).
+> run it from source (below). Every release ships a `NotroSetup.exe.sha256` you can check
+> the download against — see [SECURITY.md](SECURITY.md#code-signing) and the
+> [code signing policy](CODE_SIGNING.md).
 
 ## First run — where is it?
 
