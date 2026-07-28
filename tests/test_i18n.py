@@ -91,7 +91,7 @@ def test_capture_placeholders_match_across_languages():
         assert placeholders(i18n.STRINGS[lang]["picker_drop_partial"]) == expected
 
 
-def test_release_version_is_2_10_1():
+def test_release_version_is_2_10_2():
     """릴리스 문서와 실행 파일 버전이 이전 값으로 남는 회귀를 잡는다."""
     import notro_app
-    assert notro_app.__version__ == "2.10.1"
+    assert notro_app.__version__ == "2.10.2"

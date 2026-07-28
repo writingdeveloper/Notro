@@ -3,6 +3,21 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.10.2] - 2026-07-28
+
+### Changed
+- **The picker window can no longer be shrunk until its layout breaks.** Handing
+  resizing to the OS (`WS_THICKFRAME`) also let you drag the window down to nothing,
+  where the collection rail and the tabs overlap; the clamp only took effect the next
+  time you opened it. The window now has a real minimum size (360×300) that Windows
+  enforces while you drag.
+- **The auto-send delay can be tuned without rebuilding.** How long Discord needs to
+  attach an image before <kbd>Enter</kbd> is safe depends on the machine and the file
+  size, so the 0.45 s default is now only a default: set `auto_send_delay_ms` (DWORD)
+  under `HKCU\Software\Notro` to override it. It is read on every paste, so a new
+  value applies without restarting, and values outside 0.05–5 s fall back to the
+  default rather than firing <kbd>Enter</kbd> instantly or minutes later.
+
 ## [2.10.1] - 2026-07-27
 
 Pre-launch hardening: everything here came out of a review done before promoting
