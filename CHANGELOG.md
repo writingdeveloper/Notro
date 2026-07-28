@@ -11,6 +11,11 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   where the collection rail and the tabs overlap; the clamp only took effect the next
   time you opened it. The window now has a real minimum size (360×300) that Windows
   enforces while you drag.
+- **A picker enlarged on a big monitor stays that size.** The saved size used to be
+  capped at 1100×900, so anyone who made the window bigger found it silently smaller
+  the next time they opened it. The saved size is now kept as-is and only fitted to
+  the work area of whichever monitor it opens on — a smaller screen no longer gets an
+  off-screen window, and going back to the large one restores the size you chose.
 - **The auto-send delay can be tuned without rebuilding.** How long Discord needs to
   attach an image before <kbd>Enter</kbd> is safe depends on the machine and the file
   size, so the 0.45 s default is now only a default: set `auto_send_delay_ms` (DWORD)
