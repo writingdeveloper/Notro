@@ -1,132 +1,182 @@
-# Notro
+<p align="center">
+  <img src="docs/icon.png" width="88" alt="Notro">
+</p>
+
+<h1 align="center">Notro</h1>
 
 <p align="center">
-  <img src="docs/icon.png" width="96" alt="Notro 图标">
+  <b>不用 Nitro 也能发自定义表情和大文件 —— 完全不碰 Discord 客户端。</b>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/platform-Windows-blue.svg" alt="Platform: Windows">
-  <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python 3.10+">
-  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT">
+  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/writingdeveloper/Notro?label=download&color=5865F2" alt="最新版本"></a>
+  <a href="../../releases"><img src="https://img.shields.io/github/downloads/writingdeveloper/Notro/total?color=57F287" alt="下载次数"></a>
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4" alt="Windows 10 / 11">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT"></a>
 </p>
 
 <p align="center"><a href="README.md">English</a> | <a href="README.ko.md">한국어</a> | <a href="README.ja.md">日本語</a> | <b>中文</b> | <a href="README.es.md">Español</a></p>
 
-一款面向 Discord 免费用户的小巧 Windows 托盘应用。当剪贴板中的图片超过 Discord 免费上传限制（10 MB）时**自动压缩**，并以热键弹窗提供 Nitro 锁定的**表情·贴纸·GIF 选择器**，**完全不修改 Discord 客户端**。只需 <kbd>Ctrl</kbd>+<kbd>V</kbd> 粘贴即可。
+---
+
+Discord 要收费的两件事，在应用之外解决：
+
+- **图片有 14MB，免费上限是 10MB。** 你复制的那一刻 Notro 就把它压好放回剪贴板，
+  你只要按 <kbd>Ctrl</kbd>+<kbd>V</kbd>。
+- **想在任何地方用自定义表情。** 按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>
+  挑一个，它就进到输入框里。
+
+**不打补丁、不注入、不登录。** Notro 只是一个托盘程序，负责准备剪贴板并替你按下
+<kbd>Ctrl</kbd>+<kbd>V</kbd> —— 和 Windows 表情面板（<kbd>Win</kbd>+<kbd>.</kbd>）
+属于同一类输入自动化。它不修改 Discord 客户端，也从不接触你的账号或令牌。诚实的代价是：
+接收方看到的是图片附件，而不是原生的内嵌表情。
 
 <p align="center">
-  <img src="docs/picker.png" width="430" alt="Notro 选择器：表情·贴纸·GIF 标签页、收藏与合集">
+  <img src="docs/picker.png" width="620" alt="装满自定义表情的 Notro 选择器 —— 表情/贴纸/GIF 标签页，左侧收藏集，顶部收藏与最近使用">
 </p>
-
-## 工作原理（自动压缩）
-
-1. 常驻系统托盘并监视剪贴板。
-2. 复制新图片时，计算 **Discord 粘贴时会生成的 PNG 大小**。
-3. **不超过 10 MB 则不做任何处理**（照常粘贴原图）。
-4. 超过限制时，按 **WebP → JPEG** 降低质量以压到约 9.5 MB 以内；若仍然过大，则**逐步缩小分辨率**。
-5. 压缩后的图片以**文件形式**放入剪贴板，因此在 Discord 中 <kbd>Ctrl</kbd>+<kbd>V</kbd> 会作为文件附件上传。托盘通知会告知结果。
-
-> 不会改动磁盘上的原始截图文件，只替换剪贴板。
-
-## 选择器（v2.0）
-
-在 Discord 中输入时按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>（可在托盘中更改），光标附近会弹出 Discord 风格的深色弹窗，包含 **表情 / 贴纸 / GIF** 三个标签页。
-
-- **添加:** 点击 **＋** 粘贴 Discord *“复制链接”* 得到的表情 URL，或将图片文件拖放到选择器，或添加**监视文件夹**（⚙）——其中的 PNG/GIF/WebP/APNG 会自动显示在当前标签页。
-- **保存截图:** 点击剪贴板按钮即可把当前图片直接保存到**截图**表情合集（原有的 <kbd>Ctrl</kbd>+<kbd>V</kbd> 仍可使用）。可在选择器设置中启用新剪贴板图片的自动保存；该功能默认关闭，并排除复制的图片文件。
-- **使用:** 点击某项后选择器关闭、焦点回到 Discord，图片会作为附件插入消息框。**发送（Enter）由你自己按。** 右键可“作为链接粘贴”（CDN 项目）或删除。
-- 动态 APNG 贴纸会在注册时自动转换为 GIF（因为 Discord 不会播放上传的 APNG）。
-- 支持按名称·关键词搜索，以及“最近使用”栏。
-- 超过上传限制的项目: 静态图片自动压缩，过大的 GIF 会附带警告按原样发送。
-
-**遵守 ToS 的设计:** Notro 不给 Discord 客户端打补丁，也完全不碰你的账号或令牌（并非自助机器人）。它只准备剪贴板并模拟本地 <kbd>Ctrl</kbd>+<kbd>V</kbd> 输入——与 Windows 表情面板（<kbd>Win</kbd>+<kbd>.</kbd>）属于同一类输入自动化。诚实的取舍: 接收者看到的是图片附件或链接嵌入，而非原生内联表情。
-
-需要 **WebView2 运行时**（Windows 11 已内置）。没有它时仅选择器被禁用，压缩功能照常工作。
-
-## 视频剪辑（v2.6）
-
-复制一段对 Discord 来说过大的游戏剪辑，Notro 会**询问是否压缩**，并显示预计结果:
-`52MB · 1:12 · 1080p60 → 约 9.5MB · 480p30`。它用 ffmpeg 编码，并把压缩后的 `.mp4`
-放回剪贴板，因此在 Discord 中按 <kbd>Ctrl</kbd>+<kbd>V</kbd> 即可作为附件上传。
-
-**ffmpeg 不会随应用打包** — 首次压缩视频时才按需下载（约 30MB，带校验和验证），
-如果 PATH 中已有则直接使用。若剪辑即使降到 360p 也放不下，Notro 会直接告诉你，
-而不是生成马赛克。
-
-## 下载与运行（推荐）
-
-从 [**Releases**](../../releases) 页面获取最新的 `NotroSetup.exe` 并运行。它会安装到 `%LOCALAPPDATA%\Programs\Notro`（无需管理员权限），并创建开始菜单和桌面快捷方式。随时可在 **设置 → 应用** 或开始菜单中卸载。
-
-- 常驻托盘。右键点击图标可: 打开选择器、更改选择器热键、暂停/恢复、最近记录、切换上传限制（10/50/500 MB）、更改语言、打开输出文件夹、启用开机自启、退出。
-- **开机自启默认关闭（opt-in）**。如需要，请在托盘菜单中打开*“开机时自动运行”*。
-- 同一时间只运行一个实例。
-
-> ⚠️ 该 EXE **未经代码签名**，因此 Windows SmartScreen 或某些杀毒软件可能发出警告或误报。在 SmartScreen 上点击*“更多信息 → 仍要运行”*，或按下方从源码直接运行。
-
-## 首次运行 — 它在哪里？
-
-Notro **没有主窗口**。安装后会静默启动，常驻在**系统托盘**（屏幕右下角、时钟旁）。
-
-> **Windows 11 默认隐藏新的托盘图标。** 如果看不到 Notro，请点击时钟旁的 **`^`** 箭头，
-> 然后把 **Notro 图标拖到任务栏上**以保持显示。
-
-之后:
-
-- 在任意位置按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> 打开选择器。
-- 复制一张对 Discord 来说过大的图片，Notro 会自动压缩 — 直接
-  <kbd>Ctrl</kbd>+<kbd>V</kbd> 粘贴即可。
-- **右键点击托盘图标**可访问所有设置（热键、上传限制、语言 …）。
-
-首次启动时会弹出一个**说明窗口**介绍以上内容 — 并显示你要寻找的托盘图标。关闭它后，
-Notro 仍在托盘中运行。
 
 <p align="center">
-  <img src="docs/welcome.png" width="380" alt="Notro 首次运行的说明窗口">
+  <a href="../../releases/latest"><b>⬇ 下载 NotroSetup.exe</b></a><br>
+  <sub>无需管理员权限。安装到用户目录，可从 设置 → 应用 卸载。</sub>
 </p>
 
-## 从源码运行（开发）
+---
+
+## 选择器
+
+在任何地方按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>，光标旁会弹出一个深色窗口，
+分为 **表情 / 贴纸 / GIF** 三个标签页。
+
+**发出来就是真表情该有的大小。** Discord 会按附件图片的原始像素尺寸绘制，所以当收藏里
+同时有 20×20 的 GIF 和 1080×1080 的 PNG 时，一个小得像芝麻，另一个大得像照片。Notro 在
+粘贴前把长边统一 —— 表情 **48px**（等同放大版自定义表情），贴纸 **160px**，GIF 保持原样。
+**收藏里的文件不会被改动**，只调整放到剪贴板上的那份副本。
+
+**加入表情** —— 粘贴 *"复制链接"* 的 URL，或直接粘贴从消息里复制表情得到的 `<:名称:id>`
+文本，或把图片文件拖进来，或指定一个**监视文件夹**，甚至只要在 `%APPDATA%\Notro\assets`
+下建个文件夹放进去，它就会成为一个收藏集，不需要任何注册步骤。
+
+**再找出来** —— 按名称或关键词搜索，还支持**韩语首字母检索**（输入 `ㅁㅋ` 能找到 `미쿠`）。
+收藏和最近使用的项目会留在最上面。
+
+**不用鼠标** —— 方向键移动，<kbd>Enter</kbd> 粘贴，<kbd>Esc</kbd> 关闭。按下热键之后，
+手不必离开键盘。
+
+<details>
+<summary>选择器的更多行为</summary>
+
+- 右键点击项目 → 修改名称和关键词、移动到其他收藏集、以链接方式粘贴（通过 URL 添加的项目）、删除。
+- 当同一标签页和收藏集里已有相同图片时，会提示而不是悄悄重复添加。
+- 会动的 APNG 贴纸在注册时转换为 GIF —— 因为 Discord 不播放上传的 APNG。
+- 剪贴板按钮可把当前图片直接存入 **捕获** 收藏集。设置中也可以自动保存每张新的剪贴板图片，
+  默认关闭。
+- 窗口可以调整大小并记住尺寸（会考虑显示器缩放比例）。
+- 超出上限的项目：静态图片自动压缩，过大的 GIF 会带警告按原样发送。
+- 还有一个粘贴后替你按 <kbd>Enter</kbd> 的自动发送选项 —— 默认关闭。
+
+</details>
+
+## 自动压缩
+
+Notro 会监视剪贴板。出现新图片时，它计算 **Discord 实际会生成的 PNG 体积**，如果在上限之内
+就什么都不做。超出时按 WebP → JPEG 依次重新编码，先降质量，仍不够再降分辨率，压到约 9.5MB
+以下，并把结果**以文件形式**放回剪贴板，这样 <kbd>Ctrl</kbd>+<kbd>V</kbd> 就会作为附件上传。
+
+> 硬盘上的原始文件绝不会被改动 —— 被替换的只有剪贴板。
+
+上限可以在托盘菜单里切换为 **10 / 50 / 500MB**（免费 / Nitro Basic / Nitro）。
+
+## 视频片段
+
+复制一段过大的游戏录像时，Notro 会先询问，并告诉你结果会是什么样：
+
+```
+52MB · 1:12 · 1080p60  →  约 9.5MB · 480p30
+```
+
+你可以在同一个窗口里**裁剪片段**（`开始 – 结束`）和**移除音频**，预估会随输入实时更新。
+这比任何编码参数都管用：一段 30 秒的 1080p60 录像整段处理只能退到 **1080p30**，但只保留
+你真正想要的 7 秒，就能维持 **1080p60**。
+
+**从不打包 ffmpeg。** 第一次压缩视频时才按需下载（约 30MB，带 SHA-256 校验），如果你的
+`PATH` 里已经有就直接用。如果一段片段连 360p 都塞不进上限，Notro 会如实告诉你，而不是
+做出一片马赛克。
+
+## 安装
+
+下载 **[`NotroSetup.exe`](../../releases/latest)** 并运行。无需管理员权限，安装到
+`%LOCALAPPDATA%\Programs\Notro`。
+
+> ⚠️ 目前**尚未进行代码签名**，所以 SmartScreen 会提示发布者未知 —— 点击
+> *更多信息 → 仍要运行*。每个版本都附带 `NotroSetup.exe.sha256`，你可以据此准确校验下载到
+> 的文件，也可以[自行从源码构建](#从源码运行构建与配置)。详见
+> [SECURITY.md](SECURITY.md#code-signing) 和[代码签名策略](CODE_SIGNING.md)。
+
+**Windows 10 用户：** 选择器需要 Microsoft Edge WebView2 运行时（Windows 11 自带）。
+缺少时安装程序会自动获取。即使没有，也只是选择器不可用，压缩功能照常工作。
+
+### 它去哪了？
+
+Notro **没有主窗口** —— 它运行在时钟旁边的托盘里。**Windows 11 默认隐藏新的托盘图标**，
+如果看不到，请点击 **`^`** 箭头，再把 Notro 图标拖到任务栏上。
+
+<p align="center">
+  <img src="docs/welcome.png" width="360" alt="Notro 首次启动的说明窗口">
+</p>
+
+其余设置都在托盘图标的右键菜单里：选择器热键、暂停、最近处理记录、上传上限、语言、
+输出文件夹，以及开机自动运行（**默认关闭**）。
+
+## 隐私
+
+Notro 会监视剪贴板，所以有必要说明它如何处理这些内容。
+
+- **你复制的任何内容都不会被发送出去。** 没有遥测、没有分析、没有崩溃报告、没有账号。
+- **不主动保存。** 捕获自动保存默认关闭。
+- 它只连接**四个**端点，全部有文档说明：GitHub（检查更新与安装包，带 SHA-256 校验）、
+  `cdn.discordapp.com`（仅当你用链接添加表情时）、PyPI（仅在你第一次压缩视频、需要获取
+  ffmpeg 时，同样带 SHA-256 校验）。
+- 卸载时**会特意保留你的收藏库**（`%APPDATA%\Notro`），这样重装后不会丢失表情。
+
+包括每个文件的具体位置在内的完整说明见 [SECURITY.md](SECURITY.md)。
+
+## 语言
+
+English、한국어、日本語、中文(简体)、Español —— 自动识别 Windows 语言，也可以随时从托盘切换。
+
+<details>
+<summary><a id="从源码运行构建与配置"></a>从源码运行、构建与配置</summary>
 
 ```sh
 pip install -r requirements.txt
-pythonw notro.py
+pythonw notro.py           # 运行
+build.bat                  # 构建 dist\Notro.exe
 ```
 
-需要 Windows 与 **Python 3.10 及以上**。
+需要 Windows 和 Python 3.10 以上。
 
-## 自行构建 EXE
-
-```sh
-build.bat
-```
-
-输出: `dist\Notro.exe`。需要 Python 3.10+（脚本会安装 PyInstaller）。
-
-## 配置
-
-编辑 `notro_app/config.py`（限制）与 `notro_app/compress.py`（质量档位）中的值:
+压缩行为位于 `notro_app/config.py` 和 `notro_app/compress.py`：
 
 | 设置 | 默认值 | 说明 |
 |---|---|---|
-| `LIMIT_MB` | 10 | 默认上传限制（MB）——可在托盘 **上传限制** 菜单中选择 10/50/500 |
-| `SAFETY` | 0.95 | 安全余量（目标约 9.5 MB） |
+| `LIMIT_MB` | 10 | 上传上限 —— 也可在托盘菜单中选择 10/50/500 |
+| `SAFETY` | 0.95 | 安全余量（目标约 9.5MB） |
 | `WEBP_QUALITIES` | 90–50 | WebP 质量档位 |
-| `MIN_SCALE` | 0.4 | 缩小的下限 |
+| `MIN_SCALE` | 0.4 | 分辨率缩小下限 |
 
-## 说明
-
-- 压缩文件写入 `%TEMP%\Notro`，超过 1 天后自动删除。
-- 复制（<kbd>Ctrl</kbd>+<kbd>C</kbd>）超过限制的图片**文件**时也会同样压缩。
-- **多语言:** English·한국어·日本語·中文(简体)·Español。自动检测 Windows 语言，也可随时在托盘 **语言** 菜单中切换。
-
-## 开发
+测试：
 
 ```sh
 pip install -r requirements-dev.txt
 pytest
 ```
 
+</details>
+
 ## 许可证
 
-[MIT](LICENSE)。
+[MIT](LICENSE)。随程序分发的第三方组件及各自的许可证 —— 包括 LGPL-3.0 的 pystray ——
+都整理在 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 中。
 
-> Notro 是非官方工具，**与 Discord Inc. 无隶属、认可或赞助关系。**“Discord” 是 Discord Inc. 的商标。
+> Notro 是非官方工具，**与 Discord Inc. 无隶属、赞助或认可关系。**
+> "Discord" 是 Discord Inc. 的商标。
