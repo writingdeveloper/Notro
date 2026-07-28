@@ -3,6 +3,40 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.10.1] - 2026-07-27
+
+Pre-launch hardening: everything here came out of a review done before promoting
+the project, while it still had essentially no users.
+
+### Fixed
+- **Auto-update failed silently for anyone whose Windows account name is not
+  plain ASCII.** The helper batch file was written as UTF-8, but `cmd.exe` reads
+  batch files in the OEM code page — so on a Korean install (`C:\Users\홍길동\…`)
+  the installer path came out as mojibake and *the whole batch did nothing*. What
+  the user saw: the update downloads, its SHA-256 verifies, they click "restart to
+  update", the app exits — and never comes back, with no error. The batch is now
+  written in the code page `cmd` actually reads, and if a path cannot be encoded
+  at all, Notro launches the installer directly instead (Inno Setup's
+  `CloseApplications` closes the running app on its own). Reproduced and verified
+  end to end on a Hangul path.
+
+### Changed
+- **The install is half the size.** `--collect-all webview` was dragging in numpy
+  (28 MB) and cryptography (9.5 MB), neither of which Notro uses — verified by
+  blocking both from importing and exercising Pillow, pystray and pywebview.
+  Excluding them takes the bundled payload from 74 MB to 37 MB, which also shrinks
+  the surface antivirus engines have to false-positive on.
+- `NotroSetup.exe` now carries version information, so its properties dialog is no
+  longer blank.
+
+### Added
+- [SECURITY.md](SECURITY.md) — how to report a vulnerability, exactly what Notro
+  reads and stores, the complete list of four network endpoints it contacts, where
+  every file lives, and how to verify an unsigned download.
+- [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) — bundled components and their
+  licenses, including the LGPL-3.0 notice and replacement instructions for pystray.
+- A privacy section in both READMEs, and a structured bug-report template.
+
 ## [2.10.0] - 2026-07-27
 
 ### Added

@@ -1,0 +1,82 @@
+name: Bug report
+description: Something in Notro doesn't work
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. The four fields below are what
+        make a report actionable — most Notro problems come down to the Windows
+        version, whether WebView2 is present, or which limit is selected.
+
+  - type: input
+    id: version
+    attributes:
+      label: Notro version
+      description: Right-click the tray icon; the version is in the tooltip. Or check Settings → Apps.
+      placeholder: "2.10.1"
+    validations:
+      required: true
+
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      description: "Press Win+R, type `winver`, and copy the version line (e.g. Windows 11 24H2)."
+      placeholder: "Windows 11 24H2"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Copy a 15 MB PNG
+        2. Wait for the tray notification
+        3. Paste in Discord
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part?
+      options:
+        - Clipboard image compression
+        - Video compression
+        - Picker (emoji / sticker / GIF)
+        - Installer or auto-update
+        - Tray menu / settings
+        - Something else / not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Quick checks
+      description: These rule out the most common causes. Tick whichever apply.
+      options:
+        - label: The picker does not open at all (this usually means the WebView2 Runtime is missing)
+        - label: My Windows account name contains non-English characters
+        - label: I installed with NotroSetup.exe (rather than running from source)
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug log (optional, very helpful for picker problems)
+      description: |
+        Close Notro, then run it once from a terminal with logging on:
+        `set NOTRO_DEBUG=%TEMP%\notro.log` followed by `"%LOCALAPPDATA%\Programs\Notro\Notro.exe"`.
+        Reproduce the problem, then paste the contents of `%TEMP%\notro.log` here.
+        The log contains window coordinates only — no clipboard content.
+      render: text

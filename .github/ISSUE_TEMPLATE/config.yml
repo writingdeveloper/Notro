@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/writingdeveloper/Notro/security/advisories/new
+    about: Please report security issues privately, not as a public issue.
+  - name: Windows warns that the publisher is unknown
+    url: https://github.com/writingdeveloper/Notro/blob/main/SECURITY.md#code-signing
+    about: Notro is not code-signed yet. Here is how to verify what you downloaded.

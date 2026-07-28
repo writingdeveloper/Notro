@@ -5,6 +5,7 @@ frozen(exe)일 때만 실제 의미가 있다. 개발 실행에서는 app.py가 
 신규 의존성 없이 표준 라이브러리만 사용한다."""
 from __future__ import annotations
 
+import ctypes
 import hashlib
 import json
 import os
@@ -120,16 +121,45 @@ del "%~f0"
 '''
 
 
+def oem_encoding() -> str:
+    r"""cmd.exe가 **배치 파일 내용을 읽을 때** 쓰는 코드페이지 이름.
+
+    배치를 UTF-8로 쓰면 경로에 ASCII 밖 문자가 있는 순간 cmd가 그 줄을 통째로
+    잘못 읽는다. 한국어 Windows에서 계정명이 한글이면 `%TEMP%`가
+    `C:\Users\홍길동\AppData\Local\Temp\...`가 되므로 실제로 흔한 경우다
+    (재현 확인: UTF-8 배치는 아무 줄도 실행되지 않고, cp949 배치는 정상).
+
+    ANSI(mbcs)가 아니라 **OEM**을 쓴다 — 한중일은 둘이 같지만 서유럽은
+    ANSI 1252 / OEM 850으로 갈린다.
+    """
+    try:
+        return "cp" + str(ctypes.windll.kernel32.GetOEMCP())
+    except Exception:
+        return "mbcs"
+
+
 def apply_and_restart(setup_path: str, _spawn=None) -> None:
     """헬퍼 배치를 만들어 실행하고 즉시 반환한다. 배치가 현재 앱(pid) 종료를 기다린
     뒤 NotroSetup.exe를 silent 설치한다. 재실행은 인스톨러 `[Run]`(설치 완료 직후)이
     담당하므로 배치는 설치만 트리거한다 — 배치가 교체 중 exe를 조기 실행하던 경합을
-    없앤다. 호출자는 이 함수 직후 앱을 종료해야 한다(트레이 on_quit). _spawn은 테스트용."""
+    없앤다. 호출자는 이 함수 직후 앱을 종료해야 한다(트레이 on_quit). _spawn은 테스트용.
+
+    배치는 cmd가 읽는 코드페이지로 쓴다. 경로에 그 코드페이지로 표현할 수 없는
+    문자가 있으면(예: 계정명에 이모지) 배치를 포기하고 인스톨러를 직접 실행한다 —
+    installer.iss의 CloseApplications=yes가 실행 중인 Notro.exe를 알아서 닫는다.
+    조용히 아무 일도 일어나지 않는 것보다 낫다.
+    """
     spawn = _spawn or subprocess.Popen
     bat_dir = os.path.dirname(os.path.abspath(setup_path))
     bat = os.path.join(bat_dir, "apply_update.bat")
-    with open(bat, "w", encoding="utf-8") as f:
-        f.write(build_apply_bat(os.getpid(), setup_path))
+    body = build_apply_bat(os.getpid(), setup_path)
+    try:
+        with open(bat, "w", encoding=oem_encoding()) as f:
+            f.write(body)
+    except (UnicodeEncodeError, LookupError, OSError):
+        spawn([setup_path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"],
+              creationflags=CREATE_NO_WINDOW, close_fds=True)
+        return
     spawn(["cmd", "/c", bat], creationflags=CREATE_NO_WINDOW, close_fds=True)
 
 

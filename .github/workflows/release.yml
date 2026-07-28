@@ -25,10 +25,12 @@ jobs:
       - name: Install dependencies
         run: pip install --upgrade pyinstaller -r requirements.txt
 
+      # --collect-all webview가 numpy·cryptography까지 끌어온다 (앱은 둘 다 쓰지 않는다).
+      # build.bat과 같은 제외 플래그를 유지할 것 — 어긋나면 CI 산출물만 40MB 커진다.
       - name: Build EXE
         run: |
           python build_version_file.py
-          pyinstaller --onedir --noconsole --name Notro --clean --icon assets/notro.ico --version-file version_info.txt --add-data "notro_app\picker\ui;notro_app/picker/ui" --collect-all webview notro.py
+          pyinstaller --onedir --noconsole --name Notro --clean --icon assets/notro.ico --version-file version_info.txt --add-data "notro_app\picker\ui;notro_app/picker/ui" --exclude-module numpy --exclude-module cryptography --collect-all webview notro.py
 
       - name: Install Inno Setup
         run: choco install innosetup -y

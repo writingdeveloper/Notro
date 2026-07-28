@@ -137,3 +137,46 @@ def test_check_once_disabled_is_noop(tmp_path):
         is_enabled=lambda: False,
         _check=lambda: (_ for _ in ()).throw(AssertionError("should not check")))
     uc.check_once()
+
+
+# ---------- 한글 계정명 경로 (홍보 전 점검에서 재현한 무음 실패) ----------
+def test_apply_bat_is_written_in_the_codepage_cmd_reads(tmp_path):
+    """배치를 UTF-8로 쓰면 계정명이 한글인 사용자의 자동 업데이트가 조용히
+    실패한다 — cmd.exe는 배치 내용을 OEM 코드페이지로 읽기 때문에 경로가 깨지고,
+    앱은 종료됐는데 인스톨러는 실행되지 않는다."""
+    korean = tmp_path / "홍길동" / "update"
+    korean.mkdir(parents=True)
+    setup = korean / "NotroSetup.exe"
+    setup.write_bytes(b"x")
+
+    updater.apply_and_restart(str(setup), _spawn=lambda args, **k: None)
+
+    bat = korean / "apply_update.bat"
+    raw = bat.read_bytes()
+    # cmd가 읽는 코드페이지로 디코딩했을 때 실제 경로가 그대로 나와야 한다
+    decoded = raw.decode(updater.oem_encoding())
+    assert str(setup) in decoded
+    # UTF-8로 썼다면 한글이 3바이트로 들어가 cp949 디코딩이 경로를 복원하지 못한다
+    assert raw != updater.build_apply_bat(os.getpid(), str(setup)).encode("utf-8")
+
+
+def test_oem_encoding_is_a_usable_codec():
+    import codecs
+    codecs.lookup(updater.oem_encoding())      # 존재하지 않는 코덱이면 여기서 실패
+
+
+def test_apply_falls_back_to_direct_install_when_path_is_unencodable(tmp_path, monkeypatch):
+    """코드페이지로 표현할 수 없는 경로(예: 계정명에 이모지)에서는 배치를 포기하고
+    인스톨러를 직접 실행한다 — 조용히 아무 일도 안 일어나는 것보다 낫다."""
+    setup = tmp_path / "NotroSetup.exe"
+    setup.write_bytes(b"x")
+    monkeypatch.setattr(updater, "oem_encoding", lambda: "ascii")
+    monkeypatch.setattr(updater, "build_apply_bat",
+                        lambda pid, path: "@echo off\r\n이모지경로\r\n")
+    calls = []
+
+    updater.apply_and_restart(str(setup), _spawn=lambda args, **k: calls.append(list(args)))
+
+    assert calls and calls[0][0] == str(setup)
+    assert "/VERYSILENT" in calls[0]
+    assert "cmd" not in calls[0][0]
