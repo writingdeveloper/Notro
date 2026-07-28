@@ -140,10 +140,16 @@ def test_check_once_disabled_is_noop(tmp_path):
 
 
 # ---------- 한글 계정명 경로 (홍보 전 점검에서 재현한 무음 실패) ----------
-def test_apply_bat_is_written_in_the_codepage_cmd_reads(tmp_path):
+def test_apply_bat_is_written_in_the_codepage_cmd_reads(tmp_path, monkeypatch):
     """배치를 UTF-8로 쓰면 계정명이 한글인 사용자의 자동 업데이트가 조용히
     실패한다 — cmd.exe는 배치 내용을 OEM 코드페이지로 읽기 때문에 경로가 깨지고,
-    앱은 종료됐는데 인스톨러는 실행되지 않는다."""
+    앱은 종료됐는데 인스톨러는 실행되지 않는다.
+
+    코드페이지를 cp949로 고정한다. 이 테스트가 확인하려는 것은 "cmd가 읽는
+    코드페이지로 쓰는가"이지 테스트를 돌리는 머신의 로캘이 아니다 — 영문 Windows
+    (OEM cp437)에서 그냥 돌리면 한글을 못 담아 폴백 경로로 빠지므로, 실제 피해자인
+    한국어 Windows 환경을 재현해야 이 회귀를 잡을 수 있다."""
+    monkeypatch.setattr(updater, "oem_encoding", lambda: "cp949")
     korean = tmp_path / "홍길동" / "update"
     korean.mkdir(parents=True)
     setup = korean / "NotroSetup.exe"
