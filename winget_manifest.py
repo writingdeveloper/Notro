@@ -31,6 +31,12 @@ REPO = "https://github.com/writingdeveloper/Notro"
 MANIFEST_VERSION = "1.6.0"
 OUT_DIR = "winget"
 
+# Inno Setup의 제거 레지스트리 키 이름({AppId}_is1). winget이 설치본을 이 패키지와
+# 연결하는 열쇠다 — 없으면 ARP 표시 이름으로 추정하는데, Inno 기본 AppVerName이
+# "Notro 버전 2.10.0"처럼 언어·버전에 따라 달라져서 매칭이 깨진다(실측 확인).
+# AppId는 installer.iss에 고정돼 있으므로 버전이 올라가도 이 값은 변하지 않는다.
+PRODUCT_CODE = "{5F8A1E2B-3C4D-4E5F-A6B7-C8D9E0F1A2B3}_is1"
+
 
 def asset_url(version: str) -> str:
     return f"{REPO}/releases/download/v{version}/NotroSetup.exe"
@@ -126,6 +132,7 @@ UpgradeBehavior: install
 - Architecture: x64
   InstallerUrl: {asset_url(version)}
   InstallerSha256: {sha256}
+  ProductCode: '{PRODUCT_CODE}'
 ManifestType: installer
 ManifestVersion: {MANIFEST_VERSION}
 """

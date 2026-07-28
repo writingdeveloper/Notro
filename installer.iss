@@ -12,6 +12,11 @@
 AppId={{5F8A1E2B-3C4D-4E5F-A6B7-C8D9E0F1A2B3}
 AppName={#AppName}
 AppVersion={#AppVersion}
+; Inno 기본 AppVerName은 "Notro 버전 2.10.0"처럼 이름+버전이고, "버전"이라는 낱말까지
+; 설치 언어를 탄다. 그 값이 그대로 프로그램 목록 표시 이름이 되어 winget이 설치본을
+; 패키지와 연결하지 못했다(매니페스트의 PackageName "Notro"와 다르므로). 표시 이름은
+; 이름만 두고 버전은 DisplayVersion으로 따로 보여 준다.
+AppVerName={#AppName}
 AppPublisher=writingdeveloper
 AppSupportURL=https://github.com/writingdeveloper/Notro
 ; 인스톨러 자체에도 버전 리소스를 심는다. 없으면 NotroSetup.exe 속성창이 비어 보이고,
