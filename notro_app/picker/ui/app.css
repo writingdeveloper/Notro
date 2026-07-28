@@ -123,11 +123,21 @@ footer {
 
 .modal {
   position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.6);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center; padding: 10px;
 }
+/* 피커 창은 작고(기본 500x420) 사용자가 더 줄일 수도 있다. 설정 창처럼 내용이
+   길어지면 위아래가 잘려 닫기 버튼에조차 닿지 못하므로, 창 안에서 스크롤되게 한다.
+   버튼 줄은 아래에 고정해 스크롤 위치와 무관하게 항상 누를 수 있게 둔다. */
 .modal-box {
   background: var(--bg); border-radius: var(--radius); padding: 14px;
-  width: 360px; max-width: 92vw; display: flex; flex-direction: column; gap: 8px;
+  width: 360px; max-width: 100%; max-height: 100%;
+  display: flex; flex-direction: column; gap: 8px; overflow-y: auto;
+}
+.modal-box > .row {
+  position: sticky; bottom: -14px; margin-top: auto;
+  background: var(--bg); padding-top: 10px; padding-bottom: 4px;
+  /* 스크롤되는 내용이 버튼 줄 뒤로 사라지는 게 잘린 것처럼 보이지 않도록 */
+  box-shadow: 0 -10px 10px -8px rgba(0, 0, 0, .55);
 }
 .modal-box h3 { font-size: 15px; }
 .modal-box h4 {

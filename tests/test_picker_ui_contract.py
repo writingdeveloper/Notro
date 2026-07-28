@@ -86,3 +86,14 @@ def test_capture_button_is_a_real_button():
     tag, attrs = by_id["btn-capture"]
     assert tag == "button"
     assert attrs.get("type") == "button"
+
+
+def test_modal_can_scroll_inside_a_small_window():
+    """설정 창이 길어져 위아래가 잘리고 닫기 버튼에도 닿지 못하던 회귀를 잡는다.
+    피커 창은 기본 500x420이고 사용자가 더 줄일 수도 있으므로, 모달은 창 안에서
+    스크롤되고 버튼 줄은 항상 보여야 한다."""
+    css = (UI_DIR / "app.css").read_text(encoding="utf-8")
+    box = css.split(".modal-box {", 1)[1].split("}", 1)[0]
+    assert "max-height" in box and "overflow-y: auto" in box
+    row = css.split(".modal-box > .row {", 1)[1].split("}", 1)[0]
+    assert "position: sticky" in row
