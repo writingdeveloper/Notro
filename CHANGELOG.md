@@ -3,6 +3,16 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.10.3] - 2026-08-08
+
+### Fixed
+- **Discord sticker links copied as media renditions can be registered again.**
+  Notro now accepts Discord CDN and media-proxy emoji/sticker variants including
+  PNG, GIF, WebP, JPEG, and AVIF, while preserving the working rendition URL.
+- **Discord link validation is stricter without rejecting valid mixed-case links.**
+  Lookalike Unicode hosts and non-ASCII asset IDs are rejected, and mixed-case
+  emoji/sticker paths plus Lottie errors are handled consistently.
+
 ## [2.10.2] - 2026-07-28
 
 ### Changed

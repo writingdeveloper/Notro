@@ -13,9 +13,12 @@ is a hobby project maintained by one person.
 Notro is a clipboard utility, so it is fair to ask exactly what it touches.
 
 **It reads your clipboard continuously.** A background thread polls the clipboard
-sequence number every 0.4 s and reads the contents only when they change. Images
-larger than the upload limit are re-encoded to a file in `%TEMP%\Notro`, and the
-clipboard is replaced with that file. Everything else is ignored and never stored.
+sequence number every 0.4 s and reads the contents only when they change. It handles
+oversized images and copied video files. Images larger than the upload limit are
+re-encoded to a file in `%TEMP%\Notro`, and the clipboard is replaced with that file.
+For a copied video file, Notro may inspect its path, extension, and size; an oversized
+video proceeds through the confirmation UI before processing. Other clipboard content
+is ignored and never stored.
 
 **It does not store clipboard contents unless you ask it to.** "Automatically save
 new clipboard images" in picker settings is **off by default**. With it off, the
@@ -30,14 +33,15 @@ self-bot behaviour, no injection, and no patching of any application.
 
 ## Network access
 
-Notro contacts exactly four endpoints, and nothing else:
+Notro contacts only the services documented below:
 
 | Endpoint | When | Why |
 |---|---|---|
 | `api.github.com/repos/writingdeveloper/Notro/releases/latest` | Every 24 h (can be disabled in the tray menu) | Check for updates |
 | `github.com/.../releases/download/...` | When an update is found | Download the installer, **verified against its published SHA-256 before running** |
-| `cdn.discordapp.com` | Only when you register an emoji or sticker by link | Download that image |
+| `cdn.discordapp.com`, `media.discordapp.net` | Only when you register an emoji or sticker by link | Download that image from Discord |
 | `pypi.org/pypi/imageio-ffmpeg/json` + the wheel URL | Only the first time you compress a video, after you confirm | Obtain ffmpeg, **verified against the SHA-256 published by PyPI** |
+| `go.microsoft.com/fwlink/p/?LinkId=2124703` | During installation only, if Microsoft Edge WebView2 is missing | Download Microsoft's Evergreen bootstrapper over HTTPS. The bootstrapper runs as a Microsoft-signed installer; it is not verified against a Notro-published SHA-256. |
 
 **There is no telemetry, analytics, crash reporting, or account of any kind.** No
 clipboard content, file name, or usage data is ever transmitted.

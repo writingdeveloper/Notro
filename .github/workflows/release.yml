@@ -15,15 +15,52 @@ jobs:
   build-and-release:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
 
       - name: Install dependencies
-        run: pip install --upgrade pyinstaller -r requirements.txt
+        run: pip install --upgrade pyinstaller -r requirements-dev.txt
+
+      - name: Export app version
+        shell: pwsh
+        run: |
+          $version = python -c "from notro_app import __version__; print(__version__)"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not read notro_app.__version__"
+          }
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Invalid installer version: $version"
+          }
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Verify release tag matches app version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: python check_release_version.py "$env:GITHUB_REF_NAME"
+
+      - name: Reject an existing release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $encodedTag = [uri]::EscapeDataString($env:RELEASE_TAG)
+          $output = gh api "repos/{owner}/{repo}/releases/tags/$encodedTag" 2>&1
+          $status = $LASTEXITCODE
+          if ($status -eq 0) {
+            throw "A release already exists for $env:RELEASE_TAG"
+          }
+          if ("$output" -notmatch '\bHTTP 404\b') {
+            throw "Unable to verify release absence: $output"
+          }
+          exit 0
+
+      - name: Run tests
+        run: python -m pytest -q
 
       # --collect-all webview가 numpy·cryptography까지 끌어온다 (앱은 둘 다 쓰지 않는다).
       # build.bat과 같은 제외 플래그를 유지할 것 — 어긋나면 CI 산출물만 40MB 커진다.
@@ -38,8 +75,7 @@ jobs:
       - name: Build installer
         shell: pwsh
         run: |
-          $ver = "${{ github.ref_name }}" -replace '^v',''
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss /DAppVersion=$ver
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss /DAppVersion=$env:APP_VERSION
 
       - name: Generate SHA256
         shell: pwsh
@@ -50,13 +86,14 @@ jobs:
       # 태그 푸시일 때만 릴리스를 만든다. 덕분에 workflow_dispatch로 돌리면 빌드와
       # installer 컴파일만 검증하고 릴리스는 만들지 않는다(installer.iss 안전 검증용).
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/NotroSetup.exe
             dist/NotroSetup.exe.sha256
           generate_release_notes: true
+          overwrite_files: false
           # 초안으로 만들어 두고 사람이 확인한 뒤 publish 한다. 업데이터는
           # releases/latest를 보므로, publish 전까지는 기존 사용자에게 배포되지
           # 않는다. 태그 즉시 공개하려면 이 줄을 지우면 된다.
