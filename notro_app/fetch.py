@@ -19,11 +19,10 @@ from PIL import Image, ImageSequence
 from . import __version__, resize
 
 DISCORD_ASSET_RE = re.compile(
-    r"https://(?:cdn\.discordapp\.com|media\.discordapp\.net)/"
-    r"(?P<kind>emojis|stickers)/(?P<id>\d+)\."
-    r"(?P<ext>png|gif|webp|jpe?g|avif|json)"
+    r"(?ai:https://(?:cdn\.discordapp\.com|media\.discordapp\.net)/"
+    r"(?P<kind>emojis|stickers)/(?P<id>[0-9]+)\."
+    r"(?P<ext>png|gif|webp|jpe?g|avif|json))"
     r"(?:\?[^\s<>\"']*)?(?=$|[\s<>\"'])",
-    re.I,
 )
 # 메시지에 쓰는 이모지 텍스트 그대로: <:이름:id> / 애니메이션은 <a:이름:id>.
 # 채팅창에서 복사하면 이 형태로 붙으므로, "링크 복사"보다 흔한 입력이다.
@@ -89,7 +88,7 @@ def parse_discord_url(text: str) -> ParsedAsset | None:
     """CDN 링크 또는 메시지의 이모지 텍스트(`<:이름:id>`)를 자산으로 해석한다."""
     m = DISCORD_ASSET_RE.search(text)
     if m:
-        kind = m.group("kind").rstrip("s").lower()
+        kind = m.group("kind").lower().rstrip("s")
         ext = m.group("ext").lower()
         if kind == "sticker" and ext == "json":
             raise UnsupportedAssetError("lottie")
