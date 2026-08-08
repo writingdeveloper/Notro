@@ -40,6 +40,12 @@ def static_webp_bytes():
     return buf.getvalue()
 
 
+def avif_bytes():
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 8), (40, 80, 120)).save(buf, format="AVIF")
+    return buf.getvalue()
+
+
 def gif_bytes():
     f1 = Image.new("P", (8, 8), 0)
     f2 = Image.new("P", (8, 8), 1)
@@ -75,9 +81,55 @@ def test_parse_sticker_url_and_canonical():
     assert fetch.canonical_url(p) == "https://cdn.discordapp.com/stickers/987.png"
 
 
+@pytest.mark.parametrize("url,kind,ext", [
+    ("https://media.discordapp.net/stickers/123.webp?size=160&quality=lossless", "sticker", "webp"),
+    ("https://media.discordapp.net/stickers/123.jpg?size=160", "sticker", "jpg"),
+    ("https://media.discordapp.net/stickers/123.JPEG?size=160", "sticker", "jpeg"),
+    ("https://media.discordapp.net/stickers/123.avif?size=160", "sticker", "avif"),
+    ("https://cdn.discordapp.com/stickers/123.gif", "sticker", "gif"),
+    ("https://media.discordapp.net/emojis/456.webp?size=96", "emoji", "webp"),
+    ("https://media.discordapp.net/emojis/456.avif?size=96", "emoji", "avif"),
+])
+def test_parse_discord_asset_variants_preserves_validated_url(url, kind, ext):
+    parsed = fetch.parse_discord_url(url)
+    assert parsed is not None
+    assert (parsed.kind, parsed.asset_id, parsed.ext) == (kind, url.split("/")[-1].split(".")[0], ext)
+    assert parsed.source_url == url
+
+
+@pytest.mark.parametrize("url,kind", [
+    ("https://cdn.discordapp.com/EMOJIS/123.png", "emoji"),
+    ("https://media.discordapp.net/StIcKeRS/456.webp", "sticker"),
+])
+def test_parse_discord_asset_variants_normalizes_path_kind(url, kind):
+    parsed = fetch.parse_discord_url(url)
+    assert parsed is not None
+    assert parsed.kind == kind
+
+
+@pytest.mark.parametrize("url", [
+    "https://cdn.discordapp.com.evil.example/stickers/123.webp",
+    "https://cdn.d\u0131scordapp.com/stickers/123.webp",
+    "https://media.discordapp.net/attachments/123/456.webp",
+    "https://media.discordapp.net/stickers/not-an-id.webp",
+    "https://media.discordapp.net/stickers/\u0661\u0662\u0663.webp",
+    "https://media.discordapp.net/stickers/\uff11\uff12\uff13.webp",
+    "https://media.discordapp.net/stickers/123.svg",
+    "https://media.discordapp.net/stickers/123.webp.evil",
+    "https://example.com/stickers/123.webp",
+])
+def test_parse_discord_asset_variants_rejects_unapproved_urls(url):
+    assert fetch.parse_discord_url(url) is None
+
+
 def test_parse_lottie_sticker_raises():
     with pytest.raises(fetch.UnsupportedAssetError):
         fetch.parse_discord_url("https://cdn.discordapp.com/stickers/55.json")
+
+
+def test_parse_uppercase_lottie_sticker_raises():
+    with pytest.raises(fetch.UnsupportedAssetError):
+        fetch.parse_discord_url("https://cdn.discordapp.com/STICKERS/55.JSON")
 
 
 def test_parse_non_discord_returns_none():
@@ -125,6 +177,55 @@ def test_register_from_url_emoji(tmp_path, monkeypatch):
     assert item["type"] == "emoji" and item["animated"] is False
     assert item["source_kind"] == "discord-cdn"
     assert os.path.exists(lib.asset_path(item))
+
+
+def test_register_from_media_sticker_preserves_working_rendition(tmp_path, monkeypatch):
+    lib = Library(str(tmp_path / "d"))
+    media_url = (
+        "https://media.discordapp.net/stickers/961508283863138324.webp"
+        "?size=160&quality=lossless"
+    )
+
+    requested_urls = []
+
+    def download_rendition(url, dest, timeout=10):
+        requested_urls.append(url)
+        if url == "https://cdn.discordapp.com/stickers/961508283863138324.gif":
+            raise OSError("404")
+        assert url == media_url
+        with open(dest, "wb") as f:
+            f.write(static_webp_bytes())
+
+    monkeypatch.setattr(fetch, "download", download_rendition)
+    item = fetch.register_from_url(lib, media_url)
+
+    assert requested_urls == [
+        "https://cdn.discordapp.com/stickers/961508283863138324.gif",
+        media_url,
+    ]
+    assert item["type"] == "sticker"
+    assert item["source_url"] == media_url
+    assert item["filename"].endswith(".webp")
+    assert os.path.exists(lib.asset_path(item))
+
+
+def test_register_from_url_sniffs_avif_content(tmp_path, monkeypatch):
+    lib = Library(str(tmp_path / "d"))
+    source_url = "https://media.discordapp.net/stickers/321.webp?size=160"
+
+    def download_avif(url, dest, timeout=10):
+        if url.endswith("/321.gif"):
+            raise OSError("404")
+        assert url == source_url
+        with open(dest, "wb") as f:
+            f.write(avif_bytes())
+
+    monkeypatch.setattr(fetch, "download", download_avif)
+    item = fetch.register_from_url(lib, source_url)
+
+    assert item["filename"].endswith(".avif")
+    with Image.open(lib.asset_path(item)) as image:
+        assert image.format == "AVIF"
 
 
 def test_register_from_url_apng_sticker_becomes_gif(tmp_path, monkeypatch):
@@ -373,6 +474,7 @@ def test_parse_emoji_tag_static_and_animated():
     p = fetch.parse_discord_url("<:miku_smile:123456789012345678>")
     assert p and p.kind == "emoji" and p.asset_id == "123456789012345678"
     assert p.ext == "png" and p.name == "miku_smile"
+    assert p.source_url == ""
 
     a = fetch.parse_discord_url("<a:dance:987654321098765432>")
     assert a and a.ext == "gif" and a.name == "dance"  # 애니메이션은 gif 우선

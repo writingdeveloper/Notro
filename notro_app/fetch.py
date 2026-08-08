@@ -18,10 +18,12 @@ from PIL import Image, ImageSequence
 
 from . import __version__, resize
 
-EMOJI_RE = re.compile(
-    r"(?:cdn|media)\.discordapp\.(?:com|net)/emojis/(\d+)\.(png|gif|webp)", re.I)
-STICKER_RE = re.compile(
-    r"(?:cdn|media)\.discordapp\.(?:com|net)/stickers/(\d+)\.(png|gif|json)", re.I)
+DISCORD_ASSET_RE = re.compile(
+    r"(?ai:https://(?:cdn\.discordapp\.com|media\.discordapp\.net)/"
+    r"(?P<kind>emojis|stickers)/(?P<id>[0-9]+)\."
+    r"(?P<ext>png|gif|webp|jpe?g|avif|json))"
+    r"(?:\?[^\s<>\"']*)?(?=$|[\s<>\"'])",
+)
 # 메시지에 쓰는 이모지 텍스트 그대로: <:이름:id> / 애니메이션은 <a:이름:id>.
 # 채팅창에서 복사하면 이 형태로 붙으므로, "링크 복사"보다 흔한 입력이다.
 EMOJI_TAG_RE = re.compile(r"<(a?):([A-Za-z0-9_~]{2,32}):(\d{15,25})>")
@@ -30,7 +32,7 @@ ACCEPT_FILE_EXTS = (".png", ".gif", ".webp", ".jpg", ".jpeg")
 
 # 실제 이미지 포맷 → 확장자. 확장자만 믿으면 디스코드에서 .gif로 받았지만 내용은
 # PNG인 파일이 .gif 이름으로 저장돼, 애니메이션으로 오인되고 MIME도 어긋난다.
-FORMAT_EXTS = {"PNG": ".png", "GIF": ".gif", "WEBP": ".webp", "JPEG": ".jpg"}
+FORMAT_EXTS = {"PNG": ".png", "GIF": ".gif", "WEBP": ".webp", "JPEG": ".jpg", "AVIF": ".avif"}
 
 
 class UnsupportedAssetError(Exception):
@@ -79,19 +81,20 @@ class ParsedAsset:
     asset_id: str
     ext: str       # 소문자, 점 없음
     name: str = ""  # 이모지 텍스트에서 얻은 이름 (링크에는 없다)
+    source_url: str = ""  # 검증된 입력 URL (이모지 태그는 없음)
 
 
 def parse_discord_url(text: str) -> ParsedAsset | None:
     """CDN 링크 또는 메시지의 이모지 텍스트(`<:이름:id>`)를 자산으로 해석한다."""
-    m = EMOJI_RE.search(text)
+    m = DISCORD_ASSET_RE.search(text)
     if m:
-        return ParsedAsset("emoji", m.group(1), m.group(2).lower())
-    m = STICKER_RE.search(text)
-    if m:
-        ext = m.group(2).lower()
-        if ext == "json":
+        kind = m.group("kind").lower().rstrip("s")
+        ext = m.group("ext").lower()
+        if kind == "sticker" and ext == "json":
             raise UnsupportedAssetError("lottie")
-        return ParsedAsset("sticker", m.group(1), ext)
+        if kind == "emoji" and ext == "json":
+            return None
+        return ParsedAsset(kind, m.group("id"), ext, source_url=m.group(0))
     m = EMOJI_TAG_RE.search(text)
     if m:
         # <a:...>면 애니메이션이므로 gif를 먼저 요청한다. 정지 이모지의 gif 변형은
@@ -247,7 +250,7 @@ def _download_asset(library, p: ParsedAsset) -> tuple[str, str, str]:
         if os.path.exists(tmp):
             os.remove(tmp)
     ext = "." + p.ext
-    url = canonical_url(p)
+    url = p.source_url or canonical_url(p)
     tmp = os.path.join(library.assets_dir, "_dl" + library.new_asset_filename(ext))
     download(url, tmp)
     return tmp, ext, url
