@@ -57,6 +57,7 @@ jobs:
           if ("$output" -notmatch '\bHTTP 404\b') {
             throw "Unable to verify release absence: $output"
           }
+          exit 0
 
       - name: Run tests
         run: python -m pytest -q

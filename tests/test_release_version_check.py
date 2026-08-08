@@ -137,6 +137,47 @@ def test_tag_reruns_check_for_an_existing_release_with_authenticated_api():
     assert "404" in guard
 
 
+@pytest.mark.parametrize(
+    ("api_status", "api_output", "expected_status"),
+    [
+        pytest.param(1, "gh: Not Found (HTTP 404)", 0, id="missing-release"),
+        pytest.param(0, '{"id":123}', 1, id="existing-release"),
+        pytest.param(
+            1,
+            "gh: Internal Server Error (HTTP 500)",
+            1,
+            id="api-error",
+        ),
+    ],
+)
+def test_existing_release_guard_exit_contract(api_status, api_output, expected_status):
+    guard = _step(_workflow(RELEASE_WORKFLOW), "Reject an existing release")
+    [command] = _run_commands(guard)
+    api_call = (
+        '          $output = gh api '
+        '"repos/{owner}/{repo}/releases/tags/$encodedTag" 2>&1'
+    )
+    simulated_api = (
+        f"          $output = '{api_output}'\n"
+        f"          $global:LASTEXITCODE = {api_status}"
+    )
+    assert api_call in command
+    command = command.replace(api_call, simulated_api)
+    command += """
+if ((Test-Path -LiteralPath variable:\\LASTEXITCODE)) {
+  exit $LASTEXITCODE
+}
+"""
+
+    result = subprocess.run(
+        ["pwsh", "-NoProfile", "-NonInteractive", "-Command", command],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == expected_status, result.stderr
+
+
 def test_release_assets_cannot_overwrite_existing_files():
     publish = _step(_workflow(RELEASE_WORKFLOW), "Publish release")
 
