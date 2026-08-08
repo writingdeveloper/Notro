@@ -23,7 +23,14 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install --upgrade pyinstaller -r requirements.txt
+        run: pip install --upgrade pyinstaller -r requirements-dev.txt
+
+      - name: Verify release tag matches app version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: python check_release_version.py "${{ github.ref_name }}"
+
+      - name: Run tests
+        run: python -m pytest -q
 
       # --collect-all webview가 numpy·cryptography까지 끌어온다 (앱은 둘 다 쓰지 않는다).
       # build.bat과 같은 제외 플래그를 유지할 것 — 어긋나면 CI 산출물만 40MB 커진다.
