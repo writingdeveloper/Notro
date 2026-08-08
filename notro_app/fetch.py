@@ -18,10 +18,13 @@ from PIL import Image, ImageSequence
 
 from . import __version__, resize
 
-EMOJI_RE = re.compile(
-    r"(?:cdn|media)\.discordapp\.(?:com|net)/emojis/(\d+)\.(png|gif|webp)", re.I)
-STICKER_RE = re.compile(
-    r"(?:cdn|media)\.discordapp\.(?:com|net)/stickers/(\d+)\.(png|gif|json)", re.I)
+DISCORD_ASSET_RE = re.compile(
+    r"https://(?:cdn\.discordapp\.com|media\.discordapp\.net)/"
+    r"(?P<kind>emojis|stickers)/(?P<id>\d+)\."
+    r"(?P<ext>png|gif|webp|jpe?g|avif|json)"
+    r"(?:\?[^\s<>\"']*)?(?=$|[\s<>\"'])",
+    re.I,
+)
 # 메시지에 쓰는 이모지 텍스트 그대로: <:이름:id> / 애니메이션은 <a:이름:id>.
 # 채팅창에서 복사하면 이 형태로 붙으므로, "링크 복사"보다 흔한 입력이다.
 EMOJI_TAG_RE = re.compile(r"<(a?):([A-Za-z0-9_~]{2,32}):(\d{15,25})>")
@@ -79,19 +82,20 @@ class ParsedAsset:
     asset_id: str
     ext: str       # 소문자, 점 없음
     name: str = ""  # 이모지 텍스트에서 얻은 이름 (링크에는 없다)
+    source_url: str = ""  # 검증된 입력 URL (이모지 태그는 없음)
 
 
 def parse_discord_url(text: str) -> ParsedAsset | None:
     """CDN 링크 또는 메시지의 이모지 텍스트(`<:이름:id>`)를 자산으로 해석한다."""
-    m = EMOJI_RE.search(text)
+    m = DISCORD_ASSET_RE.search(text)
     if m:
-        return ParsedAsset("emoji", m.group(1), m.group(2).lower())
-    m = STICKER_RE.search(text)
-    if m:
-        ext = m.group(2).lower()
-        if ext == "json":
+        kind = m.group("kind").rstrip("s").lower()
+        ext = m.group("ext").lower()
+        if kind == "sticker" and ext == "json":
             raise UnsupportedAssetError("lottie")
-        return ParsedAsset("sticker", m.group(1), ext)
+        if kind == "emoji" and ext == "json":
+            return None
+        return ParsedAsset(kind, m.group("id"), ext, source_url=m.group(0))
     m = EMOJI_TAG_RE.search(text)
     if m:
         # <a:...>면 애니메이션이므로 gif를 먼저 요청한다. 정지 이모지의 gif 변형은

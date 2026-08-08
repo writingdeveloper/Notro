@@ -75,6 +75,34 @@ def test_parse_sticker_url_and_canonical():
     assert fetch.canonical_url(p) == "https://cdn.discordapp.com/stickers/987.png"
 
 
+@pytest.mark.parametrize("url,kind,ext", [
+    ("https://media.discordapp.net/stickers/123.webp?size=160&quality=lossless", "sticker", "webp"),
+    ("https://media.discordapp.net/stickers/123.jpg?size=160", "sticker", "jpg"),
+    ("https://media.discordapp.net/stickers/123.JPEG?size=160", "sticker", "jpeg"),
+    ("https://media.discordapp.net/stickers/123.avif?size=160", "sticker", "avif"),
+    ("https://cdn.discordapp.com/stickers/123.gif", "sticker", "gif"),
+    ("https://media.discordapp.net/emojis/456.webp?size=96", "emoji", "webp"),
+    ("https://media.discordapp.net/emojis/456.avif?size=96", "emoji", "avif"),
+])
+def test_parse_discord_asset_variants_preserves_validated_url(url, kind, ext):
+    parsed = fetch.parse_discord_url(url)
+    assert parsed is not None
+    assert (parsed.kind, parsed.asset_id, parsed.ext) == (kind, url.split("/")[-1].split(".")[0], ext)
+    assert parsed.source_url == url
+
+
+@pytest.mark.parametrize("url", [
+    "https://cdn.discordapp.com.evil.example/stickers/123.webp",
+    "https://media.discordapp.net/attachments/123/456.webp",
+    "https://media.discordapp.net/stickers/not-an-id.webp",
+    "https://media.discordapp.net/stickers/123.svg",
+    "https://media.discordapp.net/stickers/123.webp.evil",
+    "https://example.com/stickers/123.webp",
+])
+def test_parse_discord_asset_variants_rejects_unapproved_urls(url):
+    assert fetch.parse_discord_url(url) is None
+
+
 def test_parse_lottie_sticker_raises():
     with pytest.raises(fetch.UnsupportedAssetError):
         fetch.parse_discord_url("https://cdn.discordapp.com/stickers/55.json")
@@ -373,6 +401,7 @@ def test_parse_emoji_tag_static_and_animated():
     p = fetch.parse_discord_url("<:miku_smile:123456789012345678>")
     assert p and p.kind == "emoji" and p.asset_id == "123456789012345678"
     assert p.ext == "png" and p.name == "miku_smile"
+    assert p.source_url == ""
 
     a = fetch.parse_discord_url("<a:dance:987654321098765432>")
     assert a and a.ext == "gif" and a.name == "dance"  # 애니메이션은 gif 우선
