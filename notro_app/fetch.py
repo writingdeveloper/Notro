@@ -33,7 +33,7 @@ ACCEPT_FILE_EXTS = (".png", ".gif", ".webp", ".jpg", ".jpeg")
 
 # 실제 이미지 포맷 → 확장자. 확장자만 믿으면 디스코드에서 .gif로 받았지만 내용은
 # PNG인 파일이 .gif 이름으로 저장돼, 애니메이션으로 오인되고 MIME도 어긋난다.
-FORMAT_EXTS = {"PNG": ".png", "GIF": ".gif", "WEBP": ".webp", "JPEG": ".jpg"}
+FORMAT_EXTS = {"PNG": ".png", "GIF": ".gif", "WEBP": ".webp", "JPEG": ".jpg", "AVIF": ".avif"}
 
 
 class UnsupportedAssetError(Exception):
@@ -251,7 +251,7 @@ def _download_asset(library, p: ParsedAsset) -> tuple[str, str, str]:
         if os.path.exists(tmp):
             os.remove(tmp)
     ext = "." + p.ext
-    url = canonical_url(p)
+    url = p.source_url or canonical_url(p)
     tmp = os.path.join(library.assets_dir, "_dl" + library.new_asset_filename(ext))
     download(url, tmp)
     return tmp, ext, url

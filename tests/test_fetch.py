@@ -155,6 +155,22 @@ def test_register_from_url_emoji(tmp_path, monkeypatch):
     assert os.path.exists(lib.asset_path(item))
 
 
+def test_register_from_media_sticker_preserves_working_rendition(tmp_path, monkeypatch):
+    lib = Library(str(tmp_path / "d"))
+    media_url = (
+        "https://media.discordapp.net/stickers/961508283863138324.webp"
+        "?size=160&quality=lossless"
+    )
+
+    monkeypatch.setattr(fetch, "download", fake_download(static_webp_bytes()))
+    item = fetch.register_from_url(lib, media_url)
+
+    assert item["type"] == "sticker"
+    assert item["source_url"] == media_url
+    assert item["filename"].endswith(".webp")
+    assert os.path.exists(lib.asset_path(item))
+
+
 def test_register_from_url_apng_sticker_becomes_gif(tmp_path, monkeypatch):
     lib = Library(str(tmp_path / "d"))
     monkeypatch.setattr(fetch, "download", fake_download(apng_bytes()))
