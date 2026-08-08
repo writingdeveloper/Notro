@@ -30,13 +30,13 @@ self-bot behaviour, no injection, and no patching of any application.
 
 ## Network access
 
-Notro contacts exactly four endpoints, and nothing else:
+Notro contacts only the services documented below:
 
 | Endpoint | When | Why |
 |---|---|---|
 | `api.github.com/repos/writingdeveloper/Notro/releases/latest` | Every 24 h (can be disabled in the tray menu) | Check for updates |
 | `github.com/.../releases/download/...` | When an update is found | Download the installer, **verified against its published SHA-256 before running** |
-| `cdn.discordapp.com` | Only when you register an emoji or sticker by link | Download that image |
+| `cdn.discordapp.com`, `media.discordapp.net` | Only when you register an emoji or sticker by link | Download that image from Discord |
 | `pypi.org/pypi/imageio-ffmpeg/json` + the wheel URL | Only the first time you compress a video, after you confirm | Obtain ffmpeg, **verified against the SHA-256 published by PyPI** |
 
 **There is no telemetry, analytics, crash reporting, or account of any kind.** No

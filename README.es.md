@@ -158,10 +158,11 @@ Notro vigila tu portapapeles, así que es justo explicar qué hace con él.
   de fallos, sin cuentas.
 - **Nada de lo que copias se guarda a menos que lo pidas.** El guardado automático de
   capturas está desactivado de forma predeterminada.
-- Contacta exactamente con **cuatro** destinos, todos documentados: GitHub (comprobación de
-  actualizaciones y el instalador, verificado con SHA-256), `cdn.discordapp.com` (solo
-  cuando añades un emoji por enlace) y PyPI (solo la primera vez que comprimes un vídeo,
-  para obtener ffmpeg, también verificado con SHA-256).
+- Solo contacta con servicios documentados: GitHub (comprobación de actualizaciones
+  y el instalador, verificado con SHA-256), `cdn.discordapp.com` y
+  `media.discordapp.net` (solo cuando añades un emoji o sticker mediante un enlace),
+  y PyPI (solo la primera vez que comprimes un vídeo, para obtener ffmpeg, también
+  verificado con SHA-256).
 - Al desinstalar **se conserva tu biblioteca** a propósito en `%APPDATA%\Notro`, para que
   reinstalar no te haga perder los emojis.
 
