@@ -155,6 +155,9 @@ Notro watches your clipboard, so it's fair to ask what it does with it.
   SHA-256 verified), `cdn.discordapp.com` and `media.discordapp.net` (only when
   you add an emoji or sticker by link), and PyPI (only the first time you compress
   a video, to get ffmpeg, also SHA-256 verified).
+- During installation only, if Microsoft Edge WebView2 is missing, the installer
+  downloads Microsoft's signed Evergreen bootstrapper over HTTPS from
+  `go.microsoft.com`. This file is not verified with a Notro-published SHA-256.
 - Uninstalling **keeps your library** at `%APPDATA%\Notro` on purpose, so reinstalling
   doesn't lose your emoji.
 

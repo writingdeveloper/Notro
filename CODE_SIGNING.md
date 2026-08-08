@@ -48,17 +48,20 @@ Every signed artifact carries consistent product and version metadata:
 - `Notro.exe` — `ProductName: Notro`, `ProductVersion`/`FileVersion` generated from
   `notro_app.__version__` by [`build_version_file.py`](build_version_file.py).
 - `NotroSetup.exe` — `VersionInfoProductName: Notro`, `VersionInfoVersion` set from
-  the release tag in [`installer.iss`](installer.iss).
+  `notro_app.__version__` by the release workflow and passed to
+  [`installer.iss`](installer.iss).
 
 Versions follow [Semantic Versioning](https://semver.org/) and every release is
 documented in [CHANGELOG.md](CHANGELOG.md).
 
 ## Privacy
 
-Notro transfers no data without user consent. It contains no telemetry, analytics,
-crash reporting, or accounts, and nothing you copy is ever transmitted. The four
-network endpoints it can contact, and what triggers each, are documented in
-[SECURITY.md](SECURITY.md#network-access) and summarised in the README.
+Notro transmits no clipboard or other user content. It has no telemetry, analytics,
+crash reporting, or accounts. It performs update checks by default (they can be
+disabled from the tray menu). The network services used by Notro and its installer,
+and what triggers each, are documented in [SECURITY.md](SECURITY.md#network-access)
+and summarised in the README. This includes the installer's conditional Microsoft
+WebView2 download when the runtime is missing.
 
 ## Scope
 

@@ -163,6 +163,9 @@ Notro vigila tu portapapeles, así que es justo explicar qué hace con él.
   `media.discordapp.net` (solo cuando añades un emoji o sticker mediante un enlace),
   y PyPI (solo la primera vez que comprimes un vídeo, para obtener ffmpeg, también
   verificado con SHA-256).
+- Solo durante la instalación, si falta Microsoft Edge WebView2, el instalador descarga
+  por HTTPS el bootstrapper Evergreen firmado por Microsoft desde `go.microsoft.com`.
+  Este archivo no se verifica con un SHA-256 publicado por Notro.
 - Al desinstalar **se conserva tu biblioteca** a propósito en `%APPDATA%\Notro`, para que
   reinstalar no te haga perder los emojis.
 

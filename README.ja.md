@@ -151,6 +151,9 @@ Notro はクリップボードを監視するので、その扱いを明らか�
   SHA-256 検証）、`cdn.discordapp.com` と `media.discordapp.net`（リンクで絵文字や
   スタンプを追加するときだけ）、PyPI（初めて動画を圧縮するときの ffmpeg 取得、
   こちらも SHA-256 検証）。
+- インストール時に限り、Microsoft Edge WebView2 がない場合、インストーラーは
+  HTTPS で `go.microsoft.com` から Microsoft 署名済み Evergreen ブートストラッパーを
+  ダウンロードします。このファイルは Notro が公開する SHA-256 では検証されません。
 - アンインストールしても **ライブラリは意図的に残します**（`%APPDATA%\Notro`）。再インストール
   しても絵文字を失わないようにするためです。
 

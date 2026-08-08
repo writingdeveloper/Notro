@@ -138,6 +138,9 @@ Notro 会监视剪贴板，所以有必要说明它如何处理这些内容。
 - 它只连接有文档说明的服务：GitHub（检查更新与安装包，带 SHA-256 校验）、
   `cdn.discordapp.com` 和 `media.discordapp.net`（仅当你通过链接添加表情或贴纸时）、
   PyPI（仅在你第一次压缩视频、需要获取 ffmpeg 时，同样带 SHA-256 校验）。
+- 仅在安装时，如果缺少 Microsoft Edge WebView2，安装程序会通过 HTTPS 从
+  `go.microsoft.com` 下载由 Microsoft 签名的 Evergreen 引导程序；该文件不使用
+  Notro 发布的 SHA-256 验证。
 - 卸载时**会特意保留你的收藏库**（`%APPDATA%\Notro`），这样重装后不会丢失表情。
 
 包括每个文件的具体位置在内的完整说明见 [SECURITY.md](SECURITY.md)。
