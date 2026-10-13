@@ -10,7 +10,7 @@ Baseline: main 537c8b0, published v2.10.3. Feature work is isolated in the feat/
 - Opt-in portable ZIP media packs with private Capture exclusion, no source URLs, content hashes, zip entry/path/size checks and duplicate merging.
 - First-run welcome has a "Try picker" action; auto-send remains off by default.
 - Local media HTTP responses streamed via bounded 64 KiB chunks.
-- Python test suite and ruff lint run as part of the release candidate checks.
+- Python: 370 tests passed locally; Ruff 0.15.21 passed (0 issues). GitHub CI initially failed after floating Ruff resolved to 0.16.10 with expanded default rules; pinned the validated version and requires a second remote CI pass.
 - Browser mock smoke: Chrome headless screenshot of standalone picker, 6 tiles/3 tabs, import/export Settings buttons visible, Escape closes settings, search "miku" returned 2 tiles, 0 page JS errors. THIS IS NOT DISCORD E2E.
 - Synthetic library benchmark, one sample on @4080 (cold/warm/search in milliseconds):
   - 100 files: 4.02 / 0.70 / 0.87
@@ -36,3 +36,5 @@ Baseline: main 537c8b0, published v2.10.3. Feature work is isolated in the feat/
 3. In an explicitly private test draft with auto-send disabled, paste 19.5MB (unchanged), 24MB (compressed), JPG, GIF and video; confirm disk originals unchanged.
 4. Bump package version, build a fresh installer (never republish the old v2.10.3 tag), verify SHA256 and signing.
 5. Update Plane from QA to Done only with E2E evidence. Publish only after E2E and user-approved release trust review.
+
+Follow-up draft PRs: Notro https://github.com/writingdeveloper/Notro/pull/1 ; portfolio SEO metadata https://github.com/writingdeveloper/portfolio/pull/36 (neither merged or deployed).

@@ -32,20 +32,22 @@ ISSUES = [
      "Run Discord test in a private draft (no unwanted message sent), exercise PNG/JPEG/GIF, hotkeys, source file preservation, auto-send off, keyboard use, DPI/multi-monitor, failure recovery."),
     ("Notro trust and distribution: signing and pinned builds", "To Do", "high",
      "Evaluate OSS signing routes, build provenance/attestation, SHA256 consistency, dependency pinned build and vulnerability checks, installer SmartScreen experience."),
-    ("First-run activation: 3-minute task-guided welcome", "To Do", "high",
-     "User can learn 3 steps, open picker, register emoji and paste within 3 minutes without external instructions; add accessible copy in all 5 languages."),
-    ("Shareable safe emoji pack import/export and library backup", "To Do", "high",
-     "Versioned portable ZIP, safe filename/content validation, zip-bomb safeguards, duplicate merging, import/export UI, tests, rollback/restore; avoid shipping copyrighted third-party packs."),
+    ("First-run activation: 3-minute task-guided welcome", "QA", "high",
+     "First-run Try Picker action implemented and localized. Confirm 3-minute human first-paste usability on Windows WebView2 before Done."),
+    ("Shareable safe emoji pack import/export and library backup", "QA", "high",
+     "Portable ZIP media packs, hashed assets, import/export UI and exclusion of private Captures are implemented and tested. WebView2 dialogs require QA. Full app settings backup is separate."),
     ("Oversized GIF optimization with transparent size/quality preview", "To Do", "high",
      "Optimize oversized GIFs only with explicit consent; prefer loss-minimized frame and scale strategies, preserve original file, surface result quality and failure."),
-    ("Picker 100/1k/5k assets benchmark and asset server hardening", "To Do", "high",
-     "Collect open/search latency, memory and DOM counts; review local-only media server access scope, stream files in chunks, add test coverage without collecting personal library."),
-    ("English-first landing SEO update for writingdeveloper.blog/projects/notro", "To Do", "high",
-     "Correct outdated 10 MB claim in production HTML metadata, screenshots, current version, download CTA, product scope/no Discord affiliation; verify after deploy."),
+    ("Picker 100/1k/5k assets benchmark and asset server hardening", "QA", "high",
+     "Synthetic 100/1k/5k scan/search benchmarks and bounded 64KiB local media streaming with unit tests implemented. Real WebView2 DOM/RAM and GIF scrolling still require QA."),
+    ("English-first landing SEO update for writingdeveloper.blog/projects/notro", "QA", "high",
+     "Source metadata updated in isolated portfolio PR #36 (https://github.com/writingdeveloper/portfolio/pull/36), NOT merged/deployed. QA SEO/OG and English-first CTA after deploy."),
     ("3 short demos + community-friendly beta launch", "To Do", "high",
      "Create truthful 10-20s raw workflow clips (not staged outcomes), EN/KO community messaging, opt-in testers, allowed Reddit/HN posts. Public posting only with account/venue review."),
     ("First-month activation and privacy-respecting impact dashboard", "Backlog", "medium",
      "Track web CTA clicks, release assets, opt-in beta success rates; no clipboard, filename or account telemetry."),
+    ("Full app settings and watched-folder backup/restore", "To Do", "medium",
+     "ZIP media pack does not include registry settings, external watched-folder paths or private Captures. Design explicit full-backup scope, restore validation and consent before implementing."),
     ("Future cross-app paste and compatibility research", "Backlog", "low",
      "Only after core Discord usage proves repeat engagement; evaluate Slack, Telegram, Teams with independent integrations."),
 ]
@@ -147,7 +149,7 @@ def main():
         description = (
             "<div><h3>Acceptance criteria</h3><p>" + html.escape(done) +
             "</p><h3>References</h3><p>Repository: " +
-            "https://github.com/writingdeveloper/Notro" +
+            "https://github.com/writingdeveloper/Notro/pull/1" +
             " · REA: https://github.com/morluto/rea</p></div>"
         )
         item = {
