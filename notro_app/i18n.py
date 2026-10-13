@@ -764,3 +764,38 @@ def tr(key: str, **kwargs) -> str:
     table = STRINGS.get(current_lang, STRINGS["en"])
     text = table.get(key) or STRINGS["en"].get(key, key)
     return text.format(**kwargs) if kwargs else text
+
+
+# Portable packs (opt-in only; exclude private Captures and external paths).
+_PACK_STRINGS = {
+    "en": {"picker_pack_import": "Import pack", "picker_pack_export": "Export pack",
+           "picker_pack_done": "Exported {count} items", "picker_pack_imported": "Imported {added}, already saved {duplicate}, failed {failed}",
+           "picker_pack_error": "Unable to read or write pack; check ZIP validity and storage"},
+    "ko": {"picker_pack_import": "팩 가져오기", "picker_pack_export": "팩 내보내기",
+           "picker_pack_done": "{count}개 항목 내보내기 완료", "picker_pack_imported": "가져옴 {added}개 · 중복 {duplicate}개 · 실패 {failed}개",
+           "picker_pack_error": "팩 처리 실패: ZIP 파일과 저장 공간을 확인하세요"},
+    "ja": {"picker_pack_import": "パックを読み込む", "picker_pack_export": "パックを書き出す",
+           "picker_pack_done": "{count} 件を書き出しました", "picker_pack_imported": "追加 {added} · 重複 {duplicate} · 失敗 {failed}",
+           "picker_pack_error": "パックの処理に失敗しました。ZIP と保存先を確認してください"},
+    "zh": {"picker_pack_import": "导入资源包", "picker_pack_export": "导出资源包",
+           "picker_pack_done": "已导出 {count} 项", "picker_pack_imported": "导入 {added} · 重复 {duplicate} · 失败 {failed}",
+           "picker_pack_error": "资源包处理失败，请检查 ZIP 和存储空间"},
+    "es": {"picker_pack_import": "Importar paquete", "picker_pack_export": "Exportar paquete",
+           "picker_pack_done": "Se exportaron {count} elementos", "picker_pack_imported": "Importados {added} · duplicados {duplicate} · fallidos {failed}",
+           "picker_pack_error": "No se pudo procesar el paquete ZIP; comprueba el archivo y el espacio disponible"},
+}
+for _lang, _table in _PACK_STRINGS.items():
+    STRINGS[_lang].update(_table)
+del _PACK_STRINGS
+
+
+_WELCOME_ACTIONS = {
+    "en": "Try the emoji picker now",
+    "ko": "이모지 선택기 바로 체험하기",
+    "ja": "絵文字ピッカーを試す",
+    "zh": "立即体验表情选择器",
+    "es": "Probar el selector de emojis",
+}
+for _lang, _message in _WELCOME_ACTIONS.items():
+    STRINGS[_lang]["welcome_try_picker"] = _message
+del _WELCOME_ACTIONS

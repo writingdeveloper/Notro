@@ -72,7 +72,7 @@ class Monitor:
         if png is not None:
             if not cb.clipboard_has_files():
                 self._emit_capture(png)
-            if len(png) <= config.LIMIT_BYTES:
+            if len(png) <= config.UPLOAD_CEILING_BYTES:
                 return  # 실제 PNG가 한도 이하 → 그대로 둠
             orig_bytes = len(png)
             try:
@@ -113,7 +113,7 @@ class Monitor:
             if ext in (".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tif", ".tiff"):
                 try:
                     size = os.path.getsize(path)
-                    if size > config.LIMIT_BYTES:
+                    if size > config.UPLOAD_CEILING_BYTES:
                         orig_bytes = size
                         img = Image.open(path)
                         img.load()
@@ -131,7 +131,7 @@ class Monitor:
             except Exception:
                 pass
             orig_bytes = compress.estimate_png_size(img)
-            if orig_bytes <= config.LIMIT_BYTES:
+            if orig_bytes <= config.UPLOAD_CEILING_BYTES:
                 return  # 한도 이하 → 그대로 둠
 
         self._compress_and_replace(img, orig_bytes, guard_seq)

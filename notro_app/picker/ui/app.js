@@ -73,6 +73,8 @@ function applyStrings() {
   $("#st-folders-subtitle").textContent = str("picker_folders_subtitle");
   $("#st-openlib").textContent = str("picker_open_library");
   $("#st-addfolder").textContent = str("picker_add_folder");
+  $("#st-import-pack").textContent = str("picker_pack_import");
+  $("#st-export-pack").textContent = str("picker_pack_export");
   $("#st-close").textContent = str("picker_cancel");
   $("#dropzone").textContent = str("picker_drop_hint");
 }
@@ -526,6 +528,18 @@ $("#st-addfolder").addEventListener("click", async () => {
   if (api()) { await api().add_folder(state.tab); refresh(); }
 });
 $("#st-openlib").addEventListener("click", () => { if (api()) api().open_data_dir(); });
+$("#st-import-pack").addEventListener("click", async () => {
+  if (!api()) return;
+  const res = await api().import_pack();
+  if (res && res.ok) { await refresh(); flashHint("picker_pack_imported", res); }
+  else if (res && res.error !== "cancelled") flashHint("picker_pack_error");
+});
+$("#st-export-pack").addEventListener("click", async () => {
+  if (!api()) return;
+  const res = await api().export_pack();
+  if (res && res.ok) flashHint("picker_pack_done", res);
+  else if (res && res.error !== "cancelled") flashHint("picker_pack_error");
+});
 
 document.addEventListener("click", (e) => { if (!$("#ctx").contains(e.target)) hideCtx(); });
 /* 방향키/Enter는 검색창에 포커스가 있어도 그리드를 조작한다 (캐럿 이동보다

@@ -120,9 +120,11 @@ def build_icon(monitor, picker=None, listener=None, on_quit_extra=None, updater=
             radio=True,
         )
 
-    # 디스코드 한도: 무료 10 / 니트로 베이직 50 / 니트로 500 MB
+    # Discord File Attachments FAQ (2026-08-13): free 20, Basic 50, Nitro 500MB.
+    # Preserve 10MB as a lower custom option for existing users.
     limit_menu = pystray.Menu(
         make_limit_item(10),
+        make_limit_item(20),
         make_limit_item(50),
         make_limit_item(500),
     )

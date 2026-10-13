@@ -61,6 +61,7 @@ _CSS = """
     font-size: 14px; font-weight: 600; cursor: pointer;
   }
   button:hover { background: #4752c4; }
+  button.secondary { margin-top: 8px; background: #45474e; }
 """
 
 
@@ -91,8 +92,12 @@ def build_html(combo_label: str | None = None) -> str:
         + "<li><span>" + e(tr("welcome_compress")) + "</span></li>"
         "<li><span>" + e(tr("welcome_menu")) + "</span></li>"
         "</ul>"
-        '<button id="ok">' + e(tr("welcome_ok")) + "</button>"
+        '<button id="try">' + e(tr("welcome_try_picker")) + "</button>"
+        '<button id="ok" class="secondary">' + e(tr("welcome_ok")) + "</button>"
         "<script>"
+        'document.getElementById("try").addEventListener("click", function () {'
+        '  if (window.pywebview && window.pywebview.api) window.pywebview.api.open_picker();'
+        '});'
         'document.getElementById("ok").addEventListener("click", function () {'
         "  if (window.pywebview && window.pywebview.api) window.pywebview.api.close();"
         "});"
@@ -104,8 +109,14 @@ def build_html(combo_label: str | None = None) -> str:
 class _Api:
     """확인 버튼 → 창 닫기 (JS에서 호출)."""
 
-    def __init__(self):
+    def __init__(self, on_try=None):
         self.window = None
+        self._on_try = on_try
+
+    def open_picker(self):
+        self.close()
+        if self._on_try:
+            self._on_try()
 
     def close(self):
         if self.window is not None:
@@ -115,7 +126,7 @@ class _Api:
                 pass
 
 
-def create_window(combo_label: str | None = None):
+def create_window(combo_label: str | None = None, on_try=None):
     """webview.start() 호출 전에 만든다. 사용자가 닫을 때까지 떠 있는다.
 
     피커 창이 hidden 상태로 함께 살아 있으므로, 이 창을 닫아도 앱은 종료되지 않고
@@ -123,7 +134,7 @@ def create_window(combo_label: str | None = None):
     """
     import webview
 
-    api = _Api()
+    api = _Api(on_try=on_try)
     win = webview.create_window(
         APP_NAME, html=build_html(combo_label), js_api=api,
         width=WIN_W, height=WIN_H, resizable=False,

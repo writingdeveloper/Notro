@@ -140,7 +140,7 @@ def popup_geometry() -> tuple[int, int, int, int]:
 
 
 def prepare_for_paste(path: str, limit_bytes: int, temp_dir: str,
-                      target_px: int = 0) -> tuple[str, bool]:
+                      target_px: int = 0, upload_ceiling_bytes: int | None = None) -> tuple[str, bool]:
     """붙여넣기 전처리 (스펙 §6.7/§6.8/§7).
 
     1) 표시 크기 정규화: target_px > 0이면 긴 변을 그 크기로 맞춘다 (§6.8).
@@ -157,7 +157,9 @@ def prepare_for_paste(path: str, limit_bytes: int, temp_dir: str,
         size = os.path.getsize(path)
     except OSError:
         return path, False
-    if size <= limit_bytes:
+    # Only compress files that exceed the actual upload ceiling. The safety
+    # margin belongs to the encoded output target, not the detection threshold.
+    if size <= (upload_ceiling_bytes if upload_ceiling_bytes is not None else limit_bytes):
         return path, False
     if path.lower().endswith(".gif"):
         return path, True
@@ -207,6 +209,8 @@ PICKER_STRING_KEYS = [
     "picker_auto_send", "picker_auto_send_note",
     "picker_edit_title", "picker_edit_note", "picker_edit_save",
     "picker_ctx_edit", "picker_err_duplicate", "picker_drop_duplicate",
+    "picker_pack_import", "picker_pack_export", "picker_pack_done",
+    "picker_pack_imported", "picker_pack_error",
 ]
 
 
@@ -352,6 +356,43 @@ class PickerApi:
 
         return {"ok": True, "type": type_, "px": resize.set_target_px(type_, px)}
 
+    def export_pack(self) -> dict:
+        """Explicit dialog; export only registered non-Captures images."""
+        import webview
+        from .. import packs
+
+        dialog = getattr(getattr(webview, "FileDialog", None), "SAVE",
+                         webview.SAVE_DIALOG)
+        chosen = self._ctrl.window.create_file_dialog(
+            dialog, save_filename="notro-pack.zip",
+            file_types=("ZIP archives (*.zip)",))
+        if not chosen:
+            return {"ok": False, "error": "cancelled"}
+        path = chosen[0] if isinstance(chosen, (list, tuple)) else chosen
+        try:
+            result = packs.export_pack(self._library, path)
+        except Exception:
+            return {"ok": False, "error": "pack"}
+        return {"ok": True, "count": result["count"]}
+
+    def import_pack(self) -> dict:
+        """Explicit dialog; preflight ZIP before library mutations."""
+        import webview
+        from .. import packs
+
+        dialog = getattr(getattr(webview, "FileDialog", None), "OPEN",
+                         webview.OPEN_DIALOG)
+        chosen = self._ctrl.window.create_file_dialog(
+            dialog, file_types=("ZIP archives (*.zip)",))
+        if not chosen:
+            return {"ok": False, "error": "cancelled"}
+        path = chosen[0] if isinstance(chosen, (list, tuple)) else chosen
+        try:
+            result = packs.import_pack(self._library, path)
+        except Exception:
+            return {"ok": False, "error": "pack"}
+        return {"ok": True, **result}
+
     def register_clipboard(self, type_: str, collection: str = "") -> dict:
         """클립보드의 PNG 이미지를 라이브러리에 등록 (스펙 §5 — 디스코드/브라우저
         에서 이미지를 복사한 뒤 붙여넣는 주 경로). 재인코딩 추정이 아닌 클립보드
@@ -446,7 +487,8 @@ class PickerController:
         else:
             path, warn = prepare_for_paste(
                 self.library.asset_path(item), config.LIMIT_BYTES,
-                config.TEMP_DIR, target_px=resize.target_px_for(item["type"]))
+                config.TEMP_DIR, target_px=resize.target_px_for(item["type"]),
+                upload_ceiling_bytes=config.UPLOAD_CEILING_BYTES)
             ok = cb.set_clipboard_file(path)
         focused = cb.focus_window(self.prev_hwnd)
         if ok and focused:

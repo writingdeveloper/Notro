@@ -26,6 +26,7 @@ def _png_bytes() -> bytes:
 def _make_monitor(monkeypatch, png: bytes, seq_at_read: int):
     """PNG가 한도를 넘겨 압축이 도는 상황을 구성한다."""
     monkeypatch.setattr(config, "LIMIT_BYTES", len(png) - 1)
+    monkeypatch.setattr(config, "UPLOAD_CEILING_BYTES", len(png) - 1)
     monkeypatch.setattr(mon.cb, "clipboard_has_marker", lambda: False)
     monkeypatch.setattr(mon.cb, "get_clipboard_png", lambda: png)
     monkeypatch.setattr(mon.cb, "get_sequence_number", lambda: seq_at_read)
@@ -158,3 +159,14 @@ def test_tick_ignores_unchanged_seq(monkeypatch):
     m._tick()
     m._tick()
     assert m.processed == []
+
+
+def test_image_between_safety_target_and_upload_ceiling_is_not_compressed(monkeypatch):
+    png = _png_bytes()
+    m = _make_monitor(monkeypatch, png, seq_at_read=42)
+    monkeypatch.setattr(config, "LIMIT_BYTES", len(png) - 10)
+    monkeypatch.setattr(config, "UPLOAD_CEILING_BYTES", len(png) + 10)
+    monkeypatch.setattr(mon.compress, "compress_image",
+                        lambda *_: (_ for _ in ()).throw(AssertionError("unneeded compression")))
+    m.process_clipboard()
+    assert m.history == []

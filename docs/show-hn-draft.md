@@ -21,7 +21,7 @@ Show HN: Notro – custom emoji and oversized uploads on Discord, no client mods
 
 대안:
 - `Show HN: Notro – use your own emoji on Discord without patching the client` (74자)
-- `Show HN: Notro – Discord's 10MB limit, handled from your clipboard` (66자) — 압축 쪽만 강조
+- `Show HN: Notro – Discord's 20MB limit, handled from your clipboard` (66자) — 압축 쪽만 강조
 
 **Text 칸:** 비웁니다. 아래 내용을 **게시 직후 첫 댓글**로 답니다 (Show HN 관례).
 
@@ -30,7 +30,7 @@ Show HN: Notro – custom emoji and oversized uploads on Discord, no client mods
 ## 첫 댓글
 
 ```
-Discord's free upload limit is 10 MB. If you screenshot at any real
+Discord's free upload limit is currently 20 MB (as of August 2026). If you screenshot at any real
 resolution you hit it constantly, and the fix is always the same tedious
 loop: find the file, open an editor, export it smaller, go back, paste
 again.
@@ -42,7 +42,7 @@ Under the limit it does nothing at all.
 Game clips work the same way, except it asks first and shows you what
 you'll get:
 
-    52MB · 1:12 · 1080p60  →  about 9.5MB · 480p30
+    52MB · 1:12 · 1080p60  →  about 19MB · 720p60
 
 You can trim the clip right in that dialog, and that matters more than any
 encoder setting: as a whole clip it has to fall back to 1080p30 to fit, but
@@ -54,8 +54,7 @@ filter, Enter to paste. If you've collected custom emoji from servers you're
 no longer in, or you just want to use your own images without paying
 monthly for it, that's the gap it fills.
 
-What made me write it instead of using what already exists: every other tool
-that does the emoji half patches the Discord client. I didn't want that
+What made me write it: some alternatives to the emoji problem modify the Discord client. I didn't want that
 running on my own account, let alone hand it to anyone else. Notro stays
 outside the app — it prepares your clipboard and sends a Ctrl+V, the same
 class of input automation as the Windows emoji panel (Win+.). It never sees
@@ -76,7 +75,7 @@ you downloaded or build it yourself. And because it works from outside the
 client, your emoji arrive as image attachments rather than inline emoji —
 that's the trade for not touching Discord.
 
-No telemetry, no accounts, four documented network endpoints. MIT.
+No telemetry and no accounts; network endpoints are documented, including installation dependencies. MIT.
 ```
 
 **분량**: HN 첫 댓글로 적당합니다. 더 줄이고 싶으면 "One thing that surprised me"

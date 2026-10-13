@@ -97,3 +97,10 @@ def test_modal_can_scroll_inside_a_small_window():
     assert "max-height" in box and "overflow-y: auto" in box
     row = css.split(".modal-box > .row {", 1)[1].split("}", 1)[0]
     assert "position: sticky" in row
+
+
+def test_pack_transfer_has_explicit_buttons_in_settings():
+    by_id = {attrs.get("id"): (tag, attrs) for tag, attrs in elements()
+             if attrs.get("id")}
+    for action in ("st-import-pack", "st-export-pack"):
+        assert by_id[action][0] == "button"

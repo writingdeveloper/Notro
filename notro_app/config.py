@@ -13,8 +13,8 @@ import time
 from . import APP_NAME
 
 # ===================== 설정 =====================
-LIMIT_MB = 10           # 디스코드 무료 업로드 한도 (MB)
-SAFETY = 0.95           # 안전 마진 (10MB의 95% = 9.5MB 목표)
+LIMIT_MB = 20           # Discord free tier since August 2026 (MB)
+SAFETY = 0.95           # 안전 마진 (20MB의 95% = 19MB 목표)
 POLL_INTERVAL = 0.4     # 클립보드 확인 주기 (초)
 # ================================================
 
@@ -24,13 +24,15 @@ def compute_limit_bytes(mb: int) -> int:
     return int(mb * 1024 * 1024 * SAFETY)
 
 
+UPLOAD_CEILING_BYTES = LIMIT_MB * 1024 * 1024
 LIMIT_BYTES = compute_limit_bytes(LIMIT_MB)
 
 
 def set_limit_mb(mb: int) -> None:
     """런타임 업로드 한도 변경 (트레이 메뉴에서 호출)."""
-    global LIMIT_MB, LIMIT_BYTES
+    global LIMIT_MB, LIMIT_BYTES, UPLOAD_CEILING_BYTES
     LIMIT_MB = mb
+    UPLOAD_CEILING_BYTES = mb * 1024 * 1024
     LIMIT_BYTES = compute_limit_bytes(mb)
 
 

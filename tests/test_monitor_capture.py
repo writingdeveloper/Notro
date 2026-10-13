@@ -102,6 +102,7 @@ def test_capture_callback_failure_does_not_block_compression(
     data = png_bytes()
     monkeypatch.setattr(mon.cb, "get_clipboard_png", lambda: data)
     monkeypatch.setattr(mon.config, "LIMIT_BYTES", 1)
+    monkeypatch.setattr(mon.config, "UPLOAD_CEILING_BYTES", 1)
     monkeypatch.setattr(mon.config, "TEMP_DIR", str(tmp_path))
     monkeypatch.setattr(mon.compress, "compress_image",
                         lambda image, limit: (b"compressed", ".webp"))

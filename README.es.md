@@ -21,7 +21,7 @@
 
 Dos cosas por las que Discord cobra, resueltas desde fuera de la aplicación:
 
-- **Tu imagen pesa 14 MB y el límite gratuito es de 10 MB.** Notro lo nota en cuanto la
+- **Tu imagen pesa 24 MB y el límite gratuito es de 20 MB.** Notro lo nota en cuanto la
   copias, la reduce y la devuelve al portapapeles. Tú solo pulsas <kbd>Ctrl</kbd>+<kbd>V</kbd>.
 - **Quieres usar emojis personalizados en cualquier parte.** Pulsa
   <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>, elige uno y aparece en el cuadro de mensaje.
@@ -44,6 +44,8 @@ quien lo recibe ve tus emojis como imágenes adjuntas, no como emojis integrados
 </p>
 
 ---
+
+> Según la [FAQ oficial de Discord](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ), actualizada el 13 de agosto de 2026, los límites son 20 MB (gratis), 50 MB (Nitro Basic) y 500 MB (Nitro). Se conserva la opción de 10 MB. Discord puede probar otros límites con algunos usuarios.
 
 ## El selector
 
@@ -90,17 +92,27 @@ cierra. Después del atajo no hace falta soltar el teclado.
 
 </details>
 
+## Importar y exportar paquetes de medios
+
+En los ajustes del selector puedes importar o exportar como ZIP tus emojis, stickers y GIF
+registrados, con nombres y palabras clave. Al importar se comprueban el formato, los hashes
+y las rutas, y se omiten los duplicados.
+
+No se incluyen Captures privados, URL originales de Discord, historial del portapapeles,
+rutas de carpetas supervisadas ni ajustes de Windows. No es una copia completa de los ajustes.
+Comparte solo medios cuya distribución esté permitida.
+
 ## Compresión automática
 
 Notro vigila el portapapeles. Cuando aparece una imagen nueva calcula **el tamaño del PNG
 que Discord produciría realmente**, y si cabe dentro del límite no hace nada. Si lo supera,
 recodifica a WebP y después a JPEG, bajando la calidad y por último la resolución hasta
-quedar por debajo de unos 9,5 MB, y devuelve el resultado **como archivo** para que
+quedar por debajo de unos 19 MB, y devuelve el resultado **como archivo** para que
 <kbd>Ctrl</kbd>+<kbd>V</kbd> lo suba como adjunto.
 
 > Tus archivos originales en disco nunca se tocan — solo se reemplaza el portapapeles.
 
-El límite se cambia desde la bandeja entre **10 / 50 / 500 MB** (gratis, Nitro Basic, Nitro).
+El límite se cambia desde la bandeja entre **10 / 20 / 50 / 500 MB** (10 MB opcional, gratis, Nitro Basic, Nitro).
 
 ## Clips de vídeo
 
@@ -108,12 +120,12 @@ Copia un clip de juego demasiado grande y Notro pregunta primero, mostrando exac
 esperar:
 
 ```
-52MB · 1:12 · 1080p60  →  unos 9,5MB · 480p30
+52MB · 1:12 · 1080p60  →  unos 19MB · 720p60
 ```
 
 En esa misma ventana puedes **recortarlo** (`inicio – fin`) y **quitarle el audio**, y la
 estimación se actualiza mientras escribes. Esto pesa más que cualquier ajuste del
-codificador: una captura de 30 segundos a 1080p60 tiene que bajar a **1080p30** como clip
+codificador: una captura de 30 segundos a 1080p60 tiene que bajar a **720p60** como clip
 entero, pero recortada a los siete segundos que realmente querías se queda en **1080p60**.
 
 **ffmpeg nunca se incluye en el paquete.** Se descarga bajo demanda (unos 30 MB, verificado
@@ -191,8 +203,8 @@ El comportamiento de la compresión está en `notro_app/config.py` y `notro_app/
 
 | Ajuste | Predeterminado | Descripción |
 |---|---|---|
-| `LIMIT_MB` | 10 | Límite de subida — o elige 10/50/500 desde el menú de la bandeja |
-| `SAFETY` | 0.95 | Margen de seguridad (apunta a unos 9,5 MB) |
+| `LIMIT_MB` | 20 | Límite de subida — o elige 10/20/50/500 desde el menú de la bandeja |
+| `SAFETY` | 0.95 | Margen de seguridad (apunta a unos 19 MB) |
 | `WEBP_QUALITIES` | 90–50 | Pasos de calidad de WebP |
 | `MIN_SCALE` | 0.4 | Límite inferior de reducción de resolución |
 

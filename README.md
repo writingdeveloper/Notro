@@ -19,9 +19,9 @@
 
 ---
 
-Two things Discord charges for, solved from outside the app:
+Two everyday Discord frustrations, handled without modifying the Discord client:
 
-- **Your image is 14 MB and the free limit is 10 MB.** Notro notices the moment you copy
+- **Your image is 24 MB and the free limit is 20 MB.** Notro notices the moment you copy
   it, shrinks it, and puts it back on your clipboard. You just press <kbd>Ctrl</kbd>+<kbd>V</kbd>.
 - **You want to use custom emoji anywhere.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>,
   pick one, and it lands in the message box.
@@ -44,6 +44,8 @@ your emoji as image attachments, not as native inline emoji.
 </p>
 
 ---
+
+> Upload limits updated August 13, 2026: [Discord File Attachments FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ). Free 20 MB / Nitro Basic 50 MB / Nitro 500 MB; 10 MB remains as an optional lower limit. Discord may experiment with different limits.
 
 ## The picker
 
@@ -86,29 +88,40 @@ collection with no registration step at all.
 
 </details>
 
+## Portable media packs
+
+In the picker settings, choose **Export pack** or **Import pack** to move your
+registered emoji, sticker and GIF library between Windows PCs. Packs are local
+ZIP files with media and searchable labels, checked for corrupt files and
+unsafe paths before import. Already saved duplicates are skipped.
+
+Private automatic **Captures**, Discord source URLs, clipboard history, watched
+folder paths and Windows settings are **not exported**. The ZIP is a portable
+asset pack, not a complete settings backup. Share only media you have rights to.
+
 ## Automatic compression
 
 Notro watches the clipboard. When a new image appears it computes **the PNG size Discord
 would actually produce**, and if that fits the limit it does nothing at all. Over the
 limit, it re-encodes to WebP, then JPEG, lowering quality and finally resolution until it
-fits under ~9.5 MB, and puts the result back as a file so <kbd>Ctrl</kbd>+<kbd>V</kbd>
+fits under ~19 MB, and puts the result back as a file so <kbd>Ctrl</kbd>+<kbd>V</kbd>
 uploads it as an attachment.
 
 > Your original files on disk are never touched — only the clipboard is replaced.
 
-The limit is switchable from the tray for **10 / 50 / 500 MB** (free, Nitro Basic, Nitro).
+The limit is switchable from the tray for **10 / 20 / 50 / 500 MB** (10 MB optional low cap, free, Nitro Basic, Nitro).
 
 ## Video clips
 
 Copy a game clip that's too big and Notro asks first, showing exactly what to expect:
 
 ```
-52MB · 1:12 · 1080p60  →  about 9.5MB · 480p30
+52MB · 1:12 · 1080p60  →  about 19MB · 720p60
 ```
 
 You can **trim it** (`start – end`) and **drop the audio** in that same window, and the
 estimate updates as you type. This matters more than any encoder setting: a 30-second
-1080p60 capture has to fall back to **1080p30** as a whole clip, but trimmed to the seven
+1080p60 capture has to fall back to **720p60** as a whole clip, but trimmed to the seven
 seconds you actually wanted, it stays at **1080p60**.
 
 **ffmpeg is never bundled.** It's fetched on demand (~30 MB, SHA-256 verified) the first
@@ -183,8 +196,8 @@ Compression behaviour lives in `notro_app/config.py` and `notro_app/compress.py`
 
 | Setting | Default | Description |
 |---|---|---|
-| `LIMIT_MB` | 10 | Upload limit — or pick 10/50/500 from the tray menu |
-| `SAFETY` | 0.95 | Safety margin (targets ~9.5 MB) |
+| `LIMIT_MB` | 20 | Upload limit — or pick 10/20/50/500 from the tray menu |
+| `SAFETY` | 0.95 | Safety margin (targets ~19 MB) |
 | `WEBP_QUALITIES` | 90–50 | WebP quality steps |
 | `MIN_SCALE` | 0.4 | Lower bound for downscaling |
 

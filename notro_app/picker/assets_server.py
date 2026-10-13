@@ -42,21 +42,29 @@ class AssetServer:
                     return
                 ctype = mimetypes.guess_type(path)[0] or "application/octet-stream"
                 try:
+                    # Do not read a potentially large user GIF wholly into RAM.
+                    # One request uses a bounded 64 KiB transfer buffer.
                     with open(path, "rb") as f:
-                        data = f.read()
-                except OSError:
-                    self.send_error(404)
-                    return
-                self.send_response(200)
-                self.send_header("Content-Type", ctype)
-                self.send_header("Content-Length", str(len(data)))
-                # 감시 폴더의 파일 교체가 즉시 반영되도록 캐시하지 않는다
-                self.send_header("Cache-Control", "no-store")
-                self.end_headers()
-                try:
-                    self.wfile.write(data)
+                        size = os.fstat(f.fileno()).st_size
+                        self.send_response(200)
+                        self.send_header("Content-Type", ctype)
+                        self.send_header("Content-Length", str(size))
+                        # 감시 폴더의 파일 교체가 즉시 반영되도록 캐시하지 않는다
+                        self.send_header("Cache-Control", "no-store")
+                        self.end_headers()
+                        while True:
+                            chunk = f.read(65536)
+                            if not chunk:
+                                break
+                            self.wfile.write(chunk)
                 except (ConnectionAbortedError, BrokenPipeError):
                     pass
+                except OSError:
+                    if not self.wfile.closed:
+                        try:
+                            self.send_error(404)
+                        except OSError:
+                            pass
 
             def log_message(self, *args):  # 콘솔 소음 제거
                 pass

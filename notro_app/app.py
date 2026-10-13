@@ -389,7 +389,10 @@ def main():
         from . import welcome
         from .hotkey import label_for
         combo_label = label_for(combo) if combo != "off" else None
-        welcome.create_window(combo_label)
+        # Give Windows time to dismiss the welcome modal before capturing
+        # the previous foreground window, otherwise Ctrl+V would target it.
+        welcome.create_window(combo_label, on_try=lambda: threading.Timer(
+            0.3, picker.toggle).start())
         first_msg = (tr("notify_first_run_picker", combo=combo_label)
                      if combo_label else tr("notify_first_run"))
         threading.Timer(1.5, lambda: icon.notify(first_msg, APP_NAME)).start()

@@ -50,3 +50,20 @@ def test_cleanup_temp_survives_a_directory(tmp_path, monkeypatch):
 def test_cleanup_temp_ignores_missing_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "TEMP_DIR", str(tmp_path / "gone"))
     config.cleanup_temp()  # 예외가 나가지 않으면 성공
+
+
+def test_free_default_follows_discord_august_2026_limit():
+    assert config.LIMIT_MB == 20
+    assert config.compute_limit_bytes(20) == int(20 * 1024 * 1024 * 0.95)
+    assert config.UPLOAD_CEILING_BYTES == 20 * 1024 * 1024
+
+
+def test_legacy_10mb_user_option_is_still_supported():
+    previous = config.LIMIT_MB
+    try:
+        config.set_limit_mb(10)
+        assert config.LIMIT_MB == 10
+        assert config.LIMIT_BYTES == config.compute_limit_bytes(10)
+        assert config.UPLOAD_CEILING_BYTES == 10 * 1024 * 1024
+    finally:
+        config.set_limit_mb(previous)
