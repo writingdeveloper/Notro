@@ -41,6 +41,6 @@ Follow-up draft PRs: Notro https://github.com/writingdeveloper/Notro/pull/1 ; po
 
 ## Release candidate prepared
 
-Source version has been advanced to **2.11.0**, with an unreleased CHANGELOG entry. No v2.11.0 tag or installer release was created. The previous CI for feature branch passed after Ruff pinning; this candidate commit must pass new CI before merge.
+Source version has been advanced to **2.11.0**, with an unreleased CHANGELOG entry. No v2.11.0 tag or installer release was created. The feature branch candidate 5b14eba passed GitHub Actions CI and the manual Release workflow_dispatch build: EXE, Inno Setup installer and SHA256 (https://github.com/writingdeveloper/Notro/actions/runs/38486869698). Publishing was correctly skipped. GUI installation and code signing have not been validated.
 
 Portfolio PR #36 passes type/lint/build/tests but the dependency audit fails with 11 findings (10 high, 1 critical); see https://github.com/writingdeveloper/portfolio/actions/runs/38486167720. Do not bypass audit or deploy; coordination with existing portfolio security work is required.

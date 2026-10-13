@@ -31,7 +31,7 @@ ISSUES = [
     ("Windows real-app picker and clipboard E2E smoke QA", "To Do", "urgent",
      "Run Discord test in a private draft (no unwanted message sent), exercise PNG/JPEG/GIF, hotkeys, source file preservation, auto-send off, keyboard use, DPI/multi-monitor, failure recovery."),
     ("Notro trust and distribution: signing and pinned builds", "To Do", "high",
-     "Evaluate OSS signing routes, build provenance/attestation, SHA256 consistency, dependency pinned build and vulnerability checks, installer SmartScreen experience."),
+     "Candidate v2.11.0 CI and workflow_dispatch dry-run packaging succeeded (EXE, Inno Setup, SHA256); no public tag/release. Remaining: OSS signing routes, provenance, dependency security and real SmartScreen/install QA."),
     ("First-run activation: 3-minute task-guided welcome", "QA", "high",
      "First-run Try Picker action implemented and localized. Confirm 3-minute human first-paste usability on Windows WebView2 before Done."),
     ("Shareable safe emoji pack import/export and library backup", "QA", "high",

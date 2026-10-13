@@ -121,3 +121,42 @@ def test_rejects_fake_png(tmp_path):
     with pytest.raises(packs.PackError, match="invalid image"):
         packs.import_pack(lib, str(archive))
     assert lib.items() == []
+
+
+def test_picker_api_pack_dialog_round_trip(tmp_path):
+    """The actual Python UI bridge exposes explicit import/export dialogs."""
+    from types import SimpleNamespace
+    from notro_app.picker.window import PickerApi
+
+    src = Library(str(tmp_path / "pack-source"))
+    fetch.register_from_file(src, str(image_file(tmp_path)), "emoji", name="example")
+    archive = tmp_path / "bridge.zip"
+    class FakeWindow:
+        def __init__(self, selection):
+            self.selection = selection
+        def create_file_dialog(self, *args, **kwargs):
+            return [str(self.selection)]
+
+    api = PickerApi(library=src)
+    api._ctrl = SimpleNamespace(window=FakeWindow(archive))
+    assert api.export_pack() == {"ok": True, "count": 1}
+    assert archive.exists()
+
+    dest = Library(str(tmp_path / "pack-target"))
+    api2 = PickerApi(library=dest)
+    api2._ctrl = SimpleNamespace(window=FakeWindow(archive))
+    assert api2.import_pack() == {"ok": True, "added": 1, "duplicate": 0, "failed": 0}
+    assert dest.items()[0]["name"] == "example"
+
+
+def test_cancel_pack_dialog_is_noop(tmp_path):
+    from types import SimpleNamespace
+    from notro_app.picker.window import PickerApi
+
+    lib = Library(str(tmp_path / "nothing"))
+    window = SimpleNamespace(create_file_dialog=lambda *a, **kw: None)
+    api = PickerApi(library=lib)
+    api._ctrl = SimpleNamespace(window=window)
+    assert api.export_pack() == {"ok": False, "error": "cancelled"}
+    assert api.import_pack() == {"ok": False, "error": "cancelled"}
+    assert lib.items() == []
