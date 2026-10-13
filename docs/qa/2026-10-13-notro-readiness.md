@@ -38,3 +38,9 @@ Baseline: main 537c8b0, published v2.10.3. Feature work is isolated in the feat/
 5. Update Plane from QA to Done only with E2E evidence. Publish only after E2E and user-approved release trust review.
 
 Follow-up draft PRs: Notro https://github.com/writingdeveloper/Notro/pull/1 ; portfolio SEO metadata https://github.com/writingdeveloper/portfolio/pull/36 (neither merged or deployed).
+
+## Release candidate prepared
+
+Source version has been advanced to **2.11.0**, with an unreleased CHANGELOG entry. No v2.11.0 tag or installer release was created. The previous CI for feature branch passed after Ruff pinning; this candidate commit must pass new CI before merge.
+
+Portfolio PR #36 passes type/lint/build/tests but the dependency audit fails with 11 findings (10 high, 1 critical); see https://github.com/writingdeveloper/portfolio/actions/runs/38486167720. Do not bypass audit or deploy; coordination with existing portfolio security work is required.

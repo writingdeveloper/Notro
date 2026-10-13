@@ -41,30 +41,32 @@ class AssetServer:
                     self.send_error(404)
                     return
                 ctype = mimetypes.guess_type(path)[0] or "application/octet-stream"
+                # Open before emitting 200; watched-folder assets can be moved
+                # between resolve() and open(), which must return 404 rather
+                # than a partially written 200 response with invalid headers.
                 try:
-                    # Do not read a potentially large user GIF wholly into RAM.
-                    # One request uses a bounded 64 KiB transfer buffer.
-                    with open(path, "rb") as f:
-                        size = os.fstat(f.fileno()).st_size
+                    source = open(path, "rb")
+                except OSError:
+                    self.send_error(404)
+                    return
+                with source:
+                    try:
+                        size = os.fstat(source.fileno()).st_size
                         self.send_response(200)
                         self.send_header("Content-Type", ctype)
                         self.send_header("Content-Length", str(size))
-                        # 감시 폴더의 파일 교체가 즉시 반영되도록 캐시하지 않는다
                         self.send_header("Cache-Control", "no-store")
                         self.end_headers()
-                        while True:
-                            chunk = f.read(65536)
+                        remaining = size
+                        # Keep per-request memory bounded for large GIFs.
+                        while remaining > 0:
+                            chunk = source.read(min(65536, remaining))
                             if not chunk:
-                                break
+                                break  # file was truncated after fstat
                             self.wfile.write(chunk)
-                except (ConnectionAbortedError, BrokenPipeError):
-                    pass
-                except OSError:
-                    if not self.wfile.closed:
-                        try:
-                            self.send_error(404)
-                        except OSError:
-                            pass
+                            remaining -= len(chunk)
+                    except (ConnectionAbortedError, BrokenPipeError, OSError):
+                        pass
 
             def log_message(self, *args):  # 콘솔 소음 제거
                 pass

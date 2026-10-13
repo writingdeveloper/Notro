@@ -3,6 +3,30 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.11.0] - Unreleased (candidate: 2026-10-13)
+
+### Added
+- Portable user-controlled ZIP emoji/sticker/GIF pack import/export with content
+  verification, size limits and duplicate detection. Private Captures and original
+  source URLs are excluded. This is **not** a full settings backup.
+- First-run welcome offers a direct, explicit "Try picker" action.
+- Synthetic 100/1,000/5,000-item library performance benchmark, Windows regression
+  coverage and Ruff CI lint. REA static compatibility and marketing QA notes.
+
+### Fixed
+- The Discord free upload default now matches the official August 2026 20 MB
+  limit. Existing explicit 10 MB choices remain available. The 95% safety margin
+  now targets **compressed output** rather than triggering needless compression
+  of 19–20 MB files.
+- Watched folder JPEG files appear correctly beside PNG, GIF and WebP.
+- Local media server streams GIF assets in bounded chunks; race handling returns
+  404 if a watched file vanishes before opening.
+- Collection folder names cannot resolve to ancestor paths or Windows DOS devices.
+
+### Notes
+- Real Discord/WebView2 installer end-to-end QA and signing are **not yet complete**.
+  Do not publish this candidate release until the verification gates are met.
+
 ## [2.10.3] - 2026-08-08
 
 ### Fixed
