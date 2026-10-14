@@ -226,3 +226,10 @@ button.wide:hover { background: var(--accent); color: #fff; }
 }
 #gif-meta { line-height:1.5; }
 #gif-accept:disabled { opacity:.45; cursor:default; }
+
+/* Opt-in settings portability: never silently include local directory paths. */
+.profile-option { cursor:pointer; }
+.profile-option input[type=checkbox] {
+  width:18px; height:18px; flex:0 0 18px; accent-color:var(--accent);
+}
+.profile-option .note { flex:1; min-width:0; line-height:1.4; }

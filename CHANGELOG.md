@@ -10,6 +10,11 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   verification, size limits and duplicate detection. Private Captures and original
   source URLs are excluded. This is **not** a full settings backup.
 - First-run welcome offers a direct, explicit "Try picker" action.
+- Added separate opt-in JSON preferences backup with explicit watched-folder
+  path disclosure, strict parsing, user review and two-step restoration.
+  No images/Captures, and auto-send and auto-capture are disabled on restore.
+  Real native Windows Save/Open with Korean filenames tested.
+
 - On-demand release-workflow builds can retain a 3-day UNSIGNED QA installer
   artifact with its SHA-256, enabling real Windows installer tests without
   publishing a release/tag.

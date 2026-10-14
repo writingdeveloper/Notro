@@ -230,3 +230,29 @@ priority and ownership when refreshing issue descriptions.
   in docs/research/2026-10-13-notro-code-signing-readiness.md.
   No third-party certificate/account enrollment occurred. Real Windows
   installation, SmartScreen and Discord draft/paste tests remain open.
+
+
+
+## October 14: preferences backup implementation and native QA
+
+- New local JSON settings backup, with allowlisted settings, 128KiB validation,
+  opt-in absolute watched-folder paths, no images/Captures/account data.
+  A media pack ZIP remains separate.
+- Import is **preview-only first**, then an explicit approval action with
+  a per-review token and SHA-256 file consistency guard. Missing watched
+  directories are skipped; current directories are not removed. Automatic
+  send/capture are both disabled and startup is left unchanged on restore.
+- Picker Settings contains export, import, optional path checkbox, and
+  a review modal in EN/KO/JA/ZH/ES. The checkbox defaults to OFF.
+- Real isolated Windows #32770 dialogs PASS 8 stages: four ZIP media
+  import/export steps and four settings backup/restore preview steps, including
+  Hangul filenames. The test intercepts registry writes in memory and does
+  not modify any actual settings, clipboard, real media or Discord.
+- Native Windows WebView2 fixture confirms settings controls are visible,
+  path checkboxes unchecked, and 100/1k/5k synthetic renderer/GIF/packs
+  still PASS. Python unit suite 438 passed locally, Ruff clean.
+- User explicitly declined all Signing on 2026-10-14. Signing-dependent
+  tasks NOTRO-6 and NOTRO-22 are deferred to Backlog and no enrollment,
+  certificate, signing, protected-branch policy or release operation was done.
+- NOTRO-15 moves into QA; real user import acceptance and application
+  restart/locales/hotkey behavior remain unverified; no release/merge.

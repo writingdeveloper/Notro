@@ -6,7 +6,9 @@ from __future__ import annotations
 import ctypes
 import ctypes.wintypes as wt
 import os
+import secrets
 import sys
+import threading
 
 from .. import clipboard_win as cb
 from .. import config
@@ -212,6 +214,14 @@ PICKER_STRING_KEYS = [
     "picker_ctx_edit", "picker_err_duplicate", "picker_drop_duplicate",
     "picker_pack_import", "picker_pack_export", "picker_pack_done",
     "picker_pack_imported", "picker_pack_error",
+    "picker_profile_export", "picker_profile_import",
+    "picker_profile_title", "picker_profile_include_paths",
+    "picker_profile_no_paths", "picker_profile_review_title",
+    "picker_profile_review_note", "picker_profile_folders_restore",
+    "picker_profile_confirm", "picker_profile_cancel",
+    "picker_profile_exported", "picker_profile_restored",
+    "picker_profile_error", "picker_profile_restart",
+    "picker_profile_counts",
     "picker_gif_optimize", "picker_gif_title", "picker_gif_loading",
     "picker_gif_original", "picker_gif_result", "picker_gif_accept",
     "picker_gif_cancel", "picker_gif_note", "picker_gif_fits",
@@ -258,6 +268,89 @@ class PickerApi(GifPreviewMixin):
         self._capture_store = capture_store or (
             CaptureStore(library) if library is not None else None)
         self._init_gif_preview()
+        self._profile_lock = threading.Lock()
+        self._profile_review = None
+
+    def export_preferences(self, include_folders: bool = False) -> dict:
+        """Explicit save-file dialog: settings only, media/Captures excluded."""
+        import webview
+        from .. import settings_backup
+
+        chosen = self._ctrl.window.create_file_dialog(
+            _native_dialog_kind("SAVE", webview),
+            save_filename="notro-settings.json",
+            file_types=("JSON settings (*.json)",))
+        if not chosen:
+            return {"ok": False, "error": "cancelled"}
+        path = chosen[0] if isinstance(chosen, (list, tuple)) else chosen
+        try:
+            result = settings_backup.export_settings(
+                self._library, path, include_folders=bool(include_folders))
+        except (OSError, ValueError):
+            return {"ok": False, "error": "settings"}
+        return {"ok": True, **{
+            k: result[k] for k in ("settings_count", "folders_count")}}
+
+    def preview_preferences(self) -> dict:
+        """Explicit open-file dialog; no settings or folders changed yet."""
+        import webview
+        from .. import settings_backup
+
+        chosen = self._ctrl.window.create_file_dialog(
+            _native_dialog_kind("OPEN", webview),
+            file_types=("JSON settings (*.json)",))
+        if not chosen:
+            return {"ok": False, "error": "cancelled"}
+        path = chosen[0] if isinstance(chosen, (list, tuple)) else chosen
+        with self._profile_lock:
+            self._profile_review = None
+            try:
+                doc, digest = settings_backup.preview_settings(path)
+            except (OSError, ValueError):
+                return {"ok": False, "error": "settings"}
+            token = secrets.token_urlsafe(28)
+            self._profile_review = {
+                "token": token, "path": str(path), "sha256": digest,
+            }
+            return {
+                "ok": True, "token": token,
+                "settings_count": len(doc["settings"]),
+                "folders_count": len(doc["watched_folders"]),
+                # Never display watched absolute paths in the picker.
+                "sensitive_features_disabled": True,
+            }
+
+    def discard_preferences_preview(self, token: str = "") -> bool:
+        with self._profile_lock:
+            if self._profile_review and (
+                    not token or self._profile_review["token"] == token):
+                self._profile_review = None
+                return True
+            return False
+
+    def apply_preferences(self, token: str,
+                          restore_folders: bool = False) -> dict:
+        """Consume a reviewed snapshot only after separate user approval."""
+        from .. import settings_backup
+
+        with self._profile_lock:
+            review = self._profile_review
+            self._profile_review = None
+            if not review or not secrets.compare_digest(
+                    review["token"], str(token)):
+                return {"ok": False, "error": "outdated"}
+            try:
+                doc, digest = settings_backup.preview_settings(review["path"])
+            except (OSError, ValueError):
+                return {"ok": False, "error": "outdated"}
+            if not secrets.compare_digest(digest, review["sha256"]):
+                return {"ok": False, "error": "outdated"}
+            try:
+                result = settings_backup.apply_settings(
+                    doc, self._library, restore_folders=bool(restore_folders))
+            except (OSError, ValueError):
+                return {"ok": False, "error": "settings"}
+            return {"ok": True, **result}
 
     def _display(self, item: dict) -> dict:
         from ..i18n import tr

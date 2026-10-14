@@ -86,10 +86,37 @@
       <button id="st-import-pack" type="button"></button>
       <button id="st-export-pack" type="button"></button>
     </div>
+    <h4 id="st-profile-title"></h4>
+    <label class="setting-row profile-option">
+      <input id="st-profile-include-folders" type="checkbox">
+      <span id="st-profile-path-note" class="note"></span>
+    </label>
+    <div class="row">
+      <button id="st-profile-import" type="button"></button>
+      <button id="st-profile-export" type="button"></button>
+    </div>
     <button id="st-openlib" class="wide"></button>
     <div class="row">
       <button id="st-addfolder" class="primary"></button>
       <button id="st-close"></button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-profile" class="modal hidden" role="dialog"
+     aria-modal="true" aria-labelledby="profile-review-title">
+  <div class="modal-box">
+    <h3 id="profile-review-title"></h3>
+    <p id="profile-review-note" class="note"></p>
+    <p id="profile-review-counts" class="note"></p>
+    <label class="setting-row profile-option">
+      <input type="checkbox" id="profile-restore-folders">
+      <span id="profile-folders-label" class="note"></span>
+    </label>
+    <p id="profile-error" class="error hidden" role="alert"></p>
+    <div class="row">
+      <button id="profile-apply" type="button" class="primary"></button>
+      <button id="profile-cancel" type="button"></button>
     </div>
   </div>
 </div>

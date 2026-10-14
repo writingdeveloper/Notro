@@ -22,7 +22,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from notro_app import fetch
+from notro_app import fetch, settings_backup
 from notro_app.library import Library
 from notro_app.picker.window import PickerApi
 
@@ -117,6 +117,21 @@ def main() -> int:
         )
         original_digest = hashlib.sha256(source.read_bytes()).hexdigest()
         dest_pack = root / "한글 파일 이름 테스트.zip"
+        dest_preferences = root / "한글 환경설정 백업.json"
+
+        # Synthetic settings only: the QA process must NOT read/write real
+        # HKCU settings or the user's watched-folder paths.
+        settings_backup._settings_snapshot = lambda: {
+            "lang": "ko", "hotkey": "ctrl+shift+e",
+            "limit_mb": 20, "paste_px_emoji": 48,
+            "auto_update": 1, "auto_send": True,
+            "auto_capture_save": True,
+        }
+        captured_settings = {}
+        settings_backup.config.set_setting_int = (
+            lambda k, v: captured_settings.__setitem__(k, v))
+        settings_backup.config.set_setting_str = (
+            lambda k, v: captured_settings.__setitem__(k, v))
 
         api = PickerApi(library=original_library)
         win = webview.create_window(
@@ -126,7 +141,8 @@ def main() -> int:
         )
         api._ctrl = SimpleNamespace(window=win)
         final = {"stages": {}, "source_preserved": False,
-                 "imported": False, "errors": []}
+                 "imported": False, "profile_applied": False,
+                 "profile_bytes": 0, "errors": []}
 
         def run_stage(stage: str, api_method: str,
                       action: str, file_path: str | None):
@@ -197,6 +213,57 @@ def main() -> int:
                 final["source_preserved"] = (
                     hashlib.sha256(source.read_bytes()).hexdigest() == original_digest
                 )
+
+                cancelled = run_stage(
+                    "profile_save_cancel", "export_preferences", "cancel", None
+                )
+                assert cancelled == {"ok": False, "error": "cancelled"}
+                exported_profile = run_stage(
+                    "profile_save_unicode", "export_preferences",
+                    "confirm", str(dest_preferences)
+                )
+                assert exported_profile == {
+                    "ok": True, "settings_count": 7, "folders_count": 0
+                }, exported_profile
+                assert dest_preferences.is_file()
+                final["profile_bytes"] = dest_preferences.stat().st_size
+                assert "source_url" not in dest_preferences.read_text(encoding="utf-8")
+                assert not captured_settings, "setting writes before explicit approval"
+
+                cancelled_profile_open = run_stage(
+                    "profile_open_cancel", "preview_preferences", "cancel", None
+                )
+                assert cancelled_profile_open == {"ok": False, "error": "cancelled"}
+                reviewed = run_stage(
+                    "profile_open_unicode", "preview_preferences",
+                    "confirm", str(dest_preferences)
+                )
+                assert reviewed["ok"] is True and reviewed["settings_count"] == 7
+                assert reviewed["folders_count"] == 0
+                assert not captured_settings
+                # Explicit second approval via the real bridge; setting
+                # writes are intercepted in THIS isolated QA process.
+                token = json.dumps(reviewed["token"])
+                win.evaluate_js(
+                    "document.body.textContent='pending';"
+                    "window.pywebview.api.apply_preferences(" + token + ", false)"
+                    ".then(r=>document.body.textContent=JSON.stringify(r))"
+                )
+                answer = None
+                until = time.monotonic() + BRIDGE_TIMEOUT
+                while time.monotonic() < until:
+                    value = win.evaluate_js("document.body.textContent").strip()
+                    if value.startswith("{"):
+                        answer = json.loads(value)
+                        break
+                    time.sleep(0.15)
+                final["profile_applied"] = bool(
+                    answer and answer.get("ok")
+                    and captured_settings.get("lang") == "ko"
+                    and captured_settings.get("auto_send") == 0
+                    and captured_settings.get("auto_capture_save") == 0
+                )
+                assert final["profile_applied"], answer
             except Exception as exc:
                 final["errors"].append(type(exc).__name__ + ": " + str(exc)[:300])
             finally:
@@ -211,11 +278,12 @@ def main() -> int:
         final["passed"] = (
             not final["errors"]
             and final["source_preserved"] and final["imported"]
+            and final["profile_applied"]
             and all(
                 stage.get("seen") and not stage.get("error")
                 for stage in final["stages"].values()
             )
-            and len(final["stages"]) == 4
+            and len(final["stages"]) == 8
         )
         print(
             "NOTRO_NATIVE_FILE_DIALOG_QA=" + json.dumps(final, ensure_ascii=True),

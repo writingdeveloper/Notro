@@ -75,6 +75,15 @@ function applyStrings() {
   $("#st-addfolder").textContent = str("picker_add_folder");
   $("#st-import-pack").textContent = str("picker_pack_import");
   $("#st-export-pack").textContent = str("picker_pack_export");
+  $("#st-profile-title").textContent = str("picker_profile_title");
+  $("#st-profile-path-note").textContent = str("picker_profile_include_paths");
+  $("#st-profile-import").textContent = str("picker_profile_import");
+  $("#st-profile-export").textContent = str("picker_profile_export");
+  $("#profile-review-title").textContent = str("picker_profile_review_title");
+  $("#profile-review-note").textContent = str("picker_profile_review_note");
+  $("#profile-folders-label").textContent = str("picker_profile_folders_restore");
+  $("#profile-apply").textContent = str("picker_profile_confirm");
+  $("#profile-cancel").textContent = str("picker_profile_cancel");
   $("#st-close").textContent = str("picker_cancel");
   $("#gif-title").textContent = str("picker_gif_title");
   $("#gif-note").textContent = str("picker_gif_note");
@@ -309,7 +318,8 @@ function hideCtx() { $("#ctx").classList.add("hidden"); }
 /* 열려 있는 창 하나 (없으면 undefined). 방향키·붙여넣기 처리는 창이 열려 있는
    동안 그리드를 건드리면 안 된다. */
 function openModal() {
-  return [$("#modal-add"), $("#modal-edit"), $("#modal-settings"), $("#modal-gif")]
+  return [$("#modal-add"), $("#modal-edit"), $("#modal-settings"),
+          $("#modal-gif"), $("#modal-profile")]
     .find((m) => !m.classList.contains("hidden"));
 }
 
@@ -573,6 +583,79 @@ function renderFolders() {
   }
 }
 
+/* ---------- Safe, opt-in profile portability ----------
+   A native file dialog temporarily takes focus. Never hide the picker on
+   that expected blur. Restore only after a separate review/approval step.
+   Watched absolute paths stay unchecked by default for both directions.
+   The backend never re-enables auto-send or auto-capture from a backup. */
+let nativeDialogPending = false;
+let profileReview = null;
+async function withNativeDialog(task) {
+  if (nativeDialogPending) return {ok:false, error:"busy"};
+  nativeDialogPending = true;
+  try { return await task(); }
+  finally { nativeDialogPending = false; }
+}
+async function closeProfileReview() {
+  const review = profileReview;
+  profileReview = null;
+  $("#modal-profile").classList.add("hidden");
+  $("#profile-apply").disabled = false;
+  $("#profile-restore-folders").checked = false;
+  if (review && api()) await api().discard_preferences_preview(review.token);
+}
+async function inspectProfile() {
+  if (!api()) return;
+  const res = await withNativeDialog(() => api().preview_preferences());
+  if (!res || !res.ok) {
+    if (res && res.error !== "cancelled") flashHint("picker_profile_error");
+    return;
+  }
+  profileReview = {token:res.token};
+  $("#modal-settings").classList.add("hidden");
+  $("#profile-error").classList.add("hidden");
+  $("#profile-restore-folders").checked = false;
+  $("#profile-restore-folders").disabled = res.folders_count === 0;
+  const template = str("picker_profile_counts");
+  $("#profile-review-counts").textContent = template
+    .replace("{settings}", res.settings_count)
+    .replace("{folders}", res.folders_count);
+  $("#modal-profile").classList.remove("hidden");
+}
+async function applyProfile() {
+  if (!profileReview || !api()) return;
+  $("#profile-apply").disabled = true;
+  const token = profileReview.token;
+  const include = $("#profile-restore-folders").checked;
+  let res;
+  try { res = await api().apply_preferences(token, include); }
+  catch (_) { res = {ok:false}; }
+  if (res && res.ok) {
+    profileReview = null;
+    $("#modal-profile").classList.add("hidden");
+    await refresh();
+    $("#st-profile-include-folders").checked = false;
+    flashHint("picker_profile_restored", res);
+  } else {
+    $("#profile-error").textContent = str("picker_profile_error");
+    $("#profile-error").classList.remove("hidden");
+    profileReview = null;
+  }
+  $("#profile-apply").disabled = false;
+}
+$("#st-profile-export").addEventListener("click", async () => {
+  if (!api()) return;
+  const include = $("#st-profile-include-folders").checked;
+  const res = await withNativeDialog(
+    () => api().export_preferences(include));
+  if (res && res.ok) flashHint("picker_profile_exported", res);
+  else if (res && res.error !== "cancelled")
+    flashHint("picker_profile_error");
+});
+$("#st-profile-import").addEventListener("click", inspectProfile);
+$("#profile-apply").addEventListener("click", applyProfile);
+$("#profile-cancel").addEventListener("click", closeProfileReview);
+
 /* ---------- 이벤트 배선 ---------- */
 $("#search").addEventListener("input", (e) => { state.query = e.target.value; render(); });
 document.querySelectorAll(".tab").forEach((b) =>
@@ -611,18 +694,18 @@ $("#st-auto-send").addEventListener("change", async (e) => {
   e.target.checked = state.autoSend;
 });
 $("#st-addfolder").addEventListener("click", async () => {
-  if (api()) { await api().add_folder(state.tab); refresh(); }
+  if (api()) { await withNativeDialog(() => api().add_folder(state.tab)); refresh(); }
 });
 $("#st-openlib").addEventListener("click", () => { if (api()) api().open_data_dir(); });
 $("#st-import-pack").addEventListener("click", async () => {
   if (!api()) return;
-  const res = await api().import_pack();
+  const res = await withNativeDialog(() => api().import_pack());
   if (res && res.ok) { await refresh(); flashHint("picker_pack_imported", res); }
   else if (res && res.error !== "cancelled") flashHint("picker_pack_error");
 });
 $("#st-export-pack").addEventListener("click", async () => {
   if (!api()) return;
-  const res = await api().export_pack();
+  const res = await withNativeDialog(() => api().export_pack());
   if (res && res.ok) flashHint("picker_pack_done", res);
   else if (res && res.error !== "cancelled") flashHint("picker_pack_error");
 });
@@ -637,6 +720,7 @@ const CURSOR_MOVES = {
 window.addEventListener("keydown", (e) => {
   const modal = openModal();
   if (e.key === "Escape") {
+    if (modal && modal.id === "modal-profile") { closeProfileReview(); return; }
     if (modal && modal.id === "modal-gif") { closeGifPreview(); return; }
     if (modal && modal.id === "modal-edit") editingId = "";
     if (modal) { modal.classList.add("hidden"); return; }
@@ -649,7 +733,9 @@ window.addEventListener("keydown", (e) => {
   if (move) { e.preventDefault(); moveCursor(move[0], move[1]); return; }
   if (e.key === "Enter") { e.preventDefault(); selectCursor(); }
 });
-window.addEventListener("blur", () => { if (api()) api().hide(); });
+window.addEventListener("blur", () => {
+  if (api() && !nativeDialogPending && !profileReview) api().hide();
+});
 
 /* ---------- 드래그앤드롭 (pywebviewFullPath) ---------- */
 let dragDepth = 0;
@@ -713,6 +799,11 @@ window.addEventListener("paste", async (e) => {
 
 /* ---------- 표시 훅 (Python이 호출) ---------- */
 window.__onShow = () => {
+  // The popup may have hidden or lost focus during a native file dialog.
+  profileReview = null;
+  nativeDialogPending = false;
+  $("#modal-profile").classList.add("hidden");
+  $("#profile-restore-folders").checked = false;
   // A previous popup may have closed on lost focus while a preview/modal
   // was pending. The Python controller has already discarded the preview.
   // Reset the presentation before the new picker session begins.

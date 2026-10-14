@@ -108,6 +108,19 @@ Comparte solo medios cuya distribución esté permitida.
 
 También puedes arrastrar un ZIP de paquete al selector: se valida igual que con el botón Importar paquete.
 
+## Copia y restauración de preferencias (JSON)
+
+Exportar ajustes crea un JSON local con idioma, atajos, límites de subida
+y tamaños del selector. No contiene imágenes, capturas privadas, historial
+del portapapeles ni cuentas de Discord. Las rutas absolutas de carpetas
+vigiladas se excluyen por defecto salvo permiso explícito.
+
+Restaurar ajustes muestra una revisión y necesita otra confirmación.
+Nunca borra carpetas existentes y solo puede añadir rutas presentes.
+El envío y la captura automáticos quedan desactivados; el inicio de
+Windows permanece sin cambios. Reinicia Notro para aplicar idioma y atajos.
+Las imágenes se transfieren con el ZIP de medios por separado.
+
 ## Compresión automática
 
 Notro vigila el portapapeles. Cuando aparece una imagen nueva calcula **el tamaño del PNG

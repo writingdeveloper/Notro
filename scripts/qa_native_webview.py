@@ -76,7 +76,9 @@ def main() -> int:
             hidden=False, frameless=False, on_top=False,
         )
         result = {"native_webview2": False, "items": 0, "tabs": 0,
-                  "settings": False, "pack_buttons": False, "search": False,
+                  "settings": False, "pack_buttons": False,
+                  "profile_buttons": False, "profile_paths_unchecked": False,
+                  "search": False,
                   "asset_images_loaded": False, "locale_labels": [],
                   "zip_drop": False, "gif_preview": False,
                   "gif_source_preserved": False, "gif_cancelled": False,
@@ -109,6 +111,15 @@ def main() -> int:
                     result["pack_buttons"] = bool(win.evaluate_js(
                         "document.getElementById('st-import-pack').offsetWidth>0 &&"
                         "document.getElementById('st-export-pack').offsetWidth>0"
+                    ))
+                    result["profile_buttons"] = bool(win.evaluate_js(
+                        "document.getElementById('st-profile-import').offsetWidth>0 &&"
+                        "document.getElementById('st-profile-export').offsetWidth>0"
+                    ))
+                    result["profile_paths_unchecked"] = bool(win.evaluate_js(
+                        "!document.getElementById('st-profile-include-folders').checked"
+                        " && !document.getElementById('profile-restore-folders').checked"
+                        " && document.getElementById('modal-profile').classList.contains('hidden')"
                     ))
                     win.evaluate_js(
                         "document.getElementById('modal-settings').classList.add('hidden');"
@@ -277,7 +288,8 @@ def main() -> int:
         result["passed"] = bool(
             result["native_webview2"] and result["items"] == 3
             and result["tabs"] == 3 and result["settings"]
-            and result["pack_buttons"] and result["search"]
+            and result["pack_buttons"] and result["profile_buttons"]
+            and result["profile_paths_unchecked"] and result["search"]
             and result["asset_images_loaded"]
             and len(result["locale_labels"]) == 5 and result["zip_drop"]
             and result["gif_preview"] and result["gif_cancelled"]

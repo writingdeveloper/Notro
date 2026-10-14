@@ -126,3 +126,22 @@ def test_gif_comparison_requires_explicit_acceptance_and_supports_cancel():
     assert "api().paste_gif_preview(candidate.itemId, candidate.token)" in js
     assert "api().discard_gif_preview(candidate.token)" in js
     assert "item.animated" in js
+
+
+def test_profile_export_and_review_are_opt_in_and_private_by_default():
+    by_id = {attrs.get("id"): (tag, attrs) for tag, attrs in elements()
+             if attrs.get("id")}
+    for action in ("st-profile-import", "st-profile-export",
+                   "profile-apply", "profile-cancel"):
+        assert by_id[action][0] == "button"
+    for field in ("st-profile-include-folders", "profile-restore-folders"):
+        assert by_id[field][0] == "input"
+        assert by_id[field][1].get("type") == "checkbox"
+        assert "checked" not in by_id[field][1]
+    assert "hidden" in by_id["modal-profile"][1]["class"]
+    js = (UI_DIR / "app.js").read_text(encoding="utf-8")
+    assert "api().preview_preferences()" in js
+    assert "api().export_preferences(include)" in js
+    assert "api().apply_preferences(token, include)" in js
+    assert "api().discard_preferences_preview(review.token)" in js
+    assert "&& !nativeDialogPending" in js

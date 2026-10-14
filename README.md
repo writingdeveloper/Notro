@@ -105,6 +105,20 @@ asset pack, not a complete settings backup. Share only media you have rights to.
 
 Drop a pack ZIP directly onto the picker for quick import, or use the Import pack button in Settings.
 
+## Preferences backup (JSON)
+
+From Picker Settings, **Export settings** saves a separate local JSON file
+with language, hotkey, upload limit and display/paste-size preferences.
+It contains no images, clipboard history, Captures, Discord account data or
+source URLs. **Watched-folder absolute paths are excluded by default**;
+include them only when explicitly checked.
+
+**Restore settings** first shows the number of settings and paths and requires
+a second approval to apply. Existing watched folders are never deleted; you
+may optionally add paths that still exist. **Auto-send and auto-capture remain
+OFF** after restoration, and Windows startup is unchanged. Restart Notro for
+language/hotkey changes. Use a separate media pack ZIP to transfer images.
+
 ## Automatic compression
 
 Notro watches the clipboard. When a new image appears it computes **the PNG size Discord

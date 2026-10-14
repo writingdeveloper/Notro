@@ -58,6 +58,15 @@ unrelated local web pages and DNS-rebinding aliases. Raw paths are not
 included in asset URLs. This does not provide a sandbox against other local
 software that already has direct access to your files.
 
+## Local preferences backup privacy
+
+An explicit settings export creates a small local JSON file with allowlisted
+preferences only; no media, private Captures, clipboard contents, tokens or
+Discord source links. Watched absolute paths are excluded by default and
+included only with consent. Import is verified and separately confirmed;
+auto-send and auto-capture are forced OFF, and startup settings unchanged.
+The image ZIP media pack is a separate workflow.
+
 ## Where your data lives
 
 | Path | Contents |
