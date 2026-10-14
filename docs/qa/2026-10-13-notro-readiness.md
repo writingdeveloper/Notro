@@ -44,3 +44,50 @@ Follow-up draft PRs: Notro https://github.com/writingdeveloper/Notro/pull/1 ; po
 Source version has been advanced to **2.11.0**, with an unreleased CHANGELOG entry. No v2.11.0 tag or installer release was created. The feature branch candidate 5b14eba passed GitHub Actions CI and the manual Release workflow_dispatch build: EXE, Inno Setup installer and SHA256 (https://github.com/writingdeveloper/Notro/actions/runs/38486869698). Publishing was correctly skipped. GUI installation and code signing have not been validated.
 
 Portfolio PR #36 passes type/lint/build/tests but the dependency audit fails with 11 findings (10 high, 1 critical); see https://github.com/writingdeveloper/portfolio/actions/runs/38486167720. Do not bypass audit or deploy; coordination with existing portfolio security work is required.
+
+
+## Follow-up: OS-only compatibility and isolated native Windows QA
+
+- REA is an offline developer investigation aid only, not bundled in or
+  launched by Notro. Added architecture regression tests against runtime
+  imports of REA/Discord private modules. No Discord process memory, IPC,
+  message history or tokens were accessed.
+- Win32 process-window identity enumeration detected one visible Discord
+  desktop top-level window, matching the Discord.exe executable already
+  running. Read-only verification; no keys were sent to that window.
+- Optional auto-send is now guarded by the saved HWND and a public
+  QueryFullProcessImageNameW process-name check. The target must still be
+  focused before pasting and immediately before Enter. Paste still works in
+  non-Discord Windows applications but they never receive automated Enter.
+  Channel switches inside the same Discord window cannot be detected.
+  Auto-send remains off by default.
+- Actual Edge WebView2 smoke: a separate fixture window using two temporary
+  PNG/JPEG items displayed both thumbnails, three tabs, pack import/export
+  buttons, correct search results, KO/EN/JA/ZH/ES UI language updates, zero
+  errors, closed normally. The fixture does not register global hotkeys, alter
+  clipboard/registry, or invoke Discord.
+- Asset URL server now uses a per-run bearer capability in the local URL
+  path and a strict loopback Host check; regression tests cover
+  unauthenticated asset URLs and spoofed Host. Runtime thumbnail loading
+  verified in native WebView2.
+- Imported pack manifests are now read through a bounded decompression path.
+- Unverified: actual Discord file-attachment draft send, simultaneous
+  channel changes, WebView2 native file-open/save dialogs with the user's
+  profile, full installer installation or SmartScreen. Do not call
+  these verified or publish yet.
+
+
+## Verified continuation: standalone file-sharing UX
+
+- A single ZIP file dropped into the picker now routes through the same Python
+  validation method as the Settings Import button. Mixed multiple files retain
+  the existing media-add flow.
+- The native WebView2 fixture exported its two owned media assets, then
+  simulated a ZIP drop through the real Python JS bridge. The importer safely
+  skipped both duplicates, updated the on-screen status hint, and no JavaScript
+  or WebView errors occurred. Five localized search labels and both actual
+  thumbnails remained functional.
+- Current local regression suite: **393 passed**, Ruff 0.15.21 clean,
+  Python compileall passed and source version remains **2.11.0 unreleased**.
+- This test does **not** simulate a real user's native Windows file-open
+  dialog or Discord account; those acceptance criteria remain open in Plane.

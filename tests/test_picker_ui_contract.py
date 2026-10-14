@@ -104,3 +104,9 @@ def test_pack_transfer_has_explicit_buttons_in_settings():
              if attrs.get("id")}
     for action in ("st-import-pack", "st-export-pack"):
         assert by_id[action][0] == "button"
+
+def test_zip_drag_drop_reuses_pack_import_api():
+    js = (UI_DIR / "app.js").read_text(encoding="utf-8")
+    assert "paths.length === 1" in js
+    assert 'api().import_pack_path(paths[0])' in js
+    assert 'flashHint("picker_pack_error")' in js

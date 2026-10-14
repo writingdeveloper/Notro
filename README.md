@@ -85,6 +85,7 @@ collection with no registration step at all.
 - Items over the upload limit: still images are compressed automatically, oversized GIFs
   are sent as-is with a warning.
 - Optional auto-send presses <kbd>Enter</kbd> for you after pasting — off by default.
+  It is limited to a still-focused Discord desktop window; pasted items in other apps must be sent manually. Switching channels inside the same window cannot be detected.
 
 </details>
 
@@ -98,6 +99,8 @@ unsafe paths before import. Already saved duplicates are skipped.
 Private automatic **Captures**, Discord source URLs, clipboard history, watched
 folder paths and Windows settings are **not exported**. The ZIP is a portable
 asset pack, not a complete settings backup. Share only media you have rights to.
+
+Drop a pack ZIP directly onto the picker for quick import, or use the Import pack button in Settings.
 
 ## Automatic compression
 

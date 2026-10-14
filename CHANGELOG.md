@@ -27,6 +27,21 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Real Discord/WebView2 installer end-to-end QA and signing are **not yet complete**.
   Do not publish this candidate release until the verification gates are met.
 
+### Further hardening (release candidate; not yet published)
+- Optional auto-send now requires a still-focused Discord desktop target and
+  checks the original window again before both paste and Enter. Ordinary
+  paste to other apps still works, but Enter is never automatic there. This
+  uses public Windows APIs only and cannot detect switching channels
+  inside one window; auto-send remains disabled by default.
+- Local picker thumbnail URLs now require an unpredictable per-session
+  capability and the exact loopback Host header. ZIP manifest decompression
+  is bounded even for untrusted compressed input.
+- Added isolated native Windows Edge WebView2 fixture smoke that verifies real
+  thumbnails, picker search/settings, all five language bridges and ZIP drop
+  import using synthetic data, without opening chats or modifying Discord.
+- A single ZIP media pack may now be dragged onto the picker to import via
+  the same validated media pack path used by the explicit Import button.
+
 ## [2.10.3] - 2026-08-08
 
 ### Fixed

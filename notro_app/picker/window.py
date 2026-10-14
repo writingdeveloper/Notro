@@ -378,7 +378,6 @@ class PickerApi:
     def import_pack(self) -> dict:
         """Explicit dialog; preflight ZIP before library mutations."""
         import webview
-        from .. import packs
 
         dialog = getattr(getattr(webview, "FileDialog", None), "OPEN",
                          webview.OPEN_DIALOG)
@@ -387,6 +386,14 @@ class PickerApi:
         if not chosen:
             return {"ok": False, "error": "cancelled"}
         path = chosen[0] if isinstance(chosen, (list, tuple)) else chosen
+        return self.import_pack_path(path)
+
+    def import_pack_path(self, path: str) -> dict:
+        """Import one explicitly chosen/dropped ZIP; shared validation path."""
+        from .. import packs
+
+        if not isinstance(path, str) or not path.lower().endswith(".zip"):
+            return {"ok": False, "error": "pack"}
         try:
             result = packs.import_pack(self._library, path)
         except Exception:
@@ -490,24 +497,41 @@ class PickerController:
                 config.TEMP_DIR, target_px=resize.target_px_for(item["type"]),
                 upload_ceiling_bytes=config.UPLOAD_CEILING_BYTES)
             ok = cb.set_clipboard_file(path)
-        focused = cb.focus_window(self.prev_hwnd)
-        if ok and focused:
-            _t.sleep(0.12)
-            cb.send_ctrl_v()
-            # 자동 전송(opt-in): 디스코드가 첨부를 입력창에 붙일 시간을 준 뒤
-            # Enter를 보낸다. 되돌릴 수 없는 동작이라 기본은 꺼짐이고, 링크로
-            # 붙여넣기(mode="url")에는 적용하지 않는다 — 그쪽은 보통 문장 중간에
-            # 끼워 넣는 용도라 바로 보내면 곤란하다.
-            if mode != "url" and config.get_setting_flag("auto_send"):
-                _t.sleep(auto_send_delay())
-                cb.send_enter()
-            if warn:
-                self._notify(tr("picker_oversize_warn"))
-        elif ok:
-            self._notify(tr("notify_paste_manual"))
-        else:
+        if not ok:
             self._notify(tr("notify_clipboard_fail"))
+            return
+
+        target_hwnd = self.prev_hwnd
+        if not cb.focus_window(target_hwnd):
+            self._notify(tr("notify_paste_manual"))
+            return
+
+        # Focus may change while the picker closes or an attachment is prepared.
+        # Never press keys into whatever window the user switched to.
+        _t.sleep(0.12)
+        if not cb.is_window_focused(target_hwnd):
+            self._notify(tr("notify_paste_manual"))
+            return
+
+        cb.send_ctrl_v()
         self.library.touch(item["id"])
+        if warn:
+            self._notify(tr("picker_oversize_warn"))
+
+        # Auto-send is opt-in, OFF by default. Pasting works in any app but
+        # automatic Enter is restricted to an unmodified Discord desktop
+        # process, not Discord Web or other chat applications. Check again
+        # immediately before sending: upload/draft focus can change mid-delay.
+        if mode != "url" and config.get_setting_flag("auto_send"):
+            if not cb.is_discord_desktop_window(target_hwnd):
+                self._notify(tr("notify_auto_send_discord_only"))
+            else:
+                _t.sleep(auto_send_delay())
+                if (cb.is_window_focused(target_hwnd)
+                        and cb.is_discord_desktop_window(target_hwnd)):
+                    cb.send_enter()
+                else:
+                    self._notify(tr("notify_auto_send_focus_changed"))
 
     def create_window(self):
         import webview

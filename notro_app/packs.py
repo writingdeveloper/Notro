@@ -140,7 +140,10 @@ def import_pack(library, archive: str) -> dict:
         by_name = {info.filename: info for info in infos}
         if by_name["manifest.json"].file_size > MAX_MANIFEST_SIZE:
             raise PackError("manifest too large")
-        manifest_bytes = z.read("manifest.json")
+        # Never call ZipFile.read() unbounded on untrusted compressed input.
+        # Limit the bytes decompressed even if ZIP metadata is inconsistent.
+        with z.open("manifest.json") as manifest_file:
+            manifest_bytes = manifest_file.read(MAX_MANIFEST_SIZE + 1)
         if len(manifest_bytes) > MAX_MANIFEST_SIZE:
             raise PackError("manifest too large")
         try:

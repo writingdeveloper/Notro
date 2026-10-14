@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import mimetypes
 import os
+import secrets
 import threading
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -23,16 +24,27 @@ class AssetServer:
         self._resolver = resolver
         self._httpd: ThreadingHTTPServer | None = None
         self.port = 0
+        # Per-server capability: a random localhost port alone is not an
+        # authentication boundary. The token does not contain library data.
+        self._capability = secrets.token_urlsafe(32)
 
     def start(self) -> int:
         resolver = self._resolver
+        capability = self._capability
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):  # noqa: N802 (http.server 규약)
-                if not self.path.startswith("/asset/"):
+                # Reject browser DNS-rebinding aliases and forged virtual
+                # hosts. The picker uses the exact 127.0.0.1 URL below.
+                expected_host = f"127.0.0.1:{self.server.server_port}"
+                if self.headers.get("Host", "") != expected_host:
+                    self.send_error(403)
+                    return
+                prefix = f"/asset/{capability}/"
+                if not self.path.startswith(prefix):
                     self.send_error(404)
                     return
-                item_id = urllib.parse.unquote(self.path[len("/asset/"):])
+                item_id = urllib.parse.unquote(self.path[len(prefix):])
                 try:
                     path = resolver(item_id)
                 except Exception:
@@ -77,7 +89,7 @@ class AssetServer:
         return self.port
 
     def url_for(self, item_id: str) -> str:
-        return f"http://127.0.0.1:{self.port}/asset/{urllib.parse.quote(item_id, safe='')}"
+        return f"http://127.0.0.1:{self.port}/asset/{self._capability}/{urllib.parse.quote(item_id, safe='')}"
 
     def stop(self) -> None:
         if self._httpd:

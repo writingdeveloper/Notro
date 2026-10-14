@@ -799,3 +799,38 @@ _WELCOME_ACTIONS = {
 for _lang, _message in _WELCOME_ACTIONS.items():
     STRINGS[_lang]["welcome_try_picker"] = _message
 del _WELCOME_ACTIONS
+
+# Optional auto-send is deliberately restricted to a still-focused Discord
+# desktop window. The picker remains a general Windows attachment picker.
+_AUTOSEND_SAFETY_MESSAGES = {
+    "en": (
+        "Auto-send skipped: only available in Discord desktop. Item was pasted; send manually.",
+        "Auto-send canceled: the active window changed after pasting.",
+        "Auto-send works only while the Discord desktop window stays focused. Pasting elsewhere is still supported.",
+    ),
+    "ko": (
+        "자동 전송은 Discord 데스크톱에서만 됩니다. 붙여넣기는 완료했으니 직접 전송하세요.",
+        "붙여넣은 뒤 활성 창이 바뀌어 자동 전송을 취소했습니다.",
+        "Discord 데스크톱 창에 계속 포커스가 있을 때만 자동 전송합니다. 다른 앱에서는 붙여넣기만 합니다.",
+    ),
+    "ja": (
+        "自動送信はDiscordデスクトップ限定です。貼り付け後、手動で送信してください。",
+        "貼り付け後にアクティブウィンドウが変わったため、自動送信を中止しました。",
+        "Discordデスクトップがフォーカスされている間だけ自動送信します。他のアプリでは貼り付けのみです。",
+    ),
+    "zh": (
+        "自动发送仅支持Discord桌面版。内容已粘贴，请手动发送。",
+        "粘贴后活动窗口发生变化，已取消自动发送。",
+        "仅在Discord桌面版窗口持续处于焦点时自动发送。其他应用只执行粘贴。",
+    ),
+    "es": (
+        "El envío automático solo funciona en Discord de escritorio. Se pegó el archivo; envíalo manualmente.",
+        "Se canceló el envío automático porque cambió la ventana activa.",
+        "Solo se envía automáticamente mientras Discord de escritorio mantiene el foco. En otras aplicaciones solo se pega.",
+    ),
+}
+for _lang, (_non_discord, _focus_changed, _note) in _AUTOSEND_SAFETY_MESSAGES.items():
+    STRINGS[_lang]["notify_auto_send_discord_only"] = _non_discord
+    STRINGS[_lang]["notify_auto_send_focus_changed"] = _focus_changed
+    STRINGS[_lang]["picker_auto_send_note"] = _note
+del _AUTOSEND_SAFETY_MESSAGES

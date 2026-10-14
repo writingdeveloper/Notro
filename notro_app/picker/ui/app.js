@@ -575,6 +575,18 @@ window.addEventListener("drop", async (e) => {
   $("#dropzone").classList.add("hidden");
   if (!api()) return;
   const paths = [...e.dataTransfer.files].map((f) => f.pywebviewFullPath).filter(Boolean);
+  if (paths.length === 1 && /\.zip$/i.test(paths[0])) {
+    // A pack drop is explicit opt-in, with exactly the same preflight as the
+    // Import Pack dialog. Other ZIPs are rejected; never extract arbitrary files.
+    const res = await api().import_pack_path(paths[0]);
+    if (res && res.ok) {
+      await refresh();
+      flashHint("picker_pack_imported", res);
+    } else {
+      flashHint("picker_pack_error");
+    }
+    return;
+  }
   if (paths.length) {
     const res = await api().register_files(paths, state.tab, currentCollection());
     await refresh();

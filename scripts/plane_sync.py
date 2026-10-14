@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import html
-import json
 import os
 from pathlib import Path
 from urllib.parse import quote
@@ -28,6 +27,12 @@ ISSUES = [
      "Update EN/KO/JA/ZH/ES README, examples, official Discord limit source, and Show HN copy; multilingual proofreading."),
     ("REA 6.4.0 static audit of installed Discord Electron ASARs", "QA", "high",
      "Read-only, no account data or runtime injection. Record exact asset hashes, graph coverage/limits, and integration recommendations. Review risk/terms before experiments."),
+    ("Windows OS-level paste focus and Discord-only auto-send guard", "QA", "urgent",
+     "Implemented HWND focus recheck before Ctrl+V; optional Enter only to still-focused Discord.exe/PTB/Canary via public Win32 process filename APIs. Auto-send off by default; read-only current Discord HWND identity passed; unit tests passed. Live unsent Discord draft interaction remains unverified."),
+    ("Native isolated WebView2 picker and five-language fixture smoke", "Done", "high",
+     "Native Windows Edge WebView2 launched against temporary owned PNG/JPEG assets, with no Discord process changes or global clipboard access. 2 assets and thumbnails loaded, 3 tabs, pack buttons, safe ZIP drop deduped, search and KO/EN/JA/ZH/ES Python-to-JS bridge passed; process exited without errors."),
+    ("Local library asset server host/token access protection", "QA", "high",
+     "Added per-instance random capability path and exact 127.0.0.1:port Host enforcement (DNS rebinding defense in depth), bounded streaming and HTTP regression tests. Confirmed actual WebView2 thumbnails load. Extended security/disclosure documentation."),
     ("Windows real-app picker and clipboard E2E smoke QA", "To Do", "urgent",
      "Run Discord test in a private draft (no unwanted message sent), exercise PNG/JPEG/GIF, hotkeys, source file preservation, auto-send off, keyboard use, DPI/multi-monitor, failure recovery."),
     ("Notro trust and distribution: signing and pinned builds", "To Do", "high",
@@ -35,7 +40,7 @@ ISSUES = [
     ("First-run activation: 3-minute task-guided welcome", "QA", "high",
      "First-run Try Picker action implemented and localized. Confirm 3-minute human first-paste usability on Windows WebView2 before Done."),
     ("Shareable safe emoji pack import/export and library backup", "QA", "high",
-     "Portable ZIP media packs, hashed assets, import/export UI and exclusion of private Captures are implemented and tested. WebView2 dialogs require QA. Full app settings backup is separate."),
+     "Portable ZIP media packs, hashed assets, import/export UI and single-ZIP drag-and-drop with private Captures exclusion are implemented and tested (native fixture ZIP-drop PASS). WebView2 dialogs require QA. Full app settings backup is separate."),
     ("Oversized GIF optimization with transparent size/quality preview", "To Do", "high",
      "Optimize oversized GIFs only with explicit consent; prefer loss-minimized frame and scale strategies, preserve original file, surface result quality and failure."),
     ("Picker 100/1k/5k assets benchmark and asset server hardening", "QA", "high",

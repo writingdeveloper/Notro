@@ -89,6 +89,7 @@ cierra. Después del atajo no hace falta soltar el teclado.
   GIF demasiado grandes se envían tal cual con un aviso.
 - Hay un envío automático opcional que pulsa <kbd>Enter</kbd> por ti después de pegar —
   desactivado de forma predeterminada.
+  Solo funciona si Discord de escritorio sigue enfocado; en otras aplicaciones debes enviar manualmente. No detecta cambios de canal dentro de la misma ventana.
 
 </details>
 
@@ -101,6 +102,8 @@ y las rutas, y se omiten los duplicados.
 No se incluyen Captures privados, URL originales de Discord, historial del portapapeles,
 rutas de carpetas supervisadas ni ajustes de Windows. No es una copia completa de los ajustes.
 Comparte solo medios cuya distribución esté permitida.
+
+También puedes arrastrar un ZIP de paquete al selector: se valida igual que con el botón Importar paquete.
 
 ## Compresión automática
 

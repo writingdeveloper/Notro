@@ -160,3 +160,22 @@ def test_cancel_pack_dialog_is_noop(tmp_path):
     assert api.export_pack() == {"ok": False, "error": "cancelled"}
     assert api.import_pack() == {"ok": False, "error": "cancelled"}
     assert lib.items() == []
+
+def test_drag_drop_pack_reuses_same_safe_import_bridge(tmp_path):
+    """A manually dropped ZIP uses the importer; arbitrary archives still fail."""
+    from notro_app.picker.window import PickerApi
+
+    origin = Library(str(tmp_path / "origin"))
+    fetch.register_from_file(origin, str(image_file(tmp_path)), "emoji")
+    pack_path = tmp_path / "my-pack.zip"
+    packs.export_pack(origin, str(pack_path))
+    target = Library(str(tmp_path / "target"))
+    api = PickerApi(library=target)
+    assert api.import_pack_path(str(pack_path)) == {
+        "ok": True, "added": 1, "duplicate": 0, "failed": 0,
+    }
+    assert len(target.items()) == 1
+    assert api.import_pack_path(str(pack_path))["duplicate"] == 1
+    assert api.import_pack_path(str(tmp_path / "not-a-pack.txt")) == {
+        "ok": False, "error": "pack",
+    }
