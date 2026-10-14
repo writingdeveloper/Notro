@@ -31,6 +31,19 @@ Notro is maintained by one person, who therefore holds all three roles:
 Multi-factor authentication is required on the GitHub account and on the signing
 service account.
 
+## Signing readiness and source protection
+
+As of October 13, 2026, authenticated GitHub API inspection shows the
+repository main branch is not protected. Before requesting an OSS signing
+certificate, establish required Windows CI and release review rules
+after checking concurrent worktrees and available human reviewers.
+A maintainer must not sign unreviewed artifacts through an automatic agent.
+No SignPath Foundation certificate has been approved or attached.
+
+For verified unsigned build hashes, OSS signing requirements, Azure
+alternatives and remaining blockers, see
+[the October 2026 signing note](docs/research/2026-10-13-notro-code-signing-readiness.md).
+
 ## How releases are built
 
 Releases are built only by GitHub Actions from a tagged commit on `main`

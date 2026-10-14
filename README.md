@@ -143,7 +143,7 @@ installs to `%LOCALAPPDATA%\Programs\Notro`.
 > unknown — click *More info → Run anyway*. Every release ships a `NotroSetup.exe.sha256`
 > so you can verify exactly what you downloaded, and you can
 > [build it yourself](#build-it-yourself) from source. See
-> [SECURITY.md](SECURITY.md#code-signing) and the [code signing policy](CODE_SIGNING.md).
+> [SECURITY.md](SECURITY.md#code-signing) and the [Code signing policy](CODE_SIGNING.md).
 
 **Windows 10 users:** the picker needs the Microsoft Edge WebView2 runtime (Windows 11 has
 it built in). The installer fetches it if it's missing. Without it the picker is disabled

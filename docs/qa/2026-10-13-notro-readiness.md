@@ -214,3 +214,19 @@ was moved To Do -> In Progress, not Done, because real Discord draft
 clipboard integration and GUI installer runtime QA remain unresolved.
 The resume-safe Plane sync script continues to preserve manual status,
 priority and ownership when refreshing issue descriptions.
+
+
+## Final unsigned QA build for native dialog changes (e26122b)
+
+- Manual GitHub Actions build 38499645717: Windows tests, executable, Inno
+  Setup, SHA256 and short-lived QA artifact upload succeeded. Published
+  release step SKIPPED; no v2.11.0 release/tag created.
+- Downloaded 17,091,762-byte NotroSetup.exe and matched published SHA256:
+  1b91f47abce7daf9d3f0a772cba065ba951f0885e22d5557241662ba9855ba9a.
+- Windows VersionInfo ProductName Notro, FileVersion 2.11.0;
+  Authenticode NotSigned. The installer was NOT executed.
+- Main branch-protection API returned 404 (unprotected). SignPath Foundation
+  reputation/manual review and Azure Public Trust alternatives are documented
+  in docs/research/2026-10-13-notro-code-signing-readiness.md.
+  No third-party certificate/account enrollment occurred. Real Windows
+  installation, SmartScreen and Discord draft/paste tests remain open.
