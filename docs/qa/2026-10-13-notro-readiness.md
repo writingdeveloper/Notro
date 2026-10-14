@@ -177,3 +177,29 @@ Real installer, SmartScreen and Discord E2E tests remain open.
   not code-signing identity or software safety.
 - 3-day artifact is for QA; do not claim code signing, SmartScreen reputation,
   real installation success, Discord chat end-to-end, or release readiness.
+
+
+## Follow-up real Win32 dialog and native gallery QA (2026-10-13)
+
+- To reproduce on @4080 with pywebview, Pillow, pywinauto, pywin32:
+  python scripts/qa_native_file_dialogs.py
+- The harness uses an isolated Edge WebView2 form, synthetic 20x20 PNG and
+  REAL Windows #32770 Save As/Open dialogs owned by its own PID.
+- 4/4 stages PASS: cancel export, save ZIP with Hangul filename,
+  cancel import, import Korean-named ZIP into an empty temporary library.
+  Saved ZIP size 535 bytes, PNG SHA-256 unchanged, imported 1 item,
+  failed 0. The script never touches other application controls,
+  real clipboard, or the user's Notro library.
+- Picker uses current pywebview FileDialog enum with lazy fallback to
+  deprecated constants only for older versions.
+- Real Windows WebView2 synthetic 1x1-image gallery benchmark, one run:
+  100 DOM items rendered in 1ms/search 0ms;
+  1000 rendered in 8ms/search 1ms;
+  5000 rendered in 39ms/search 4ms.
+  All expected DOM cells rendered without JavaScript errors.
+  Reproduce: python scripts/qa_native_webview.py
+  The benchmark does NOT measure real GIF decoding or 5000 mixed-size
+  animated assets' memory usage.
+- Plane parent NOTRO-5 real Discord clipboard/attachment QA remains open.
+  No live Discord draft/message was created, pasted, or sent.
+- SignPath/signing, SmartScreen and installer execution remain unverified.

@@ -80,7 +80,8 @@ def main() -> int:
                   "asset_images_loaded": False, "locale_labels": [],
                   "zip_drop": False, "gif_preview": False,
                   "gif_source_preserved": False, "gif_cancelled": False,
-                  "gif_mock_accept": False}
+                  "gif_mock_accept": False,
+                  "gallery_5k": False, "gallery_benchmarks": []}
         errors = []
 
         def examine():
@@ -222,6 +223,43 @@ def main() -> int:
                         and calls[0][1] == "optimized"
                         and calls[0][2] and Path(calls[0][2]).is_file()
                     )
+                    # Test the real WebView2 renderer, not just the Python
+                    # filesystem scanner. All 5,000 items are synthetic and
+                    # use a tiny 1x1 data URL, never private media.
+                    win.evaluate_js("window.__fixtureItems=state.items;")
+                    for n in (100, 1000, 5000):
+                        script = """(() => {
+                          const n = __N__;
+                          const img = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+                          state.items = Array.from({length:n}, (_,i) => ({
+                            id: String(i), type: 'emoji', name: 'sample-' + i,
+                            keywords: [], url: img, animated:false,
+                            convert_warning:false, favorite:false,
+                            collection:'', is_folder:false, can_url:false
+                          }));
+                          state.tab = 'emoji'; state.query = '';
+                          state.collection = '__all__'; state.recent = [];
+                          let t = performance.now(); render();
+                          const render_ms = Math.round(performance.now()-t);
+                          const displayed = document.querySelectorAll('.cell').length;
+                          state.query='sample-' + Math.min(n-1, 499); t=performance.now(); render();
+                          return {items:n,render_ms,
+                            search_ms: Math.round(performance.now()-t),
+                            dom_cells:displayed,
+                            filtered_cells:document.querySelectorAll('.cell').length};
+                        })()""".replace("__N__", str(n))
+                        record = win.evaluate_js(script)
+                        result["gallery_benchmarks"].append(record)
+                    result["gallery_5k"] = all(
+                        r["dom_cells"] == r["items"]
+                        and r["render_ms"] < 3000
+                        and r["filtered_cells"] >= 1
+                        for r in result["gallery_benchmarks"]
+                    )
+                    win.evaluate_js(
+                        "state.items=window.__fixtureItems;"
+                        "state.query='';render();"
+                    )
             except Exception as e:
                 errors.append(type(e).__name__ + ": " + str(e)[:300])
             finally:
@@ -244,7 +282,7 @@ def main() -> int:
             and len(result["locale_labels"]) == 5 and result["zip_drop"]
             and result["gif_preview"] and result["gif_cancelled"]
             and result["gif_source_preserved"] and result["gif_mock_accept"]
-            and not errors
+            and result["gallery_5k"] and not errors
         )
         print("NOTRO_NATIVE_QA=" + json.dumps(result, ensure_ascii=True), flush=True)
         return 0 if result["passed"] else 1

@@ -227,6 +227,22 @@ def _collection(name) -> str:
     return "" if name in ("__all__", "__fav__") else name
 
 
+def _native_dialog_kind(name: str, module=None):
+    """Prefer current pywebview FileDialog enum, fallback without eager warning.
+
+    Evaluating the old SAVE_DIALOG/OPEN_DIALOG attributes even as a fallback
+    argument raises a deprecation warning on pywebview 6.x.
+    """
+    if module is None:
+        import webview as module
+
+    kinds = getattr(module, "FileDialog", None)
+    modern = getattr(kinds, name, None) if kinds is not None else None
+    if modern is not None:
+        return modern
+    return getattr(module, name + "_DIALOG")
+
+
 class PickerApi(GifPreviewMixin):
     """JS 브리지. 각 메서드는 pywebview API 스레드에서 호출된다.
 
@@ -368,8 +384,7 @@ class PickerApi(GifPreviewMixin):
         import webview
         from .. import packs
 
-        dialog = getattr(getattr(webview, "FileDialog", None), "SAVE",
-                         webview.SAVE_DIALOG)
+        dialog = _native_dialog_kind("SAVE", webview)
         chosen = self._ctrl.window.create_file_dialog(
             dialog, save_filename="notro-pack.zip",
             file_types=("ZIP archives (*.zip)",))
@@ -386,8 +401,7 @@ class PickerApi(GifPreviewMixin):
         """Explicit dialog; preflight ZIP before library mutations."""
         import webview
 
-        dialog = getattr(getattr(webview, "FileDialog", None), "OPEN",
-                         webview.OPEN_DIALOG)
+        dialog = _native_dialog_kind("OPEN", webview)
         chosen = self._ctrl.window.create_file_dialog(
             dialog, file_types=("ZIP archives (*.zip)",))
         if not chosen:
@@ -430,7 +444,8 @@ class PickerApi(GifPreviewMixin):
 
     def add_folder(self, default_type: str = "gif") -> dict:
         import webview
-        res = self._ctrl.window.create_file_dialog(webview.FOLDER_DIALOG)
+        res = self._ctrl.window.create_file_dialog(
+            _native_dialog_kind("FOLDER", webview))
         if res:
             self._library.add_folder(res[0], default_type)
             return {"ok": True}

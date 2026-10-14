@@ -179,3 +179,28 @@ def test_drag_drop_pack_reuses_same_safe_import_bridge(tmp_path):
     assert api.import_pack_path(str(tmp_path / "not-a-pack.txt")) == {
         "ok": False, "error": "pack",
     }
+
+
+def test_dialog_type_prefers_modern_enum_without_touching_deprecated_alias():
+    from types import SimpleNamespace
+    from notro_app.picker.window import _native_dialog_kind
+
+    class ModernOnly:
+        FileDialog = SimpleNamespace(OPEN=10, SAVE=30, FOLDER=20)
+
+        def __getattr__(self, key):
+            raise AssertionError("unexpected deprecated enum attribute: " + key)
+
+    m = ModernOnly()
+    assert _native_dialog_kind("OPEN", m) == 10
+    assert _native_dialog_kind("SAVE", m) == 30
+    assert _native_dialog_kind("FOLDER", m) == 20
+
+
+def test_dialog_type_accepts_old_pywebview_without_modern_enum():
+    from types import SimpleNamespace
+    from notro_app.picker.window import _native_dialog_kind
+
+    legacy = SimpleNamespace(OPEN_DIALOG=10, SAVE_DIALOG=30, FOLDER_DIALOG=20)
+    for name, value in (("OPEN", 10), ("SAVE", 30), ("FOLDER", 20)):
+        assert _native_dialog_kind(name, legacy) == value
