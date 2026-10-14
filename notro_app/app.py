@@ -161,7 +161,8 @@ def main():
         try/except로 감싸긴 하지만, 그건 "죽지 않는다"만 보장할 뿐 "뒤 단계가 실행된다"는
         보장하지 못한다. 각 단계를 개별적으로 감싸 하나가 실패해도 나머지는 반드시
         실행되게 한다."""
-        steps = [listener.stop, asset_server.stop, picker.destroy,
+        steps = [listener.stop, api.discard_gif_preview,
+                 asset_server.stop, picker.destroy,
                  video_window.destroy_all,  # 열린 확인/진행 창부터 닫는다 — destroy()가
                                              # closed 이벤트를 통해 cancelled(+accepted)를
                                              # set해, 그 창에 매인 _work 스레드가 새 인코딩을

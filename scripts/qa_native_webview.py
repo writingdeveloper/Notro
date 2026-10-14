@@ -8,16 +8,20 @@ global clipboard/registry. It opens a separate QA window then closes it.
 from __future__ import annotations
 
 import json
+import hashlib
+import os
+import random
 import tempfile
 import sys
 import time
+from types import SimpleNamespace
 from pathlib import Path
 
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from notro_app import fetch, packs
+from notro_app import config, fetch, packs, resize
 from notro_app.library import Library
 from notro_app.i18n import set_language, tr
 from notro_app.picker.assets_server import AssetServer
@@ -39,6 +43,28 @@ def main() -> int:
             fetch.register_from_file(lib, str(src), "emoji")
         pack_path = root / "test-pack.zip"
         packs.export_pack(lib, str(pack_path))
+
+        # A synthetic animated GIF is kept separate from the ZIP fixture.
+        # No live library, clipboard contents or Discord chats are accessed.
+        rng = random.Random(13)
+        gif_frames = [
+            Image.frombytes("RGB", (100, 90), rng.randbytes(100 * 90 * 3))
+            for _ in range(14)
+        ]
+        gif_path = root / "synthetic-animation.gif"
+        gif_frames[0].save(
+            gif_path, format="GIF", save_all=True,
+            append_images=gif_frames[1:], duration=80, loop=3,
+        )
+        gif_item = fetch.register_from_file(
+            lib, str(gif_path), "gif", name="synthetic-animation")
+        lib_gif_path = lib.asset_path(gif_item)
+        gif_digest = hashlib.sha256(Path(lib_gif_path).read_bytes()).hexdigest()
+        # Runtime-only per-process values, no registry writes.
+        config.TEMP_DIR = str(root / "temporary")
+        config.LIMIT_BYTES = int(os.path.getsize(lib_gif_path) * .65)
+        config.UPLOAD_CEILING_BYTES = int(os.path.getsize(lib_gif_path) * .80)
+        resize.target_px_for = lambda _type: 0
         server = AssetServer(
             lambda item_id: lib.asset_path(item) if (item := lib.resolve(item_id)) else None
         )
@@ -52,7 +78,9 @@ def main() -> int:
         result = {"native_webview2": False, "items": 0, "tabs": 0,
                   "settings": False, "pack_buttons": False, "search": False,
                   "asset_images_loaded": False, "locale_labels": [],
-                  "zip_drop": False}
+                  "zip_drop": False, "gif_preview": False,
+                  "gif_source_preserved": False, "gif_cancelled": False,
+                  "gif_mock_accept": False}
         errors = []
 
         def examine():
@@ -67,12 +95,12 @@ def main() -> int:
                         result["tabs"] = int(win.evaluate_js(
                             "document.querySelectorAll('.tab').length"
                         ))
-                        if result["native_webview2"] and result["items"] == 2:
+                        if result["native_webview2"] and result["items"] == 3:
                             break
                     except Exception:
                         pass
                     time.sleep(0.3)
-                if result["native_webview2"] and result["items"] == 2:
+                if result["native_webview2"] and result["items"] == 3:
                     win.evaluate_js("document.getElementById('btn-settings').click()")
                     result["settings"] = bool(win.evaluate_js(
                         "!document.getElementById('modal-settings').classList.contains('hidden')"
@@ -131,6 +159,69 @@ def main() -> int:
                             result["zip_drop"] = True
                             break
                         time.sleep(0.1)
+
+                    # Click real GIF tab, request a candidate through pywebview
+                    # JS->Python bridge, inspect both animated thumbnails, then
+                    # cancel it. Never call paste_gif_preview during smoke QA.
+                    win.evaluate_js(
+                        "state.tab='gif';state.query='';render();"
+                        "void openGifPreview(state.items.find("
+                        "i => i.name === 'synthetic-animation'))"
+                    )
+                    for _ in range(60):
+                        ready = bool(win.evaluate_js(
+                            "!document.getElementById('gif-accept').disabled "
+                            "&& !document.getElementById('gif-compare').classList"
+                            ".contains('hidden')"
+                        ))
+                        if ready:
+                            result["gif_preview"] = bool(win.evaluate_js(
+                                "['gif-source-image','gif-result-image'].every("
+                                "id => {const i=document.getElementById(id);"
+                                "return i.complete && i.naturalWidth > 0})"
+                            ))
+                            if result["gif_preview"]:
+                                break
+                        time.sleep(0.25)
+                    win.evaluate_js("document.getElementById('gif-cancel').click()")
+                    for _ in range(25):
+                        if api._gif_preview is None:
+                            result["gif_cancelled"] = True
+                            break
+                        time.sleep(0.1)
+                    result["gif_source_preserved"] = (
+                        hashlib.sha256(Path(lib_gif_path).read_bytes()).hexdigest()
+                        == gif_digest
+                    )
+                    # Explicit accept path: substitute an inert controller,
+                    # never call global clipboard or send key events.
+                    # The actual JS->Python bridge must accept a generated
+                    # candidate and exit the dialog without touching Discord.
+                    calls = []
+                    api._ctrl = SimpleNamespace(
+                        select=lambda id_, mode="file", override_path=None:
+                        calls.append((id_, mode, override_path)) or True
+                    )
+                    win.evaluate_js(
+                        "void openGifPreview(state.items.find("
+                        "i => i.name === 'synthetic-animation'))"
+                    )
+                    for _ in range(60):
+                        if bool(win.evaluate_js(
+                            "!document.getElementById('gif-accept').disabled"
+                        )):
+                            break
+                        time.sleep(0.25)
+                    win.evaluate_js("document.getElementById('gif-accept').click()")
+                    for _ in range(25):
+                        if calls:
+                            break
+                        time.sleep(0.1)
+                    result["gif_mock_accept"] = bool(
+                        len(calls) == 1 and calls[0][0] == gif_item["id"]
+                        and calls[0][1] == "optimized"
+                        and calls[0][2] and Path(calls[0][2]).is_file()
+                    )
             except Exception as e:
                 errors.append(type(e).__name__ + ": " + str(e)[:300])
             finally:
@@ -146,11 +237,13 @@ def main() -> int:
             server.stop()
         result["errors"] = errors
         result["passed"] = bool(
-            result["native_webview2"] and result["items"] == 2
+            result["native_webview2"] and result["items"] == 3
             and result["tabs"] == 3 and result["settings"]
             and result["pack_buttons"] and result["search"]
             and result["asset_images_loaded"]
             and len(result["locale_labels"]) == 5 and result["zip_drop"]
+            and result["gif_preview"] and result["gif_cancelled"]
+            and result["gif_source_preserved"] and result["gif_mock_accept"]
             and not errors
         )
         print("NOTRO_NATIVE_QA=" + json.dumps(result, ensure_ascii=True), flush=True)

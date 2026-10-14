@@ -13,6 +13,16 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Synthetic 100/1,000/5,000-item library performance benchmark, Windows regression
   coverage and Ruff CI lint. REA static compatibility and marketing QA notes.
 
+- Opt-in GIF size/quality preview: right-click an animated item to compare
+  original and optimized animations, frame timing, dimensions and file sizes.
+  A bounded Pillow engine tries palette reductions before lowering resolution,
+  preserves animation loop and frame timing, and rejects unsafe inputs.
+  Only the user-approved temporary candidate is pasted; automatic Enter is
+  suppressed. Original GIFs and library files remain unchanged.
+- GIF preview lifecycle includes cancel/close cleanup and temporary localhost
+  media URLs. Native WebView2 fixture validates both images and a synthetic
+  approve/cancel flow without touching live Discord, user clipboard or chat.
+
 ### Fixed
 - The Discord free upload default now matches the official August 2026 20 MB
   limit. Existing explicit 10 MB choices remain available. The 95% safety margin

@@ -110,3 +110,19 @@ def test_zip_drag_drop_reuses_pack_import_api():
     assert "paths.length === 1" in js
     assert 'api().import_pack_path(paths[0])' in js
     assert 'flashHint("picker_pack_error")' in js
+
+
+def test_gif_comparison_requires_explicit_acceptance_and_supports_cancel():
+    by_id = {attrs.get("id"): (tag, attrs) for tag, attrs in elements()
+             if attrs.get("id")}
+    assert by_id["modal-gif"][0] == "div"
+    assert by_id["gif-source-image"][0] == "img"
+    assert by_id["gif-result-image"][0] == "img"
+    accept_tag, accept = by_id["gif-accept"]
+    assert accept_tag == "button" and "disabled" in accept
+    assert by_id["gif-cancel"][0] == "button"
+    js = (UI_DIR / "app.js").read_text(encoding="utf-8")
+    assert "api().preview_gif(item.id)" in js
+    assert "api().paste_gif_preview(candidate.itemId, candidate.token)" in js
+    assert "api().discard_gif_preview(candidate.token)" in js
+    assert "item.animated" in js

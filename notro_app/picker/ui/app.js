@@ -76,6 +76,12 @@ function applyStrings() {
   $("#st-import-pack").textContent = str("picker_pack_import");
   $("#st-export-pack").textContent = str("picker_pack_export");
   $("#st-close").textContent = str("picker_cancel");
+  $("#gif-title").textContent = str("picker_gif_title");
+  $("#gif-note").textContent = str("picker_gif_note");
+  $("#gif-source-label").textContent = str("picker_gif_original");
+  $("#gif-result-label").textContent = str("picker_gif_result");
+  $("#gif-accept").textContent = str("picker_gif_accept");
+  $("#gif-cancel").textContent = str("picker_gif_cancel");
   $("#dropzone").textContent = str("picker_drop_hint");
 }
 
@@ -272,6 +278,8 @@ function showCtx(e, item) {
     ctx.appendChild(b);
   };
   add(str("picker_ctx_file"), () => select(item, "file"));
+  if (item.animated)
+    add(str("picker_gif_optimize"), () => openGifPreview(item));
   if (item.can_url) add(str("picker_ctx_url"), () => select(item, "url"));
   if (!item.is_folder) {
     add(item.favorite ? str("picker_ctx_unfavorite") : str("picker_ctx_favorite"),
@@ -301,9 +309,87 @@ function hideCtx() { $("#ctx").classList.add("hidden"); }
 /* 열려 있는 창 하나 (없으면 undefined). 방향키·붙여넣기 처리는 창이 열려 있는
    동안 그리드를 건드리면 안 된다. */
 function openModal() {
-  return [$("#modal-add"), $("#modal-edit"), $("#modal-settings")]
+  return [$("#modal-add"), $("#modal-edit"), $("#modal-settings"), $("#modal-gif")]
     .find((m) => !m.classList.contains("hidden"));
 }
+
+/* ---------- GIF preview / explicit user approval ----------
+   This is an independent file-processing workflow. The optimization candidate
+   is a private temp file; no Discord client APIs are used. */
+let gifPreview = null;
+let gifPreviewTicket = 0;
+
+function gifMiB(bytes) { return (bytes / 1048576).toFixed(2) + " MB"; }
+function gifErrorKey(error) {
+  if (error === "already_fits") return "picker_gif_fits";
+  if (error === "too_complex") return "picker_gif_too_complex";
+  if (error === "cannot_fit") return "picker_gif_cannot_fit";
+  if (error === "outdated") return "picker_gif_outdated";
+  return "picker_gif_failed";
+}
+async function closeGifPreview() {
+  gifPreviewTicket++;
+  const candidate = gifPreview;
+  gifPreview = null;
+  $("#modal-gif").classList.add("hidden");
+  $("#gif-accept").disabled = true;
+  $("#gif-source-image").removeAttribute("src");
+  $("#gif-result-image").removeAttribute("src");
+  if (candidate && api()) await api().discard_gif_preview(candidate.token);
+}
+async function openGifPreview(item) {
+  if (!api()) return;
+  const ticket = ++gifPreviewTicket;
+  gifPreview = null;
+  $("#gif-compare").classList.add("hidden");
+  $("#gif-accept").disabled = true;
+  $("#gif-meta").textContent = "";
+  $("#gif-status").textContent = str("picker_gif_loading");
+  $("#modal-gif").classList.remove("hidden");
+
+  let res;
+  try { res = await api().preview_gif(item.id); }
+  catch (_) { res = {ok:false, error:"encode"}; }
+  if (ticket !== gifPreviewTicket) {
+    if (res && res.ok) await api().discard_gif_preview(res.token);
+    return;
+  }
+  if (!res || !res.ok) {
+    $("#gif-status").textContent = str(gifErrorKey(res && res.error));
+    return;
+  }
+  gifPreview = {itemId:item.id, token:res.token};
+  $("#gif-source-image").src = res.original_url;
+  $("#gif-result-image").src = res.optimized_url;
+  $("#gif-compare").classList.remove("hidden");
+  const oldSize = res.original_size.join("×");
+  const newSize = res.optimized_size.join("×");
+  const percent = Math.round(100 * (1 - res.optimized_bytes / res.original_bytes));
+  $("#gif-meta").textContent =
+    gifMiB(res.original_bytes) + " → " + gifMiB(res.optimized_bytes)
+    + " (−" + percent + "%), " + oldSize + " → " + newSize + " px"
+    + ", " + res.frames + " " + str("picker_gif_info");
+  $("#gif-status").textContent = str("picker_gif_result");
+  $("#gif-accept").disabled = false;
+}
+async function acceptGifPreview() {
+  if (!gifPreview || !api()) return;
+  const candidate = gifPreview;
+  $("#gif-accept").disabled = true;
+  let res;
+  try { res = await api().paste_gif_preview(candidate.itemId, candidate.token); }
+  catch (_) { res = {ok:false, error:"outdated"}; }
+  if (res && res.ok) {
+    gifPreview = null;
+    gifPreviewTicket++;
+    $("#modal-gif").classList.add("hidden");
+  } else {
+    $("#gif-status").textContent = str(gifErrorKey(res && res.error));
+    gifPreview = null;
+  }
+}
+$("#gif-cancel").addEventListener("click", closeGifPreview);
+$("#gif-accept").addEventListener("click", acceptGifPreview);
 
 /* ---------- 등록 모달 ---------- */
 /* 세로 바에서 실제 컬렉션을 보고 있으면 그곳을 기본 저장 위치로 쓴다.
@@ -551,6 +637,7 @@ const CURSOR_MOVES = {
 window.addEventListener("keydown", (e) => {
   const modal = openModal();
   if (e.key === "Escape") {
+    if (modal && modal.id === "modal-gif") { closeGifPreview(); return; }
     if (modal && modal.id === "modal-edit") editingId = "";
     if (modal) { modal.classList.add("hidden"); return; }
     if (!$("#ctx").classList.contains("hidden")) { hideCtx(); return; }
@@ -626,6 +713,16 @@ window.addEventListener("paste", async (e) => {
 
 /* ---------- 표시 훅 (Python이 호출) ---------- */
 window.__onShow = () => {
+  // A previous popup may have closed on lost focus while a preview/modal
+  // was pending. The Python controller has already discarded the preview.
+  // Reset the presentation before the new picker session begins.
+  gifPreviewTicket++;
+  gifPreview = null;
+  $("#modal-gif").classList.add("hidden");
+  $("#gif-accept").disabled = true;
+  $("#gif-compare").classList.add("hidden");
+  $("#gif-source-image").removeAttribute("src");
+  $("#gif-result-image").removeAttribute("src");
   state.query = "";
   $("#search").value = "";
   hideCtx();

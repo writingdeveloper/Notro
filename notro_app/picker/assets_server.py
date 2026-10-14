@@ -27,10 +27,29 @@ class AssetServer:
         # Per-server capability: a random localhost port alone is not an
         # authentication boundary. The token does not contain library data.
         self._capability = secrets.token_urlsafe(32)
+        # Temporary GIF previews are in the same private localhost capability
+        # namespace as library items, but never written to the user library.
+        self._temporary: dict[str, str] = {}
+        self._temporary_lock = threading.Lock()
+
+    def register_temporary_asset(self, path: str) -> str:
+        """Expose a generated QA/preview file without changing library.json."""
+        if not os.path.isfile(path):
+            raise FileNotFoundError(path)
+        key = "gif-preview:" + secrets.token_urlsafe(24)
+        with self._temporary_lock:
+            self._temporary[key] = path
+        return key
+
+    def release_temporary_asset(self, item_id: str) -> None:
+        with self._temporary_lock:
+            self._temporary.pop(item_id, None)
 
     def start(self) -> int:
         resolver = self._resolver
         capability = self._capability
+        temporary = self._temporary
+        temporary_lock = self._temporary_lock
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):  # noqa: N802 (http.server 규약)
@@ -46,7 +65,10 @@ class AssetServer:
                     return
                 item_id = urllib.parse.unquote(self.path[len(prefix):])
                 try:
-                    path = resolver(item_id)
+                    with temporary_lock:
+                        path = temporary.get(item_id)
+                    if path is None:
+                        path = resolver(item_id)
                 except Exception:
                     path = None
                 if not path or not os.path.isfile(path):
@@ -92,6 +114,8 @@ class AssetServer:
         return f"http://127.0.0.1:{self.port}/asset/{self._capability}/{urllib.parse.quote(item_id, safe='')}"
 
     def stop(self) -> None:
+        with self._temporary_lock:
+            self._temporary.clear()
         if self._httpd:
             try:
                 self._httpd.shutdown()

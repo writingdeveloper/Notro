@@ -146,3 +146,14 @@ def test_link_mode_pastes_but_never_auto_sends(monkeypatch):
     assert calls == ["paste"]
     assert lib.used == ["fixture"]
     assert not msgs
+
+
+def test_optimized_preview_paste_never_auto_sends_even_when_enabled(monkeypatch):
+    picker, lib, calls, msgs = prepare(
+        monkeypatch, autosend=True, target_is_discord=True, focused=(True,))
+    assert picker.select(
+        "fixture", mode="optimized",
+        override_path=r"C:\fixture\optimized.gif") is True
+    assert calls == ["paste"]
+    assert lib.used == ["fixture"]
+    assert not msgs

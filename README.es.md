@@ -85,8 +85,11 @@ cierra. Después del atajo no hace falta soltar el teclado.
   portapapeles — desactivado de forma predeterminada.
 - La ventana se puede redimensionar y recuerda su tamaño, teniendo en cuenta el DPI del
   monitor.
-- Elementos que superan el límite: las imágenes fijas se comprimen automáticamente y los
-  GIF demasiado grandes se envían tal cual con un aviso.
+- Elementos que superan el límite: las imágenes fijas se comprimen automáticamente;
+  los GIF grandes se mantienen intactos y muestran un aviso. Haz clic derecho en
+  una animación → **Optimizar GIF…** para comparar el original y la versión reducida,
+  incluidos tamaño y resolución. Solo se pega tras aceptar explícitamente;
+  el envío es manual y ni el original ni la biblioteca se modifican.
 - Hay un envío automático opcional que pulsa <kbd>Enter</kbd> por ti después de pegar —
   desactivado de forma predeterminada.
   Solo funciona si Discord de escritorio sigue enfocado; en otras aplicaciones debes enviar manualmente. No detecta cambios de canal dentro de la misma ventana.

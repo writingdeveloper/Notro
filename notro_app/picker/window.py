@@ -12,6 +12,7 @@ from .. import clipboard_win as cb
 from .. import config
 from ..capture_store import (CAPTURE_COLLECTION_ID, CaptureStore,
                              read_clipboard_png)
+from .gif_preview import GifPreviewMixin
 
 user32 = ctypes.windll.user32
 
@@ -211,6 +212,11 @@ PICKER_STRING_KEYS = [
     "picker_ctx_edit", "picker_err_duplicate", "picker_drop_duplicate",
     "picker_pack_import", "picker_pack_export", "picker_pack_done",
     "picker_pack_imported", "picker_pack_error",
+    "picker_gif_optimize", "picker_gif_title", "picker_gif_loading",
+    "picker_gif_original", "picker_gif_result", "picker_gif_accept",
+    "picker_gif_cancel", "picker_gif_note", "picker_gif_fits",
+    "picker_gif_cannot_fit", "picker_gif_too_complex", "picker_gif_failed",
+    "picker_gif_outdated", "picker_gif_info",
 ]
 
 
@@ -221,7 +227,7 @@ def _collection(name) -> str:
     return "" if name in ("__all__", "__fav__") else name
 
 
-class PickerApi:
+class PickerApi(GifPreviewMixin):
     """JS 브리지. 각 메서드는 pywebview API 스레드에서 호출된다.
 
     주의: pywebview는 js_api 객체의 공개 속성을 재귀 탐색해 JS에 노출한다.
@@ -235,6 +241,7 @@ class PickerApi:
         self._asset_server = asset_server
         self._capture_store = capture_store or (
             CaptureStore(library) if library is not None else None)
+        self._init_gif_preview()
 
     def _display(self, item: dict) -> dict:
         from ..i18n import tr
@@ -477,8 +484,9 @@ class PickerController:
             except Exception:
                 pass
 
-    def select(self, item_id: str, mode: str = "file") -> None:
-        """피커 선택 → 숨김 → 클립보드 → 포커스 복귀 → Ctrl+V. 전송은 사용자."""
+    def select(self, item_id: str, mode: str = "file",
+               override_path: str | None = None) -> bool:
+        """Picker selection -> OS clipboard -> original focused window."""
         import time as _t
 
         from .. import config, resize
@@ -486,10 +494,12 @@ class PickerController:
 
         item = self._resolve(item_id)
         if not item:
-            return
+            return False
         self.hide()
         warn = False
-        if mode == "url" and item.get("source_url"):
+        if override_path is not None:
+            ok = cb.set_clipboard_file(override_path)
+        elif mode == "url" and item.get("source_url"):
             ok = cb.set_clipboard_text(item["source_url"])
         else:
             path, warn = prepare_for_paste(
@@ -499,19 +509,19 @@ class PickerController:
             ok = cb.set_clipboard_file(path)
         if not ok:
             self._notify(tr("notify_clipboard_fail"))
-            return
+            return False
 
         target_hwnd = self.prev_hwnd
         if not cb.focus_window(target_hwnd):
             self._notify(tr("notify_paste_manual"))
-            return
+            return False
 
         # Focus may change while the picker closes or an attachment is prepared.
         # Never press keys into whatever window the user switched to.
         _t.sleep(0.12)
         if not cb.is_window_focused(target_hwnd):
             self._notify(tr("notify_paste_manual"))
-            return
+            return False
 
         cb.send_ctrl_v()
         self.library.touch(item["id"])
@@ -522,7 +532,7 @@ class PickerController:
         # automatic Enter is restricted to an unmodified Discord desktop
         # process, not Discord Web or other chat applications. Check again
         # immediately before sending: upload/draft focus can change mid-delay.
-        if mode != "url" and config.get_setting_flag("auto_send"):
+        if mode == "file" and override_path is None and config.get_setting_flag("auto_send"):
             if not cb.is_discord_desktop_window(target_hwnd):
                 self._notify(tr("notify_auto_send_discord_only"))
             else:
@@ -532,6 +542,7 @@ class PickerController:
                     cb.send_enter()
                 else:
                     self._notify(tr("notify_auto_send_focus_changed"))
+        return True
 
     def create_window(self):
         import webview
@@ -630,6 +641,13 @@ class PickerController:
             pass
 
     def hide(self):
+        # Closing the picker without accepting a GIF must not retain its
+        # temporary preview or expose its URL until the next app restart.
+        if self._api:
+            try:
+                self._api.discard_gif_preview()
+            except Exception:
+                pass
         try:
             self._remember_size()
         except Exception:

@@ -106,3 +106,45 @@ Portfolio PR #36 passes type/lint/build/tests but the dependency audit fails wit
 - Latest local suite: 395 Python tests passed; Ruff lint of notro_app,
   scripts and tests passed. The published release remains v2.10.3 and the
   candidate is still v2.11.0 (unpublished).
+
+
+## Opt-in GIF optimization (unreleased candidate, separate QA)
+
+- Added bounded color-palette-first GIF optimizer with fallback downscaling.
+  Input caps: 60 MiB source, 180 frames, 25 million aggregate decoded pixels,
+  max 4096px dimension. Candidate is a separate temp GIF with unchanged
+  loop and approximately matched frame timing.
+- Preview only appears if the prepared GIF exceeds the **actual** upload cap;
+  the compressed output aims below the 95%-safety target. If the image already
+  fits, or safe optimization cannot meet the target, the original remains
+  unchanged and the user sees a plain-language explanation.
+- The picker right-click action opens a 2-column animated before/after window
+  with exact size, resolution and frame-count comparison, requiring explicit
+  approval. The optimized preview is never silently transmitted.
+- No Discord modifications, REA runtime code, token access or automatic Enter.
+  The accepted candidate uses the existing OS clipboard/file paste route
+  with auto-send disabled. GIF preview URLs are randomized localhost temporary
+  registrations, removed on cancel or picker shutdown.
+- Real @4080 native WebView2 QA passed: animations both loaded, cancel removed
+  candidate, synthetic user acceptance went to an **inert mocked controller**,
+  source SHA-256 unchanged. No live clipboard, Discord message or library
+  data was touched. Real Discord draft attachment behavior is still unverified.
+
+
+## Latest GIF UI completion gate
+
+- User-visible right-click menu supports animated media, including watched-folder
+  GIF items; no Discord internal APIs or client patching are involved.
+- As a regression, the original/optimized comparison uses the *same prepared
+  source file* when paste-size normalization is configured. Avoids misleading
+  before/after byte counts. Actual upload ceiling triggers optimization;
+  the lower 95% safety target only applies to encoded candidates.
+- UI states (loading, preview, size/frames, cancel, explicit manual paste),
+  five-language text parity, local ephemeral URL cleanup, stale source/limit
+  checks, and temporary-file lifecycle are tested.
+- Native WebView2 fixture: three synthetic assets, bilingual/multilingual
+  picker UI, source/candidate GIF loaded, explicit cancel removed preview,
+  explicit accept routed through a fake no-clipboard controller. **No Discord
+  message was sent and the real system clipboard was not changed.**
+- QA remains open for a human visual review of actual GIF quality and real
+  Discord draft attachment in a non-sending test context before releasing.

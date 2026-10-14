@@ -82,8 +82,11 @@ collection with no registration step at all.
   collection. Picker settings can do that automatically for every new clipboard image —
   off by default.
 - The window can be resized and remembers its size, per monitor DPI.
-- Items over the upload limit: still images are compressed automatically, oversized GIFs
-  are sent as-is with a warning.
+- Items over the upload limit: still images are compressed automatically. Oversized GIFs
+  are unchanged by default and show a warning. For an animated item, right-click →
+  **Optimize GIF…** to compare the original with an explicitly generated smaller GIF
+  (color/resolution changes shown). Only **Paste optimized** uses the candidate;
+  sending remains manual. Your original file and library are never modified.
 - Optional auto-send presses <kbd>Enter</kbd> for you after pasting — off by default.
   It is limited to a still-focused Discord desktop window; pasted items in other apps must be sent manually. Switching channels inside the same window cannot be detected.
 
