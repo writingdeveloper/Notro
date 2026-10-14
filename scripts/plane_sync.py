@@ -37,7 +37,7 @@ ISSUES = [
     ("Windows real-app picker and clipboard E2E smoke QA", "To Do", "urgent",
      "Run Discord test in a private draft (no unwanted message sent), exercise PNG/JPEG/GIF, hotkeys, source file preservation, auto-send off, keyboard use, DPI/multi-monitor, failure recovery."),
     ("Notro trust and distribution: signing and pinned builds", "To Do", "high",
-     "Candidate v2.11.0 CI and workflow_dispatch dry-run packaging succeeded (EXE, Inno Setup, SHA256); no public tag/release. Remaining: OSS signing routes, provenance, dependency security and real SmartScreen/install QA."),
+     "Candidate v2.11.0 manual build 38493606960 passed (EXE, Inno, SHA256, 3-day UNSIGNED QA artifact); @4080 independently verified NotroSetup.exe bytes=17090810 and SHA256=48244c04e5ca765fe8683565a1d3a8474ca98018e04ddb511b4dc7cf25e9d0ef, FileVersion/ProductVersion=2.11.0, Authenticode=NotSigned. Installer was NOT executed; no public release/tag. Signing, SmartScreen, runtime install, supply-chain verification remain open."),
     ("First-run activation: 3-minute task-guided welcome", "QA", "high",
      "First-run Try Picker action implemented and localized. Confirm 3-minute human first-paste usability on Windows WebView2 before Done."),
     ("Shareable safe emoji pack import/export and library backup", "QA", "high",

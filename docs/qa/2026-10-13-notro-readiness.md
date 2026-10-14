@@ -157,3 +157,23 @@ Manual workflow_dispatch now uploads NotroSetup.exe and its SHA-256 as a
 without a release or tag. Artifact access follows GitHub repository
 permissions, and this build must not be marketed as trusted or signed.
 Real installer, SmartScreen and Discord E2E tests remain open.
+
+
+## Verified Windows QA installer build (manual run 38493606960)
+
+- GitHub Actions: https://github.com/writingdeveloper/Notro/actions/runs/38493606960
+- Build ref: 668b117 (branch feat/notro-rea-product-marketing-20261013).
+- Windows tests, PyInstaller EXE, Inno Setup installer, SHA-256 generation and
+  actions/upload-artifact@v7 completed successfully. Publishing was skipped:
+  no GitHub tag or public v2.11.0 release.
+- UNSIGNED QA installer downloaded to a separate local temporary folder on
+  @4080 without executing or installing it. The checksum file matched actual
+  NotroSetup.exe SHA-256:
+  48244c04e5ca765fe8683565a1d3a8474ca98018e04ddb511b4dc7cf25e9d0ef
+- File size: 17,090,810 bytes. Windows VersionInfo ProductName=Notro;
+  FileVersion=2.11.0; ProductVersion=2.11.0.
+- Windows Get-AuthenticodeSignature returned NotSigned.
+  SHA-256 consistency proves integrity relative to the workflow checksum,
+  not code-signing identity or software safety.
+- 3-day artifact is for QA; do not claim code signing, SmartScreen reputation,
+  real installation success, Discord chat end-to-end, or release readiness.
