@@ -203,3 +203,14 @@ Real installer, SmartScreen and Discord E2E tests remain open.
 - Plane parent NOTRO-5 real Discord clipboard/attachment QA remains open.
   No live Discord draft/message was created, pasted, or sent.
 - SignPath/signing, SmartScreen and installer execution remain unverified.
+
+
+## Plane state and next acceptance
+
+After the real file-dialog and native DOM run, Plane workspace soursea,
+project NOTRO has 21 tracked tasks: Done 3, QA 11, In Progress 1,
+To Do 4, Backlog 2. NOTRO-20 and NOTRO-21 are Done; NOTRO-5
+was moved To Do -> In Progress, not Done, because real Discord draft
+clipboard integration and GUI installer runtime QA remain unresolved.
+The resume-safe Plane sync script continues to preserve manual status,
+priority and ownership when refreshing issue descriptions.
