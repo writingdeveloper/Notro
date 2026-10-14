@@ -41,6 +41,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   import using synthetic data, without opening chats or modifying Discord.
 - A single ZIP media pack may now be dragged onto the picker to import via
   the same validated media pack path used by the explicit Import button.
+- Plane backlog synchronization now preserves existing work-item state, priority
+  and ownership so restarting a session cannot silently reset QA progress.
 
 ## [2.10.3] - 2026-08-08
 

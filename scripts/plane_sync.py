@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Idempotent Notro Plane backlog sync (never prints tokens).
 
-Dry-run by default. --apply creates/updates NOTRO project and named work items.
-Run after git/QA review, adjust STATUSES below to reflect verified progress.
+Dry-run by default. --apply creates new issues and refreshes descriptions.
+Existing Plane status, priority, owners and names remain authoritative;
+never silently downgrade another session's QA or Done state.
 """
 from __future__ import annotations
 
@@ -76,6 +77,15 @@ def rows(data):
     if isinstance(data, dict):
         return data.get("results", [])
     return data or []
+
+
+def sync_payload(name: str, description: str, state_id: str,
+                 priority: str, exists: bool) -> dict:
+    """Never overwrite a human/other-session state on existing issues."""
+    payload = {"description_html": description}
+    if not exists:
+        payload.update({"name": name, "state": state_id, "priority": priority})
+    return payload
 
 
 class Plane:
@@ -159,14 +169,17 @@ def main():
             "https://github.com/writingdeveloper/Notro/pull/1" +
             " · REA: https://github.com/morluto/rea</p></div>"
         )
-        item = {
-            "name": name, "description_html": description,
-            "state": by_name[state]["id"], "priority": priority,
-        }
         found = previous_by_name.get(name)
+        item = sync_payload(name, description, by_name[state]["id"],
+                            priority, exists=bool(found))
         if found:
-            plane.api("PATCH", project_path + f"/work-items/{quote(found['id'])}/", item)
-            print("UPDATED ISSUE", found.get("sequence_id"), state, name)
+            # Plane is the source of truth for existing item state and priority.
+            # Sessions may have progressed an item after this script was written.
+            if found.get("description_html") != description:
+                plane.api("PATCH", project_path + f"/work-items/{quote(found['id'])}/", item)
+                print("REFRESHED ISSUE", found.get("sequence_id"), "state-preserved", name)
+            else:
+                print("UNCHANGED ISSUE", found.get("sequence_id"), "state-preserved", name)
         else:
             created = plane.api("POST", project_path + "/work-items/", item)
             print("CREATED ISSUE", created.get("sequence_id"), state, name)

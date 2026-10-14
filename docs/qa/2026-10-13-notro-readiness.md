@@ -91,3 +91,18 @@ Portfolio PR #36 passes type/lint/build/tests but the dependency audit fails wit
   Python compileall passed and source version remains **2.11.0 unreleased**.
 - This test does **not** simulate a real user's native Windows file-open
   dialog or Discord account; those acceptance criteria remain open in Plane.
+
+
+## Plane continuation and non-regression
+
+- Project: soursea / NOTRO, 19 tracked work items.
+- New: NOTRO-17 OS-only paste/auto-send guard (QA);
+  NOTRO-18 native isolated WebView2 five-language test (Done);
+  NOTRO-19 local asset capability/Host protection (QA).
+- The idempotent plane_sync script now PATCHes only descriptions of existing
+  items. It retains external/manual status, priority and ownership decisions
+  rather than resetting a completed item when a new session resumes. New
+  items still receive their initial planned state. Unit tests cover both paths.
+- Latest local suite: 395 Python tests passed; Ruff lint of notro_app,
+  scripts and tests passed. The published release remains v2.10.3 and the
+  candidate is still v2.11.0 (unpublished).
