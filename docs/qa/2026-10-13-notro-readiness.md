@@ -148,3 +148,12 @@ Portfolio PR #36 passes type/lint/build/tests but the dependency audit fails wit
   message was sent and the real system clipboard was not changed.**
 - QA remains open for a human visual review of actual GIF quality and real
   Discord draft attachment in a non-sending test context before releasing.
+
+
+## Temporary unsigned QA installer
+
+Manual workflow_dispatch now uploads NotroSetup.exe and its SHA-256 as a
+3-day NOTRO-UNSIGNED-QA artifact. This supports actual installer testing
+without a release or tag. Artifact access follows GitHub repository
+permissions, and this build must not be marketed as trusted or signed.
+Real installer, SmartScreen and Discord E2E tests remain open.

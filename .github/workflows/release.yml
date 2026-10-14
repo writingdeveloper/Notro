@@ -83,6 +83,20 @@ jobs:
           $hash = (Get-FileHash dist/NotroSetup.exe -Algorithm SHA256).Hash.ToLower()
           "$hash  NotroSetup.exe" | Out-File -FilePath dist/NotroSetup.exe.sha256 -Encoding ascii -NoNewline
 
+      # On-demand QA build: short-lived UNSIGNED installer, no release/tag.
+      # Access depends on repository permissions; never market this as signed.
+      - name: Upload unsigned QA installer
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: NOTRO-UNSIGNED-QA-${{ github.run_id }}
+          path: |
+            dist/NotroSetup.exe
+            dist/NotroSetup.exe.sha256
+          retention-days: 3
+          if-no-files-found: error
+          overwrite: false
+
       # 태그 푸시일 때만 릴리스를 만든다. 덕분에 workflow_dispatch로 돌리면 빌드와
       # installer 컴파일만 검증하고 릴리스는 만들지 않는다(installer.iss 안전 검증용).
       - name: Publish release

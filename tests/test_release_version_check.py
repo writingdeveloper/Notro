@@ -200,3 +200,17 @@ def test_release_workflow_uses_node_24_release_action_major():
     assert re.findall(r"softprops/action-gh-release@\S+", workflow) == [
         "softprops/action-gh-release@v3"
     ]
+
+
+def test_manual_release_run_uploads_short_lived_unsigned_qa_artifact():
+    workflow = _workflow(RELEASE_WORKFLOW)
+    step = _step(workflow, "Upload unsigned QA installer")
+    assert "if: github.event_name == 'workflow_dispatch'" in step
+    assert "actions/upload-artifact@v7" in step
+    assert "NOTRO-UNSIGNED-QA-" in step
+    assert "retention-days: 3" in step
+    assert "if-no-files-found: error" in step
+    assert "overwrite: false" in step
+    assert "dist/NotroSetup.exe.sha256" in step
+    assert "dist/NotroSetup.exe" in step
+    assert PUSH_TAG_GUARD in _step(workflow, "Publish release")

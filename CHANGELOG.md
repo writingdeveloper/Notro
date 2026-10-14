@@ -10,6 +10,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   verification, size limits and duplicate detection. Private Captures and original
   source URLs are excluded. This is **not** a full settings backup.
 - First-run welcome offers a direct, explicit "Try picker" action.
+- On-demand release-workflow builds can retain a 3-day UNSIGNED QA installer
+  artifact with its SHA-256, enabling real Windows installer tests without
+  publishing a release/tag.
 - Synthetic 100/1,000/5,000-item library performance benchmark, Windows regression
   coverage and Ruff CI lint. REA static compatibility and marketing QA notes.
 
