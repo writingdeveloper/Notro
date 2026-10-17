@@ -126,12 +126,19 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "{cm:InstallingWebView2}"; Check: WebView2Downloaded; Flags: waituntilterminated
 ; 2) 설치가 완전히 끝난 뒤에만 앱을 실행한다(교체 중 실행 방지). postinstall 플래그가
 ;    없으므로 무인(/VERYSILENT) 자동 업데이트에서도 실행되어 앱이 되돌아온다.
-Filename: "{app}\Notro.exe"; Description: "{cm:LaunchNotro}"; Flags: nowait runasoriginaluser
+Filename: "{app}\Notro.exe"; Description: "{cm:LaunchNotro}"; Flags: nowait runasoriginaluser; Check: ShouldLaunchNotro
 
 [Code]
 var
   gDownloadPage: TDownloadWizardPage;
   gWebView2Downloaded: Boolean;
+
+{ CI smoke only: skip launching Notro on short-lived hosted runners.
+  Normal installs and user-initiated upgrades still auto-launch as before. }
+function ShouldLaunchNotro(): Boolean;
+begin
+  Result := GetEnv('NOTRO_QA_SUPPRESS_AUTORUN') <> '1';
+end;
 
 function WebView2Installed(): Boolean;
 var

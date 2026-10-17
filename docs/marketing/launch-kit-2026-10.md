@@ -26,7 +26,7 @@ Record the actual UI; do not represent the picker browser mock as a finished Dis
 
 ## Manual promotion ladder
 
-1. Secure installer distribution trust (signing path or clear unsigned disclosure) and real E2E QA.
+1. Finish real installer and Discord-draft E2E QA; if release is approved, publish a checksum-verified unsigned installer with a clear Windows warning.
 2. Invite 10–20 volunteers, measure first-use task completion with consent, gather concrete UX bugs.
 3. Publish concise EN/KO demos to relevant video channels, with a direct verified download link.
 4. Contact moderators or check each community's promotion policy before Reddit/Discord posts. No mass spam, bought reactions or misleading claims.
@@ -40,3 +40,22 @@ Landing-page visit and download CTA clicks, GitHub release counts, opt-in human 
 Illustrative 30-day experiment goals (not forecasts): 20 testers, 80% first-paste completion, median <=3 minutes to first success, >=10 actionable user reports.
 
 The website https://writingdeveloper.blog/projects/notro still has outdated 10MB metadata. Replace in the separate website repository before broad promotion. Do not post publicly before real release QA.
+
+
+## October 17, 2026 launch holds
+
+- Published v2.10.3 differs from unreleased Draft PR v2.11.0. The releases/latest
+  CTA must not advertise features that are not downloadable.
+- Live writingdeveloper.blog/projects/notro still claims free 10MB, v2.0 and
+  blanket Terms-safety. Portfolio Draft PR #36 fails npm security audit.
+- Native synthetic QA is not real Windows user install or Discord paste proof.
+- Docs demo.gif and picker.png have identifiable third-party character images.
+  Verify marketing rights or replace with rights-cleared demonstration assets.
+- Do not promise Discord endorsement, Terms compliance or that Discord cannot
+  break/block future functionality. Auto-send remains off by default.
+- Hacker News bans AI-generated submission text and automated posting.
+  Reddit promotions must follow community rules, without unsolicited mass posts.
+- User has explicitly excluded code signing. Disclose the unsigned status;
+  do not request certificates or enable signing infrastructure.
+- Complete limited opt-in beta QA and accurate releases/landing first, then
+  human-managed public marketing with authentic demos.

@@ -45,7 +45,7 @@ Discord が課金対象にしている 2 つのことを、アプリの外側か
 
 ---
 
-> 2026年8月13日更新の[Discord公式FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ)では、無料20MB・Nitro Basic 50MB・Nitro 500MBです。10MBは任意の低い上限として残しています。Discordの試験運用で上限が異なる場合があります。
+> 2026年9月30日更新の[Discord公式添付FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ)と[Nitro FAQ](https://support.discord.com/hc/en-us/articles/115000435108-What-are-Nitro-Nitro-Basic)では、無料20MB・Nitro Basic 50MB・Nitro最大1GBです。従来の10MB・500MBも手動で選択できます。利用者によって上限が異なる場合があります。
 
 ## ピッカー
 

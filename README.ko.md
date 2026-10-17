@@ -45,7 +45,7 @@
 
 ---
 
-> 2026년 8월 13일 갱신된 [Discord 공식 첨부파일 FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ)를 기준으로 무료 20MB, Nitro Basic 50MB, Nitro 500MB이며, 10MB는 선택 가능한 낮은 한도로 유지합니다. Discord의 사용자별 실험으로 한도가 다를 수 있습니다.
+> 2026년 9월 30일 갱신된 [Discord 공식 첨부파일 FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ) 및 [Nitro 안내](https://support.discord.com/hc/en-us/articles/115000435108-What-are-Nitro-Nitro-Basic): 무료 20MB, Nitro Basic 50MB, Nitro 최대 1GB. 기존 10MB·500MB 선택지도 유지합니다. 사용자별 실험에 따라 실제 한도가 다를 수 있습니다.
 
 ## 피커
 

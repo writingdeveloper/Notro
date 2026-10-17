@@ -214,3 +214,62 @@ def test_manual_release_run_uploads_short_lived_unsigned_qa_artifact():
     assert "dist/NotroSetup.exe.sha256" in step
     assert "dist/NotroSetup.exe" in step
     assert PUSH_TAG_GUARD in _step(workflow, "Publish release")
+
+
+def test_release_gates_audit_pinned_build_requirements_and_media_thresholds():
+    release = _workflow(RELEASE_WORKFLOW)
+    ci = _workflow(CI_WORKFLOW)
+    assert "run: pip install -r requirements-build.txt" in release
+    assert "python -m pip_audit -r requirements-build.txt --strict" in release
+    assert "python -m pip_audit -r requirements-build.txt --strict" in ci
+    assert "python scripts/qa_release_media_preflight.py" in release
+    assert "python scripts/qa_release_media_preflight.py" in ci
+    assert "Publish release" in release
+    assert PUSH_TAG_GUARD in _step(release, "Publish release")
+
+
+def test_build_tools_versions_pinned_with_no_runtime_signing():
+    build_req = Path("requirements-build.txt").read_text(encoding="utf-8")
+    build_script = Path("build.bat").read_text(encoding="utf-8-sig")
+    assert "pyinstaller==6.21.0" in build_req
+    assert "pip-audit==2.10.1" in build_req
+    assert "requirements-build.txt" in build_script
+    assert "signpath" not in build_req.lower()
+
+
+def test_unsigned_disposable_runner_installer_smoke_is_opt_in():
+    release = _workflow(RELEASE_WORKFLOW)
+    stage = _step(release, "QA install and uninstall on ephemeral runner")
+    assert "if: github.event_name == 'workflow_dispatch'" in stage
+    assert "scripts/qa_installer_smoke.ps1" in stage
+    assert PUSH_TAG_GUARD in _step(release, "Publish release")
+    inno = Path("installer.iss").read_text(encoding="utf-8-sig")
+    assert "Check: ShouldLaunchNotro" in inno
+    assert "NOTRO_QA_SUPPRESS_AUTORUN" in inno
+    assert "Result := GetEnv(" in inno
+    ps = Path("scripts/qa_installer_smoke.ps1").read_text(encoding="utf-8")
+    assert "GITHUB_ACTIONS" in ps and "RUNNER_TEMP" in ps
+    assert "NOTRO_QA_SUPPRESS_AUTORUN" in ps
+    assert "NotSigned" in ps
+    assert "QA_INSTALL_UNINSTALL_PASSED" in ps
+    assert "unins000.exe" in ps
+
+
+def test_release_refuse_tags_not_reachable_from_origin_main():
+    workflow = _workflow(RELEASE_WORKFLOW)
+    ancestry = _step(workflow, "Verify release tag belongs to main")
+    assert "if: startsWith(github.ref, 'refs/tags/')" in ancestry
+    assert "git fetch origin main" in ancestry
+    assert "git merge-base --is-ancestor $env:GITHUB_SHA origin/main" in ancestry
+    assert "$LASTEXITCODE -ne 0" in ancestry
+    assert "fetch-depth: 0" in workflow
+
+
+def test_media_release_gate_includes_real_pixel_data_not_just_padding():
+    script = Path("scripts/qa_release_media_preflight.py").read_text(
+        encoding="utf-8"
+    )
+    assert "rng.randbytes(3000 * 3000 * 3)" in script
+    assert 'summary["real_pixel_png"]' in script
+    assert "sha256(noisy) == noise_digest" in script
+    assert "converted.stat().st_size <= config.LIMIT_BYTES" in script

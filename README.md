@@ -45,7 +45,7 @@ your emoji as image attachments, not as native inline emoji.
 
 ---
 
-> Upload limits updated August 13, 2026: [Discord File Attachments FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ). Free 20 MB / Nitro Basic 50 MB / Nitro 500 MB; 10 MB remains as an optional lower limit. Discord may experiment with different limits.
+> [Discord's File Attachments FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ) (updated September 30, 2026) and [Nitro FAQ](https://support.discord.com/hc/en-us/articles/115000435108-What-are-Nitro-Nitro-Basic): Free 20 MB / Nitro Basic 50 MB / Nitro up to 1 GB. The 10 MB and 500 MB custom presets remain available. Actual limits can vary by account and experiments. The optional 1 GB preset conservatively uses decimal 1,000,000,000 bytes.
 
 ## The picker
 
@@ -229,6 +229,15 @@ pytest
 ```
 
 </details>
+
+## Contributing and public release
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contributor setup, Windows
+regression tests, responsible issue reporting and why a green CI alone
+does not authorize a public installer release or marketing campaign.
+The project has chosen **not to pursue code signing**; its unsigned
+Windows installer may trigger a publisher warning. Never disable
+Windows protections just to try an unsigned download.
 
 ## License
 

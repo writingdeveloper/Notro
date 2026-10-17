@@ -19,12 +19,23 @@ POLL_INTERVAL = 0.4     # 클립보드 확인 주기 (초)
 # ================================================
 
 
+def upload_ceiling_bytes(mb: int) -> int:
+    """Convert UI preset to conservative upload ceiling.
+
+    Nitro's up-to-1GB maximum does not specify binary versus decimal
+    units. The 1GB preset uses decimal 1,000,000,000 bytes so Notro
+    does not silently prepare a 1,073,741,824-byte upload that a decimal
+    1GB receiver could reject. Historic MB presets keep their byte logic.
+    """
+    return 1_000_000_000 if mb == 1024 else mb * 1024 * 1024
+
+
 def compute_limit_bytes(mb: int) -> int:
-    """업로드 한도(MB)에 안전 마진을 적용한 바이트 한도."""
-    return int(mb * 1024 * 1024 * SAFETY)
+    """Encoding target includes a five-percent headroom below upload cap."""
+    return int(upload_ceiling_bytes(mb) * SAFETY)
 
 
-UPLOAD_CEILING_BYTES = LIMIT_MB * 1024 * 1024
+UPLOAD_CEILING_BYTES = upload_ceiling_bytes(LIMIT_MB)
 LIMIT_BYTES = compute_limit_bytes(LIMIT_MB)
 
 
@@ -32,7 +43,7 @@ def set_limit_mb(mb: int) -> None:
     """런타임 업로드 한도 변경 (트레이 메뉴에서 호출)."""
     global LIMIT_MB, LIMIT_BYTES, UPLOAD_CEILING_BYTES
     LIMIT_MB = mb
-    UPLOAD_CEILING_BYTES = mb * 1024 * 1024
+    UPLOAD_CEILING_BYTES = upload_ceiling_bytes(mb)
     LIMIT_BYTES = compute_limit_bytes(mb)
 
 

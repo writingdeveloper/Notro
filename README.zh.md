@@ -44,7 +44,7 @@ Discord 要收费的两件事，在应用之外解决：
 
 ---
 
-> 根据 2026 年 8 月 13 日更新的 [Discord 官方附件 FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ)，免费为 20MB、Nitro Basic 为 50MB、Nitro 为 500MB；10MB 保留为较低限额的自选项。部分用户可能处于不同限额的实验中。
+> 根据 2026 年 9 月 30 日更新的 [Discord 附件 FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ)及 [Nitro FAQ](https://support.discord.com/hc/en-us/articles/115000435108-What-are-Nitro-Nitro-Basic)：免费 20MB、Nitro Basic 50MB、Nitro 最多 1GB。仍保留原来的 10MB 与 500MB 手动选项，实际上传额度可能因账户实验而变化。
 
 ## 选择器
 

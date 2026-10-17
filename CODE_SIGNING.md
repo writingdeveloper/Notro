@@ -1,11 +1,11 @@
 # Code signing policy
 
-> **Status: not signed yet.** Releases of Notro are currently unsigned, so Windows
-> SmartScreen warns that the publisher is unknown. See
-> [SECURITY.md](SECURITY.md#code-signing) for how to verify a download in the
-> meantime. This document states the policy that governs signing, and is a
-> prerequisite for applying to the [SignPath Foundation](https://signpath.org/)
-> free certificate programme for open source projects.
+> **Current policy (2026-10-14): no code signing planned.** The maintainer
+> explicitly chose unsigned distribution. Windows SmartScreen may warn about
+> an unknown publisher. See SECURITY.md for integrity checks and how to
+> inspect/build from source. A SHA-256 file does not prove publisher identity.
+> The historical SignPath investigation below is archived context, not an
+> application or an instruction to pursue signing.
 
 ## Project
 
@@ -26,23 +26,18 @@ Notro is maintained by one person, who therefore holds all three roles:
 |---|---|
 | Author — writes and modifies code | [@writingdeveloper](https://github.com/writingdeveloper) |
 | Reviewer — approves changes before they reach `main` | [@writingdeveloper](https://github.com/writingdeveloper) |
-| Approver — authorises a release to be signed | [@writingdeveloper](https://github.com/writingdeveloper) |
+| Release approver — reviews unsigned binary and SHA-256 before publication | [@writingdeveloper](https://github.com/writingdeveloper) |
 
-Multi-factor authentication is required on the GitHub account and on the signing
-service account.
+Enable multi-factor authentication on the GitHub maintainer account.
 
-## Signing readiness and source protection
+## Historical signing research (not in scope)
 
-As of October 13, 2026, authenticated GitHub API inspection shows the
-repository main branch is not protected. Before requesting an OSS signing
-certificate, establish required Windows CI and release review rules
-after checking concurrent worktrees and available human reviewers.
-A maintainer must not sign unreviewed artifacts through an automatic agent.
-No SignPath Foundation certificate has been approved or attached.
+Signing is deliberately deferred. Do not initiate SignPath/Azure accounts,
+request certificates or alter branch restrictions solely for code signing.
+Independent CI/security QA and release authorization still matter.
+The archived research note is at
+docs/research/2026-10-13-notro-code-signing-readiness.md.
 
-For verified unsigned build hashes, OSS signing requirements, Azure
-alternatives and remaining blockers, see
-[the October 2026 signing note](docs/research/2026-10-13-notro-code-signing-readiness.md).
 
 ## How releases are built
 
@@ -56,7 +51,7 @@ beside it. Anyone can reproduce a build from source with
 
 ## Binary metadata
 
-Every signed artifact carries consistent product and version metadata:
+Every unsigned release artifact still carries consistent product and version metadata:
 
 - `Notro.exe` — `ProductName: Notro`, `ProductVersion`/`FileVersion` generated from
   `notro_app.__version__` by [`build_version_file.py`](build_version_file.py).
@@ -83,12 +78,3 @@ circumvent any security measure. It prepares the Windows clipboard and simulates
 local <kbd>Ctrl</kbd>+<kbd>V</kbd> — the same class of input automation as the
 built-in Windows emoji panel. It does not modify, patch, or inject into the Discord
 client, and never accesses an account or token.
-
-<!--
-Once a certificate is granted, add here:
-
-## Attribution
-
-Free code signing is provided by [SignPath.io](https://signpath.io/), certificate
-by [SignPath Foundation](https://signpath.org/).
--->

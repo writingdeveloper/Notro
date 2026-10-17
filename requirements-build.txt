@@ -1,0 +1,4 @@
+# Reproducible build-tool entry point (runtime deps remain version-ranged).
+-r requirements-dev.txt
+pyinstaller==6.21.0
+pip-audit==2.10.1

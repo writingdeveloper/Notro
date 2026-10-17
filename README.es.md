@@ -45,7 +45,7 @@ quien lo recibe ve tus emojis como imágenes adjuntas, no como emojis integrados
 
 ---
 
-> Según la [FAQ oficial de Discord](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ), actualizada el 13 de agosto de 2026, los límites son 20 MB (gratis), 50 MB (Nitro Basic) y 500 MB (Nitro). Se conserva la opción de 10 MB. Discord puede probar otros límites con algunos usuarios.
+> Según la [FAQ de archivos de Discord](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ), actualizada el 30 de septiembre de 2026, y la [FAQ de Nitro](https://support.discord.com/hc/en-us/articles/115000435108-What-are-Nitro-Nitro-Basic): 20 MB gratis, 50 MB Nitro Basic y hasta 1 GB Nitro. Se mantienen las opciones manuales antiguas de 10 y 500 MB. El límite real puede variar según la cuenta.
 
 ## El selector
 

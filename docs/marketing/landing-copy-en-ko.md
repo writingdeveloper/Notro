@@ -23,4 +23,4 @@ Notices: Discord의 공식 제품이 아닙니다. 현재 설치 프로그램은
 
 ## Verification after deployment
 
-Server-rendered title/description/OG must no longer say 10MB (official Discord FAQ updated 2026-08-13: free 20MB, Nitro Basic 50MB, Nitro 500MB). Add a genuine current picker screenshot and accurate 1200x630 social preview. Verify CTA resolves to the reviewed release. The existing site described v2.0 even though Notro main was v2.10.3.
+Server-rendered title/description/OG must no longer say 10MB (official Discord FAQ updated 2026-09-30: free 20MB, Nitro Basic 50MB, Nitro up to 1GB). Add a genuine current picker screenshot and accurate 1200x630 social preview. Verify CTA resolves to the reviewed release. The existing site described v2.0 even though Notro main was v2.10.3.

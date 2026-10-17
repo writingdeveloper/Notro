@@ -40,7 +40,7 @@ STRING_DEFAULTS = {
 }
 SAFE_BOOLEANS = ("auto_send", "auto_capture_save")
 INT_RANGES = {
-    "limit_mb": (10, 500),
+    "limit_mb": (10, 1024),
     "auto_update": (0, 1),
     "picker_w": (360, 3840),
     "picker_h": (300, 2160),

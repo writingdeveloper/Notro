@@ -67,3 +67,15 @@ def test_legacy_10mb_user_option_is_still_supported():
         assert config.UPLOAD_CEILING_BYTES == 10 * 1024 * 1024
     finally:
         config.set_limit_mb(previous)
+
+
+def test_nitro_one_gb_custom_ceiling_keeps_safety_margin():
+    from notro_app import config
+    previous = config.LIMIT_MB
+    try:
+        config.set_limit_mb(1024)
+        assert config.UPLOAD_CEILING_BYTES == 1_000_000_000
+        assert config.LIMIT_BYTES == config.compute_limit_bytes(1024)
+        assert config.LIMIT_BYTES < config.UPLOAD_CEILING_BYTES
+    finally:
+        config.set_limit_mb(previous)

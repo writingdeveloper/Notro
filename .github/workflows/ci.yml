@@ -16,7 +16,13 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Audit build/runtime dependencies
+        run: |
+          pip install pip-audit==2.10.1
+          python -m pip_audit -r requirements-build.txt --strict
       - name: Lint Python
         run: ruff check notro_app tests scripts
+      - name: Release media threshold preflight
+        run: python scripts/qa_release_media_preflight.py
       - name: Run tests
         run: python -m pytest -q

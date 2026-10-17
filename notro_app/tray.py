@@ -114,19 +114,21 @@ def build_icon(monitor, picker=None, listener=None, on_quit_extra=None, updater=
             icon.update_menu()
 
         return pystray.MenuItem(
-            f"{mb} MB",
+            "1 GB" if mb == 1024 else f"{mb} MB",
             on_select,
             checked=lambda item, mb=mb: config.LIMIT_MB == mb,
             radio=True,
         )
 
-    # Discord File Attachments FAQ (2026-08-13): free 20, Basic 50, Nitro 500MB.
-    # Preserve 10MB as a lower custom option for existing users.
+    # Discord's 2026-09-30 attachment FAQ and 2026-09-29 Nitro FAQ:
+    # free 20MB, Basic 50MB, Nitro up to 1GB (not a guaranteed account limit).
+    # Keep 10MB and 500MB as legacy/manual options.
     limit_menu = pystray.Menu(
         make_limit_item(10),
         make_limit_item(20),
         make_limit_item(50),
         make_limit_item(500),
+        make_limit_item(1024),
     )
 
     # 언어 메뉴 (자동 감지 + 각 언어). 언어명은 해당 언어 표기 그대로 둔다.

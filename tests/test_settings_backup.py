@@ -87,7 +87,7 @@ def test_opt_in_paths_restore_only_existing_folders_without_duplication(tmp_path
 
 
 @pytest.mark.parametrize("key,value", [
-    ("limit_mb", -1), ("limit_mb", 5),
+    ("limit_mb", -1), ("limit_mb", 5), ("limit_mb", 1025),
     ("lang", "unsupported"), ("picker_w", 99),
     ("hotkey", "enter"), ("auto_send", 1), ("auto_capture_save", "yes"),
 ])
@@ -141,3 +141,12 @@ def test_mismatched_extension_and_bad_json_are_rejected(tmp_path):
     bad.write_text("{fail", encoding="utf-8")
     with pytest.raises(backup.SettingsBackupError, match="invalid_json"):
         backup.preview_settings(str(bad))
+
+
+def test_settings_backup_preserves_optional_one_gigabyte_limit(tmp_path):
+    lib = Library(str(tmp_path / "library"))
+    destination = tmp_path / "nitro-profile.json"
+    values = dict(SNAPSHOT, limit_mb=1024)
+    backup.export_settings(lib, str(destination), snapshot=values)
+    restored, _ = backup.preview_settings(str(destination))
+    assert restored["settings"]["limit_mb"] == 1024
