@@ -28,7 +28,7 @@ by this review. Signed builds are out of scope by user decision.
 
 | Area | Evidence | Result |
 | --- | --- | --- |
-| Windows Python suite | 438 tests at previous HEAD, new tests for 1GB and workflows | PASS locally, recheck on CI |
+| Windows Python suite | 447 tests on source 167e95c | PASS local and Windows Actions CI 39057057625 |
 | Dependency security | pip-audit 2.10.1 with resolved runtime/dev/build requirements | No *known* advisories at audit time; not a malware guarantee |
 | Import ZIP and settings | 8 real native Win32 Save/Open stages, with Korean filenames, isolated profile | PASS |
 | WebView2 | Actual Windows picker, 5 languages, synthetic 5k DOM, GIF compare, settings controls | PASS for synthetic fixtures |
@@ -37,7 +37,7 @@ by this review. Signed builds are out of scope by user decision.
 | Video | Locally generated 5-sec 960x540 video with sine-wave audio, real ffmpeg | Encoded 854x480 @30fps with audio; trim/mute case PASS |
 | 1GB Nitro preset | User-configurable; legacy 500MB remains | Use conservative decimal billion-byte target with 95% safety |
 | Prior installer | Source e26122b, SHA/VersionInfo 2.11.0 validated, unsigned | Compiled only, NOT evidence of running installed app |
-| New installer smoke | Windows GitHub-hosted QA install/exe version/uninstall only | Pending actual workflow success |
+| New installer smoke | Windows GitHub-hosted QA install/exe version/uninstall only | PASS on disposable runner 39057079637 (unsigned, not UI) |
 | Portfolio landing | https://writingdeveloper.blog/projects/notro | FAIL: still says free 10MB, v2.0, absolute ToS-safe |
 | Portfolio security | Draft PR #36 check failed, multiple unresolved dependency PRs | BLOCKED; do not bypass npm audit |
 | Published release | latest GitHub release v2.10.3, v2.11.0 unmerged Draft PR | NOT MATCHED for advertising new features |
@@ -112,3 +112,31 @@ by this review. Signed builds are out of scope by user decision.
 
 This readiness review is an engineering judgment, not a Discord or Microsoft
 certification and not a recommendation to bypass Windows security warnings.
+
+
+## 2026-10-17 verified Windows Actions QA result
+
+- Source: 167e95c (unreleased Draft PR #1).
+- GitHub Actions CI run:
+  https://github.com/writingdeveloper/Notro/actions/runs/39057057625
+  **PASS** (dependency advisory audit, Python lint, media threshold/
+  real-pixel compression preflight, 447 unit/regression tests).
+- Manual unsigned installer workflow:
+  https://github.com/writingdeveloper/Notro/actions/runs/39057079637
+  **PASS**: Windows PyInstaller/Inno installer; separate disposable Windows
+  runner installed and silently uninstalled candidate, checked EXE version,
+  and prevented unwanted post-install startup. SHA-256 generated; QA artifact
+  uploaded for 3 days; Publish release explicitly SKIPPED.
+- @4080 downloaded the QA artifact into a disposable test location but did
+  **not execute or install** it on the user's machine. Verification:
+  NotroSetup.exe 17,199,976 bytes, ProductName Notro, FileVersion 2.11.0,
+  SHA-256
+  4f58b3ae6462d58818b9b8f0f00f85ce34b2879dc1082306c483de9b521315cc
+  (matching CI checksum file), Authenticode **NotSigned** as expected.
+- User explicitly opted out of signing. No certificate, issuer, tag or public
+  release was created. Signed Windows reputation is not a hidden requirement
+  but unsigned warning and initial install friction are still disclosure and
+  human-test requirements.
+- **Remaining NO-GO**: real user GUI first run, v2.10.3 upgrade, Windows 10,
+  actual Discord non-sending draft Ctrl+V/focus, portfolio dependency audit +
+  stale landing page, and rights-cleared authentic marketing media.

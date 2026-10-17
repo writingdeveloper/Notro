@@ -1,54 +1,113 @@
-<# Disposable GitHub-hosted runner only. No Discord, clipboard or personal data.
-   Tests actual Inno installer/exe version and removal, not SmartScreen or GUI. #>
+<# Disposable GitHub-hosted runner ONLY; never the user's real PC.
+   Verifies public 2.10.3 -> new unsigned 2.11.0 upgrade and uninstall.
+   No Discord account, clipboard or real user data is involved.
+   Does not test SmartScreen warnings or interactive GUI behavior. #>
 param(
     [Parameter(Mandatory = $true)]
     [string]$ExpectedVersion
 )
 $ErrorActionPreference = "Stop"
 if ($env:GITHUB_ACTIONS -ne "true" -or -not $env:RUNNER_TEMP) {
-    throw "QA installer smoke only runs on disposable GitHub runners."
+    throw "QA installer smoke runs only in a disposable GitHub runner."
 }
+if (-not $env:GH_TOKEN) { throw "Missing GitHub token for baseline release download." }
+
 $installer = Join-Path $PWD "dist\NotroSetup.exe"
 $installDir = Join-Path $env:RUNNER_TEMP "Notro QA Installer Smoke"
 $env:NOTRO_QA_SUPPRESS_AUTORUN = "1"
-if (-not (Test-Path -LiteralPath $installer)) {
-    throw "No installer at $installer"
-}
+if (-not (Test-Path -LiteralPath $installer)) { throw "Installer not found." }
 $info = (Get-Item -LiteralPath $installer).VersionInfo
 if ($info.ProductVersion.Trim() -ne $ExpectedVersion) {
     throw "Installer version mismatch: $($info.ProductVersion)"
 }
 $signature = Get-AuthenticodeSignature -LiteralPath $installer
 if ($signature.Status.ToString() -ne "NotSigned") {
-    throw "Expected unsigned QA package; actual: $($signature.Status)"
+    throw "Unsigned QA installer expected, found: $($signature.Status)"
 }
-Write-Host "NOTRO_QA_INSTALLING_UNSIGNED" $ExpectedVersion
-$arguments = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/NOICONS",
-               ('/DIR="' + $installDir + '"'))
-$installed = Start-Process -FilePath $installer -ArgumentList $arguments -Wait -PassThru
-if ($installed.ExitCode -ne 0) {
-    throw "Silent QA install failed: $($installed.ExitCode)"
+
+$baselineDir = Join-Path $env:RUNNER_TEMP "Notro Public Baseline"
+New-Item -ItemType Directory -Path $baselineDir -Force | Out-Null
+gh release download v2.10.3 --repo writingdeveloper/Notro --pattern "NotroSetup.exe*" --dir $baselineDir --clobber
+if ($LASTEXITCODE -ne 0) { throw "Failed to fetch public v2.10.3 installer." }
+$baselineExe = Join-Path $baselineDir "NotroSetup.exe"
+$baselineSha = Join-Path $baselineDir "NotroSetup.exe.sha256"
+if (-not (Test-Path -LiteralPath $baselineExe) -or -not (Test-Path -LiteralPath $baselineSha)) {
+    throw "Missing baseline installer or official checksum."
+}
+$shaLine = (Get-Content -LiteralPath $baselineSha -Raw).Trim()
+if ($shaLine -notmatch '^([0-9a-fA-F]{64})\s+NotroSetup\.exe$') {
+    throw "Malformed published baseline checksum."
+}
+$published = $Matches[1]
+$verified = (Get-FileHash -LiteralPath $baselineExe -Algorithm SHA256).Hash
+if ($verified.ToLower() -ne $published.ToLower()) {
+    throw "Baseline v2.10.3 installer checksum mismatch."
+}
+$baselineVersion = (Get-Item -LiteralPath $baselineExe).VersionInfo.ProductVersion.Trim()
+if ($baselineVersion -ne "2.10.3") {
+    throw "Unexpected baseline version: $baselineVersion"
+}
+
+$installArgs = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/NOICONS",
+                 ('/DIR="' + $installDir + '"'))
+Write-Host "NOTRO_QA_BASELINE_VERIFIED" $baselineVersion
+$baseline = Start-Process -FilePath $baselineExe -ArgumentList $installArgs -Wait -PassThru
+if ($baseline.ExitCode -ne 0) {
+    throw "Baseline silent installation failed: $($baseline.ExitCode)"
 }
 $exe = Join-Path $installDir "Notro.exe"
 $uninstall = Join-Path $installDir "unins000.exe"
-if (-not (Test-Path -LiteralPath $exe)) { throw "Notro.exe not installed" }
-if (-not (Test-Path -LiteralPath $uninstall)) { throw "Uninstaller absent" }
+if (-not (Test-Path -LiteralPath $exe)) { throw "Missing public baseline executable." }
+if ((Get-Item -LiteralPath $exe).VersionInfo.ProductVersion.Trim() -ne "2.10.3") {
+    throw "Installed baseline executable version mismatch."
+}
+
+# The public v2.10.3 installer has no CI-only suppression flag, so it may
+# briefly auto-launch on the empty hosted runner. Stop only that runner's copy.
+Start-Sleep -Seconds 3
+Get-Process -Name "Notro" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction Stop
+Start-Sleep -Seconds 1
+if (Get-Process -Name "Notro" -ErrorAction SilentlyContinue) {
+    throw "Baseline process still running before upgrade."
+}
+
+# Synthetic user data marker ensures upgrade/uninstall retain app data.
+$fixtureDir = Join-Path $env:APPDATA "Notro"
+New-Item -ItemType Directory -Path $fixtureDir -Force | Out-Null
+$fixture = Join-Path $fixtureDir "qa-upgrade-preserve.txt"
+$fixtureText = "qa-public-baseline-to-new-unsigned-release"
+Set-Content -LiteralPath $fixture -Value $fixtureText -Encoding UTF8
+
+Write-Host "NOTRO_QA_UPGRADING_UNSIGNED" $ExpectedVersion
+$installed = Start-Process -FilePath $installer -ArgumentList $installArgs -Wait -PassThru
+if ($installed.ExitCode -ne 0) {
+    throw "Candidate silent upgrade failed: $($installed.ExitCode)"
+}
+if (-not (Test-Path -LiteralPath $exe)) { throw "Candidate Notro.exe not installed." }
+if (-not (Test-Path -LiteralPath $uninstall)) { throw "Candidate uninstaller missing." }
 $actualVersion = (Get-Item -LiteralPath $exe).VersionInfo.ProductVersion.Trim()
 if ($actualVersion -ne $ExpectedVersion) {
-    throw "Installed executable version mismatch: $actualVersion"
+    throw "Candidate installed executable version mismatch: $actualVersion"
 }
 if (Get-Process -Name "Notro" -ErrorAction SilentlyContinue) {
-    throw "Installer unexpectedly launched Notro in unattended QA"
+    throw "Candidate unexpectedly auto-launched during CI-only upgrade."
 }
-Write-Host "NOTRO_QA_INSTALLED_VERSION" $actualVersion
+if ((Get-Content -LiteralPath $fixture -Raw).Trim() -ne $fixtureText) {
+    throw "Synthetic settings/data marker altered during candidate upgrade."
+}
+Write-Host "NOTRO_QA_BASELINE_TO_CANDIDATE_UPGRADE_PRESERVED_DATA"
+
 $uninstalled = Start-Process -FilePath $uninstall -ArgumentList @(
     "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"
 ) -Wait -PassThru
 if ($uninstalled.ExitCode -ne 0) {
-    throw "Silent QA uninstall failed: $($uninstalled.ExitCode)"
+    throw "Uninstall failed: $($uninstalled.ExitCode)"
 }
 Start-Sleep -Seconds 1
-if (Test-Path -LiteralPath $exe) {
-    throw "Notro.exe remains after QA uninstall"
+if (Test-Path -LiteralPath $exe) { throw "Notro.exe remains after uninstall." }
+if ((Get-Content -LiteralPath $fixture -Raw).Trim() -ne $fixtureText) {
+    throw "Uninstaller unexpectedly deleted retained profile data."
 }
+Remove-Item -LiteralPath $fixture -Force
+Write-Host "NOTRO_QA_UPGRADE_UNINSTALL_PASSED"
 Write-Host "NOTRO_QA_INSTALL_UNINSTALL_PASSED"

@@ -101,6 +101,8 @@ jobs:
       - name: QA install and uninstall on ephemeral runner
         if: github.event_name == 'workflow_dispatch'
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: ./scripts/qa_installer_smoke.ps1 -ExpectedVersion $env:APP_VERSION
 
       - name: Generate SHA256

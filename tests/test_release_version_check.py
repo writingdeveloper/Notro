@@ -273,3 +273,16 @@ def test_media_release_gate_includes_real_pixel_data_not_just_padding():
     assert 'summary["real_pixel_png"]' in script
     assert "sha256(noisy) == noise_digest" in script
     assert "converted.stat().st_size <= config.LIMIT_BYTES" in script
+
+
+def test_qa_installer_upgrade_from_checksum_verified_public_release():
+    release = _workflow(RELEASE_WORKFLOW)
+    stage = _step(release, "QA install and uninstall on ephemeral runner")
+    assert "GH_TOKEN:" in stage and "github.token" in stage
+    script = Path("scripts/qa_installer_smoke.ps1").read_text(encoding="utf-8")
+    assert "gh release download v2.10.3" in script
+    assert "Get-FileHash -LiteralPath $baselineExe -Algorithm SHA256" in script
+    assert "Baseline process still running before upgrade" in script
+    assert "Synthetic settings/data marker" in script
+    assert "NOTRO_QA_BASELINE_TO_CANDIDATE_UPGRADE_PRESERVED_DATA" in script
+    assert "NOTRO_QA_UPGRADE_UNINSTALL_PASSED" in script
