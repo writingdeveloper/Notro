@@ -33,10 +33,10 @@
 네이티브 인라인 이모지가 아니라 이미지 첨부로 보입니다.
 
 <p align="center">
-  <img src="docs/demo.gif" width="620" alt="Notro 피커: 입력하는 대로 커스텀 이모지가 실시간으로 걸러지고, 방향키로 그리드를 이동합니다">
+  <img src="docs/demo-owned-webview.gif" width="620" alt="자체 제작한 도형 이미지를 사용하는 Notro의 실제 Windows WebView2 선택기">
 </p>
 
-<p align="center"><sub>실제 UI, 실제 라이브러리 — 입력하는 대로 걸러지고, 방향키로 이동, Enter로 붙여넣기.</sub></p>
+<p align="center"><sub>직접 만든 도형 테스트 이미지로 촬영한 실제 Windows WebView2 선택기입니다. 검색·키보드·탭·설정을 보여주며 Discord 첨부·설치 과정 영상은 아닙니다.</sub></p>
 
 <p align="center">
   <a href="../../releases/latest"><b>⬇ NotroSetup.exe 내려받기</b></a><br>

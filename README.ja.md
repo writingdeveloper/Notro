@@ -33,10 +33,10 @@ Discord が課金対象にしている 2 つのことを、アプリの外側か
 ネイティブのインライン絵文字ではなく画像の添付として見えます。
 
 <p align="center">
-  <img src="docs/demo.gif" width="620" alt="Notro のピッカー: 入力するそばからカスタム絵文字が絞り込まれ、方向キーでグリッドを移動できます">
+  <img src="docs/demo-owned-webview.gif" width="620" alt="独自の幾何学図形を使った実際の Windows WebView2 Notro ピッカー">
 </p>
 
-<p align="center"><sub>実際の UI と実際のライブラリ — 入力に応じて絞り込み、方向キーで移動、Enter で貼り付け。</sub></p>
+<p align="center"><sub>オリジナルの幾何学サンプルを一時ライブラリに登録して撮影した実際の Windows WebView2 UI。検索・キーボード操作・タブ・設定のデモであり、Discord 添付やインストールのデモではありません。</sub></p>
 
 <p align="center">
   <a href="../../releases/latest"><b>⬇ NotroSetup.exe をダウンロード</b></a><br>

@@ -33,10 +33,10 @@ Nunca modifica el cliente de Discord ni ve tu cuenta o tu token. La contrapartid
 quien lo recibe ve tus emojis como imágenes adjuntas, no como emojis integrados.
 
 <p align="center">
-  <img src="docs/demo.gif" width="620" alt="El selector de Notro: al escribir se filtran en vivo los emojis personalizados y las flechas recorren la cuadrícula">
+  <img src="docs/demo-owned-webview.gif" width="620" alt="Interfaz nativa WebView2 de Notro con figuras geométricas originales">
 </p>
 
-<p align="center"><sub>Interfaz real, biblioteca real: filtra al escribir, las flechas recorren y Enter pega.</sub></p>
+<p align="center"><sub>Captura real del selector WebView2 de Windows con figuras geométricas originales en una biblioteca temporal. Muestra búsqueda, teclado, pestañas y ajustes; no demuestra adjuntos de Discord ni una instalación real.</sub></p>
 
 <p align="center">
   <a href="../../releases/latest"><b>⬇ Descargar NotroSetup.exe</b></a><br>

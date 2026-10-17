@@ -297,3 +297,21 @@ def test_installer_upgrade_waits_for_installer_only_not_persistent_tray_child():
     assert "Wait-OnlyInstallerProcess -Process $installed" in script
     assert "Wait-OnlyInstallerProcess -Process $uninstalled" in script
     assert not any("-Wait -PassThru" in line for line in script.splitlines())
+
+
+def test_runner_clipboard_contract_cannot_run_on_real_user_pc():
+    release = _workflow(RELEASE_WORKFLOW)
+    stage = _step(release, "QA native Win32 clipboard on disposable runner")
+    assert "if: github.event_name == 'workflow_dispatch'" in stage
+    assert "python scripts/qa_runner_clipboard_cf_hdrop.py" in stage
+    script = Path("scripts/qa_runner_clipboard_cf_hdrop.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'os.environ.get("GITHUB_ACTIONS") != "true"' in script
+    assert 'os.environ.get("RUNNER_TEMP")' in script
+    assert "cb.set_clipboard_file" in script
+    assert "cb.CF_HDROP" in script
+    assert "cb.set_clipboard_text" in script
+    assert "guard_seq=before" in script
+    assert "clear_runner_clipboard()" in script
+    assert "cb.send_ctrl_v" not in script and "cb.send_enter" not in script

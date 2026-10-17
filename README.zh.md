@@ -32,10 +32,10 @@ Discord 要收费的两件事，在应用之外解决：
 接收方看到的是图片附件，而不是原生的内嵌表情。
 
 <p align="center">
-  <img src="docs/demo.gif" width="620" alt="Notro 选择器：输入时自定义表情实时筛选，方向键可在网格中移动">
+  <img src="docs/demo-owned-webview.gif" width="620" alt="使用自制几何图形素材的真实 Windows WebView2 Notro 选择器">
 </p>
 
-<p align="center"><sub>真实界面、真实收藏库 —— 输入即筛选，方向键移动，Enter 粘贴。</sub></p>
+<p align="center"><sub>这是使用临时媒体库和自行绘制的几何素材在 Windows WebView2 中录制的真实 Notro 选择器界面，演示搜索、键盘、切换标签和设置；并非 Discord 附件上传或安装程序的演示。</sub></p>
 
 <p align="center">
   <a href="../../releases/latest"><b>⬇ 下载 NotroSetup.exe</b></a><br>

@@ -60,6 +60,15 @@ def main() -> int:
             lib, str(gif_path), "gif", name="synthetic-animation")
         lib_gif_path = lib.asset_path(gif_item)
         gif_digest = hashlib.sha256(Path(lib_gif_path).read_bytes()).hexdigest()
+        # A fixture is not allowed to read/write the actual user's Notro HKCU
+        # preferences. Prior versions accidentally reflected the user's saved
+        # auto-send setting in synthetic QA, making the evidence misleading.
+        config.get_setting_flag = lambda name: False
+        config.get_setting_int = lambda name, default=0: default
+        config.get_setting_str = lambda name, default="": default
+        config.set_setting_flag = lambda *args: None
+        config.set_setting_int = lambda *args: None
+        config.set_setting_str = lambda *args: None
         # Runtime-only per-process values, no registry writes.
         config.TEMP_DIR = str(root / "temporary")
         config.LIMIT_BYTES = int(os.path.getsize(lib_gif_path) * .65)
@@ -76,7 +85,8 @@ def main() -> int:
             hidden=False, frameless=False, on_top=False,
         )
         result = {"native_webview2": False, "items": 0, "tabs": 0,
-                  "settings": False, "pack_buttons": False,
+                  "settings": False, "auto_send_off": False,
+                  "auto_capture_off": False, "pack_buttons": False,
                   "profile_buttons": False, "profile_paths_unchecked": False,
                   "search": False,
                   "asset_images_loaded": False, "locale_labels": [],
@@ -107,6 +117,12 @@ def main() -> int:
                     win.evaluate_js("document.getElementById('btn-settings').click()")
                     result["settings"] = bool(win.evaluate_js(
                         "!document.getElementById('modal-settings').classList.contains('hidden')"
+                    ))
+                    result["auto_send_off"] = bool(win.evaluate_js(
+                        "!document.getElementById('st-auto-send').checked"
+                    ))
+                    result["auto_capture_off"] = bool(win.evaluate_js(
+                        "!document.getElementById('st-auto-capture').checked"
                     ))
                     result["pack_buttons"] = bool(win.evaluate_js(
                         "document.getElementById('st-import-pack').offsetWidth>0 &&"
@@ -288,6 +304,7 @@ def main() -> int:
         result["passed"] = bool(
             result["native_webview2"] and result["items"] == 3
             and result["tabs"] == 3 and result["settings"]
+            and result["auto_send_off"] and result["auto_capture_off"]
             and result["pack_buttons"] and result["profile_buttons"]
             and result["profile_paths_unchecked"] and result["search"]
             and result["asset_images_loaded"]

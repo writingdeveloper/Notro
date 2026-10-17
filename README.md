@@ -33,10 +33,10 @@ Discord client and never sees your account or token. The honest trade-off: recip
 your emoji as image attachments, not as native inline emoji.
 
 <p align="center">
-  <img src="docs/demo.gif" width="620" alt="Notro's picker: typing filters a personal library of custom Discord emoji live, and the arrow keys move through the grid">
+  <img src="docs/demo-owned-webview.gif" width="620" alt="Notro's native Windows WebView2 picker with original geometric example assets">
 </p>
 
-<p align="center"><sub>Real UI, real library — search filters as you type, arrow keys move, Enter pastes.</sub></p>
+<p align="center"><sub>Actual Windows WebView2 picker UI using a temporary library of original generated geometric assets. Shows search, keyboard focus, tabs and settings; NOT a Discord attachment or installed-app demo.</sub></p>
 
 <p align="center">
   <a href="../../releases/latest"><b>⬇ Download NotroSetup.exe</b></a><br>

@@ -59,3 +59,26 @@ The website https://writingdeveloper.blog/projects/notro still has outdated 10MB
   do not request certificates or enable signing infrastructure.
 - Complete limited opt-in beta QA and accurate releases/landing first, then
   human-managed public marketing with authentic demos.
+
+
+## October 17 follow-up: owned native picker demo produced (NOT launch approval)
+
+- A **15.9-second, nine-scene capture from the actual pywebview/Windows
+  CoreWebView2 picker** was generated with original geometric Pillow shapes
+  (18 emoji, 4 stickers, 3 small GIFs). Outputs:
+  docs/demo-owned-webview.gif and docs/picker-owned-webview.png.
+- It uses CoreWebView2's own CapturePreview on the fixture window only,
+  not a desktop/screen grab. The QA process blocks reads/writes of real
+  Notro HKCU settings and validates that auto-send/capture are OFF.
+  No Discord, account, real chat, global clipboard, or third-party artwork
+  is present. Exact source and limitations are documented in
+  docs/marketing/owned-native-demo-2026-10-17.md.
+- All five README files now embed only the newly rights-cleared native
+  picker demo. Old docs/demo.gif and docs/picker.png are historical art,
+  NOT licensed public marketing materials. Do not use them in promotions.
+- One UI-only demo is therefore ready for human review; it is **not** the
+  separate big-screenshot compression, game-clip or Discord attachment demo.
+  Real-world file attachment evidence and approved Windows EXE first-run
+  footage must still be collected with explicit consent.
+- No announcement/release or community post was made. Existing portfolio
+  npm audit blocker is still a public launch hold.

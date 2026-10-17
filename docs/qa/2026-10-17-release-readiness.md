@@ -175,3 +175,33 @@ This closes the **synthetic automated upgrade** sub-gate only. Windows 10/11
 interactive GUI first-run, real installed app tray/hotkey and Discord
 non-sending attachment drafts remain hard launch blockers. Exact procedure:
 docs/qa/2026-10-17-manual-release-acceptance.md.
+
+
+## Native WebView2 picker demo with owned art, verified 2026-10-17
+
+- Generated 18 original geometric emoji, four original stickers and
+  three original animated GIFs. Assets came only from Pillow primitives in
+  scripts/record_owned_native_demo.py; no external download, Discord artwork,
+  user assets or stock imagery were used.
+- Recorded **nine actual WebView2-rendered UI scenes, 15.9s**, to
+  docs/demo-owned-webview.gif (approximately 390KB) and native still
+  docs/picker-owned-webview.png. Source window content was captured through
+  CoreWebView2.CapturePreviewAsync, not by photographing the desktop.
+- Scenes cover gallery/favorites, search using the real input handler,
+  arrow-key JS navigation, sticker tab, animated GIF tab, settings with
+  both auto-send and auto-capture OFF, and pack/settings backup controls.
+- First test revealed test-only profile settings were reading the local
+  Windows registry: in the initial screenshot auto-send was displayed as
+  enabled. This was **a QA isolation problem, not an auto-send action**.
+  Corrected the fixture to intercept registry getters/setters, required
+  both safety toggles OFF before capture, and regenerated the footage.
+  The user's settings were not changed. Also updated prior native WebView2
+  smoke fixture to isolate registry reads/writes.
+- Updated EN/KO/JA/ZH/ES README hero images/captions to the owned UI demo.
+  Historical docs/demo.gif/picker.png still contain recognizable third-party
+  character images and are excluded from present README promotions.
+- This removes the **picker-UI owned-art sub-gate only**. Real Discord
+  unpublished attachment, human Windows installer footage, large-video
+  evidence, rights/metadata review for the live portfolio and external
+  marketing remain NO-GO. Separate manual QA in
+  docs/qa/2026-10-17-manual-release-acceptance.md is still necessary.
