@@ -323,3 +323,35 @@ data folder. It terminates only that spawned process tree before uninstall.
 Do not mark GUI installed-executable proof until a GitHub manual QA run
 passes. This is NOT interactive human Windows10/11 use or real Discord
 attachment acceptance. No signing, customer contact or release is involved.
+
+
+## Source 0f4606c — real installed Notro.exe GUI first-run test PASSED
+
+- GitHub Actions CI [39076986269](https://github.com/writingdeveloper/Notro/actions/runs/39076986269):
+  **PASS**, 466 Python tests, Ruff, dependency audit and real pixel
+  upload-threshold preflight.
+- Disposable Windows unsigned manual release [39077002020](https://github.com/writingdeveloper/Notro/actions/runs/39077002020):
+  **PASS**. This run installed a checksum-verified public v2.10.3,
+  upgraded to candidate 2.11.0, then launched the ACTUAL installed EXE
+  in a temporary profile before uninstallation.
+- The real process's own Win32 window enumeration verified a visible
+  **Notro** first-run welcome, created **Notro Picker** window (initially
+  hidden), and live process. Test output additionally confirms
+  auto_send_off=true, auto_capture_off=true,
+  startup_unchanged=true, profile_isolated=true,
+  welcome_marked=true, errors=[], passed=true.
+- It also passed previous real owned-target CF_HDROP/Unicode Ctrl+V,
+  later-copy clipboard preservation, actual hosted installer upgrade,
+  synthetic profile preservation and removal. No real Discord chat, user
+  clipboard or actual main development PC installation occurred.
+- This exact run's unsigned QA NotroSetup.exe was downloaded to an
+  isolated local TEMP directory **without executing it** for independent
+  validation: 17,203,616 bytes, SHA-256
+  b6f8ac78eae51c25a77cafda6f217351d8ce58fb750629e8e771e469dbd94cb7
+  (matches release-run checksum manifest), Windows ProductVersion 2.11.0,
+  Authenticode NotSigned. Release publish skipped; v2.10.3 remains public.
+- This closes the **automated installed first-run window** sub-gate
+  (NOTRO-32), not full human Windows 10/11 GUI/SmartScreen/accessibility,
+  first actual Discord non-sending draft, portfolio security audit or
+  marketing readiness. They remain NO-GO/P0. Signing remains excluded
+  by explicit user decision.

@@ -266,6 +266,23 @@ allowed, and founders must NOT directly ask for upvotes or coordinate
 vote rings:
 https://www.producthunt.com/launch
 
+### Product Hunt own Q2 2026 report: platform is active, not dead
+
+Product Hunt's official Q2 2026 State of Tech Discovery report counts
+2,345 launches versus 1,508 in Q2 2025 (about 55.5% growth). Open Source
+launches increased 143% year-on-year; that category reported 243 launches
+and mean 192 upvotes, compared with a mean 190 across launches overall.
+AI was the largest category (1,111 launches, mean 252 upvotes), but Open
+Source remains active and heavily overlaps Developer Tools.
+Source: https://www.producthunt.com/p/general/product-hunt-s-state-of-tech-discovery-q2-2026
+
+This is Product Hunt's own publisher data and measures launches/engagement,
+not verified outside visitor traffic, installs, paid customers or user
+retention. It also reveals increased supply competing for attention; a
+higher number of launches is NOT proof of higher conversion or better
+exposure for a niche Windows-only Discord attachment utility.
+Avoid extrapolating the report into Notro's expected signup/install count.
+
 ### Notro-specific channel decision and time budget
 
 1. Now: zero ad spend and zero PH preparation; complete real installed
