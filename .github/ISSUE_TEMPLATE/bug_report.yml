@@ -14,7 +14,7 @@ body:
     attributes:
       label: Notro version
       description: Right-click the tray icon; the version is in the tooltip. Or check Settings → Apps.
-      placeholder: "2.10.1"
+      placeholder: "2.10.3"
     validations:
       required: true
 
@@ -40,7 +40,7 @@ body:
     attributes:
       label: Steps to reproduce
       placeholder: |
-        1. Copy a 15 MB PNG
+        1. Copy a 24 MB PNG
         2. Wait for the tray notification
         3. Paste in Discord
     validations:
@@ -78,5 +78,5 @@ body:
         Close Notro, then run it once from a terminal with logging on:
         `set NOTRO_DEBUG=%TEMP%\notro.log` followed by `"%LOCALAPPDATA%\Programs\Notro\Notro.exe"`.
         Reproduce the problem, then paste the contents of `%TEMP%\notro.log` here.
-        The log contains window coordinates only — no clipboard content.
+        Review and redact the log before sharing; do not post account tokens, personal paths or private messages.
       render: text

@@ -161,7 +161,8 @@ def main():
         try/except로 감싸긴 하지만, 그건 "죽지 않는다"만 보장할 뿐 "뒤 단계가 실행된다"는
         보장하지 못한다. 각 단계를 개별적으로 감싸 하나가 실패해도 나머지는 반드시
         실행되게 한다."""
-        steps = [listener.stop, asset_server.stop, picker.destroy,
+        steps = [listener.stop, api.discard_gif_preview,
+                 asset_server.stop, picker.destroy,
                  video_window.destroy_all,  # 열린 확인/진행 창부터 닫는다 — destroy()가
                                              # closed 이벤트를 통해 cancelled(+accepted)를
                                              # set해, 그 창에 매인 _work 스레드가 새 인코딩을
@@ -389,7 +390,10 @@ def main():
         from . import welcome
         from .hotkey import label_for
         combo_label = label_for(combo) if combo != "off" else None
-        welcome.create_window(combo_label)
+        # Give Windows time to dismiss the welcome modal before capturing
+        # the previous foreground window, otherwise Ctrl+V would target it.
+        welcome.create_window(combo_label, on_try=lambda: threading.Timer(
+            0.3, picker.toggle).start())
         first_msg = (tr("notify_first_run_picker", combo=combo_label)
                      if combo_label else tr("notify_first_run"))
         threading.Timer(1.5, lambda: icon.notify(first_msg, APP_NAME)).start()

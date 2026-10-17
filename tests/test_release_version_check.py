@@ -57,15 +57,15 @@ def _run_commands(workflow: str) -> list[str]:
 
 
 def test_expected_tag_uses_app_version():
-    assert check_release_version.expected_tag() == "v2.10.3"
+    assert check_release_version.expected_tag() == "v2.11.0"
 
 
 def test_validate_tag_accepts_matching_release():
-    check_release_version.validate_tag("v2.10.3")
+    check_release_version.validate_tag("v2.11.0")
 
 
 def test_validate_tag_rejects_mismatch():
-    with pytest.raises(ValueError, match="expected v2.10.3"):
+    with pytest.raises(ValueError, match="expected v2.11.0"):
         check_release_version.validate_tag("v2.10.4")
 
 
@@ -76,7 +76,7 @@ def test_cli_returns_nonzero_for_mismatched_tag():
         capture_output=True,
     )
     assert result.returncode != 0
-    assert "expected v2.10.3" in result.stderr
+    assert "expected v2.11.0" in result.stderr
 
 
 def test_cli_returns_nonzero_for_shell_significant_mismatched_tag():
@@ -86,7 +86,7 @@ def test_cli_returns_nonzero_for_shell_significant_mismatched_tag():
         capture_output=True,
     )
     assert result.returncode != 0
-    assert "expected v2.10.3" in result.stderr
+    assert "expected v2.11.0" in result.stderr
 
 
 def test_release_workflow_passes_tag_by_environment_variable():
@@ -200,3 +200,100 @@ def test_release_workflow_uses_node_24_release_action_major():
     assert re.findall(r"softprops/action-gh-release@\S+", workflow) == [
         "softprops/action-gh-release@v3"
     ]
+
+
+def test_manual_release_run_uploads_short_lived_unsigned_qa_artifact():
+    workflow = _workflow(RELEASE_WORKFLOW)
+    step = _step(workflow, "Upload unsigned QA installer")
+    assert "if: github.event_name == 'workflow_dispatch'" in step
+    assert "actions/upload-artifact@v7" in step
+    assert "NOTRO-UNSIGNED-QA-" in step
+    assert "retention-days: 3" in step
+    assert "if-no-files-found: error" in step
+    assert "overwrite: false" in step
+    assert "dist/NotroSetup.exe.sha256" in step
+    assert "dist/NotroSetup.exe" in step
+    assert PUSH_TAG_GUARD in _step(workflow, "Publish release")
+
+
+def test_release_gates_audit_pinned_build_requirements_and_media_thresholds():
+    release = _workflow(RELEASE_WORKFLOW)
+    ci = _workflow(CI_WORKFLOW)
+    assert "run: pip install -r requirements-build.txt" in release
+    assert "python -m pip_audit -r requirements-build.txt --strict" in release
+    assert "python -m pip_audit -r requirements-build.txt --strict" in ci
+    assert "python scripts/qa_release_media_preflight.py" in release
+    assert "python scripts/qa_release_media_preflight.py" in ci
+    assert "Publish release" in release
+    assert PUSH_TAG_GUARD in _step(release, "Publish release")
+
+
+def test_build_tools_versions_pinned_with_no_runtime_signing():
+    build_req = Path("requirements-build.txt").read_text(encoding="utf-8")
+    build_script = Path("build.bat").read_text(encoding="utf-8-sig")
+    assert "pyinstaller==6.21.0" in build_req
+    assert "pip-audit==2.10.1" in build_req
+    assert "requirements-build.txt" in build_script
+    assert "signpath" not in build_req.lower()
+
+
+def test_unsigned_disposable_runner_installer_smoke_is_opt_in():
+    release = _workflow(RELEASE_WORKFLOW)
+    stage = _step(release, "QA install and uninstall on ephemeral runner")
+    assert "if: github.event_name == 'workflow_dispatch'" in stage
+    assert "scripts/qa_installer_smoke.ps1" in stage
+    assert PUSH_TAG_GUARD in _step(release, "Publish release")
+    inno = Path("installer.iss").read_text(encoding="utf-8-sig")
+    assert "Check: ShouldLaunchNotro" in inno
+    assert "NOTRO_QA_SUPPRESS_AUTORUN" in inno
+    assert "Result := GetEnv(" in inno
+    ps = Path("scripts/qa_installer_smoke.ps1").read_text(encoding="utf-8")
+    assert "GITHUB_ACTIONS" in ps and "RUNNER_TEMP" in ps
+    assert "NOTRO_QA_SUPPRESS_AUTORUN" in ps
+    assert "NotSigned" in ps
+    assert "QA_INSTALL_UNINSTALL_PASSED" in ps
+    assert "unins000.exe" in ps
+
+
+def test_release_refuse_tags_not_reachable_from_origin_main():
+    workflow = _workflow(RELEASE_WORKFLOW)
+    ancestry = _step(workflow, "Verify release tag belongs to main")
+    assert "if: startsWith(github.ref, 'refs/tags/')" in ancestry
+    assert "git fetch origin main" in ancestry
+    assert "git merge-base --is-ancestor $env:GITHUB_SHA origin/main" in ancestry
+    assert "$LASTEXITCODE -ne 0" in ancestry
+    assert "fetch-depth: 0" in workflow
+
+
+def test_media_release_gate_includes_real_pixel_data_not_just_padding():
+    script = Path("scripts/qa_release_media_preflight.py").read_text(
+        encoding="utf-8"
+    )
+    assert "rng.randbytes(3000 * 3000 * 3)" in script
+    assert 'summary["real_pixel_png"]' in script
+    assert "sha256(noisy) == noise_digest" in script
+    assert "converted.stat().st_size <= config.LIMIT_BYTES" in script
+
+
+def test_qa_installer_upgrade_from_checksum_verified_public_release():
+    release = _workflow(RELEASE_WORKFLOW)
+    stage = _step(release, "QA install and uninstall on ephemeral runner")
+    assert "GH_TOKEN:" in stage and "github.token" in stage
+    script = Path("scripts/qa_installer_smoke.ps1").read_text(encoding="utf-8")
+    assert "gh release download v2.10.3" in script
+    assert "Get-FileHash -LiteralPath $baselineExe -Algorithm SHA256" in script
+    assert "Baseline process still running before upgrade" in script
+    assert "Synthetic settings/data marker" in script
+    assert "NOTRO_QA_BASELINE_TO_CANDIDATE_UPGRADE_PRESERVED_DATA" in script
+    assert "NOTRO_QA_UPGRADE_UNINSTALL_PASSED" in script
+
+
+def test_installer_upgrade_waits_for_installer_only_not_persistent_tray_child():
+    script = Path("scripts/qa_installer_smoke.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "$Process.WaitForExit(120000)" in script
+    assert "Wait-OnlyInstallerProcess -Process $baseline" in script
+    assert "Wait-OnlyInstallerProcess -Process $installed" in script
+    assert "Wait-OnlyInstallerProcess -Process $uninstalled" in script
+    assert not any("-Wait -PassThru" in line for line in script.splitlines())

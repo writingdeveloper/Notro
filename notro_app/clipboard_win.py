@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.wintypes as wt
+import ntpath
 import struct
 import time
 
@@ -25,6 +26,21 @@ user32.SetClipboardData.restype = wt.HANDLE
 user32.SetClipboardData.argtypes = [wt.UINT, wt.HANDLE]
 user32.GetClipboardData.restype = wt.HANDLE
 user32.GetClipboardData.argtypes = [wt.UINT]
+
+# Public Win32 APIs only. These read window/process identity, not Discord's
+# address space, private IPC, authentication state, or message content.
+user32.IsWindow.restype = wt.BOOL
+user32.IsWindow.argtypes = [wt.HWND]
+user32.GetWindowThreadProcessId.restype = wt.DWORD
+user32.GetWindowThreadProcessId.argtypes = [wt.HWND, ctypes.POINTER(wt.DWORD)]
+kernel32.OpenProcess.restype = wt.HANDLE
+kernel32.OpenProcess.argtypes = [wt.DWORD, wt.BOOL, wt.DWORD]
+kernel32.QueryFullProcessImageNameW.restype = wt.BOOL
+kernel32.QueryFullProcessImageNameW.argtypes = [
+    wt.HANDLE, wt.DWORD, wt.LPWSTR, ctypes.POINTER(wt.DWORD),
+]
+kernel32.CloseHandle.restype = wt.BOOL
+kernel32.CloseHandle.argtypes = [wt.HANDLE]
 
 CF_HDROP = 15
 CF_UNICODETEXT = 13
@@ -178,6 +194,48 @@ class _INPUT(ctypes.Structure):
 
 def get_foreground_window() -> int:
     return user32.GetForegroundWindow()
+
+
+PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+_DISCORD_DESKTOP_NAMES = frozenset({
+    "discord.exe", "discordptb.exe", "discordcanary.exe",
+})
+
+
+def window_process_name(hwnd: int) -> str:
+    """Get only a target window's executable basename via public Win32 APIs.
+
+    This is a best-effort *accidental-send safety check*, not account or
+    process attestation. A denied, recycled or unknown HWND returns "" so
+    automated Enter will fail closed. Browser Discord needs manual send.
+    """
+    if not hwnd or not user32.IsWindow(hwnd):
+        return ""
+    pid = wt.DWORD()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    if not pid.value:
+        return ""
+    handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid.value)
+    if not handle:
+        return ""
+    try:
+        name = ctypes.create_unicode_buffer(32768)
+        length = wt.DWORD(len(name))
+        if not kernel32.QueryFullProcessImageNameW(handle, 0, name, ctypes.byref(length)):
+            return ""
+        return ntpath.basename(name.value).casefold()
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def is_discord_desktop_window(hwnd: int) -> bool:
+    """Strictly gate optional auto-send to Discord's desktop executable."""
+    return window_process_name(hwnd) in _DISCORD_DESKTOP_NAMES
+
+
+def is_window_focused(hwnd: int) -> bool:
+    """Never paste or auto-send after the user moved to a different window."""
+    return bool(hwnd and user32.IsWindow(hwnd) and get_foreground_window() == hwnd)
 
 
 def _send_keys(seq) -> None:

@@ -15,7 +15,8 @@ import threading
 import time
 import uuid
 
-SUPPORTED_EXTS = (".png", ".gif", ".webp")
+# Match importer extensions: watched JPEG files must not disappear from the picker.
+SUPPORTED_EXTS = (".png", ".gif", ".webp", ".jpg", ".jpeg")
 SCHEMA_VERSION = 1
 
 _INVALID_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
@@ -100,7 +101,14 @@ def _slug(name) -> str:
     name = (name or "").strip()
     if not name:
         return "_uncategorized"
-    return _INVALID_CHARS.sub("_", name)[:80] or "_uncategorized"
+    slug = _INVALID_CHARS.sub("_", name)[:80].strip(" .")
+    # On Windows, "." and ".." resolve to ancestor paths and DOS device names
+    # are not valid regular directories. Untrusted pack names must never escape.
+    reserved = {"CON", "PRN", "AUX", "NUL", *(f"COM{n}" for n in range(1, 10)),
+                *(f"LPT{n}" for n in range(1, 10))}
+    if not slug or slug.upper() in reserved:
+        return "_uncategorized"
+    return slug
 
 
 class Library:

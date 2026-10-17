@@ -94,4 +94,4 @@ def test_capture_placeholders_match_across_languages():
 def test_release_version_is_2_10_3():
     """릴리스 문서와 실행 파일 버전이 이전 값으로 남는 회귀를 잡는다."""
     import notro_app
-    assert notro_app.__version__ == "2.10.3"
+    assert notro_app.__version__ == "2.11.0"

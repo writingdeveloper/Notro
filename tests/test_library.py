@@ -28,7 +28,7 @@ def make_lib_at(data_dir):
 
 
 def test_supported_exts_contract():
-    assert set(SUPPORTED_EXTS) == {".png", ".gif", ".webp"}
+    assert set(SUPPORTED_EXTS) == {".png", ".gif", ".webp", ".jpg", ".jpeg"}
 
 
 def test_add_get_persist_roundtrip(tmp_path):
@@ -318,11 +318,11 @@ def test_migration_moves_flat_legacy_files_on_load(tmp_path):
     os.replace(nested, flat)
     assert os.path.exists(flat) and not os.path.exists(nested)
 
-    lib2 = make_lib_at(d)
+    make_lib_at(d)
 
     assert os.path.exists(nested)
     assert not os.path.exists(flat)
-    lib3 = make_lib_at(d)  # 멱등
+    make_lib_at(d)  # 멱등
     assert os.path.exists(nested)
 
 
@@ -520,3 +520,24 @@ def test_search_choseong_does_not_change_plain_queries(tmp_path):
     assert len(lib.search("MIKU")) == 1      # 대소문자 무시
     assert len(lib.search("happy")) == 1     # 키워드
     assert lib.search("nope") == []
+
+
+def test_watched_folder_discovers_jpg_and_jpeg(tmp_path):
+    from PIL import Image
+
+    watch = tmp_path / "watched"
+    watch.mkdir()
+    for ext in ("jpg", "jpeg", "png"):
+        Image.new("RGB", (16, 16), (20, 40, 80)).save(watch / ("test." + ext))
+    library = Library(str(tmp_path / "notro-data"))
+    library.add_folder(str(watch), "emoji")
+    assert {item["name"] for item in library.scan_folders()} == {"test"}
+    assert {item["filename"] for item in library.scan_folders()} == {
+        "test.jpg", "test.jpeg", "test.png",
+    }
+
+
+def test_collection_slug_never_targets_parent_or_windows_device(tmp_path):
+    from notro_app.library import _slug
+    for name in (".", "..", "...", "CON", "NUL", "COM1", "LPT9"):
+        assert _slug(name) == "_uncategorized"

@@ -25,8 +25,12 @@ new clipboard images" in picker settings is **off by default**. With it off, the
 only images written to your library are the ones you register explicitly.
 
 **It simulates <kbd>Ctrl</kbd>+<kbd>V</kbd>** (and <kbd>Enter</kbd>, if you turn on
-auto-send) using the Windows `SendInput` API — the same mechanism as the built-in
-Windows emoji panel. It does not read your keystrokes.
+auto-send) using the Windows `SendInput` API. Paste can work in other apps,
+but optional automatic `Enter` is restricted to the same still-focused Discord
+desktop window. Notro checks the executable's name with public Win32 APIs,
+without reading the Discord process. It cannot detect switching channels
+inside the same Discord window; auto-send is therefore off by default.
+It does not read your keystrokes.
 
 **It never touches the Discord client, your account, or your token.** There is no
 self-bot behaviour, no injection, and no patching of any application.
@@ -46,9 +50,22 @@ Notro contacts only the services documented below:
 **There is no telemetry, analytics, crash reporting, or account of any kind.** No
 clipboard content, file name, or usage data is ever transmitted.
 
-A local HTTP server binds to `127.0.0.1` on a random port while the picker is
-running, so the WebView2 control can display your library images. It serves only
-files already in your own library and is not reachable from outside your machine.
+A local HTTP server binds to `127.0.0.1` on a random port while the
+picker is running, to serve only media already in your library to the
+embedded WebView2 picker. Each start creates an unpredictable URL capability;
+requests must also use the exact loopback Host header to reduce exposure to
+unrelated local web pages and DNS-rebinding aliases. Raw paths are not
+included in asset URLs. This does not provide a sandbox against other local
+software that already has direct access to your files.
+
+## Local preferences backup privacy
+
+An explicit settings export creates a small local JSON file with allowlisted
+preferences only; no media, private Captures, clipboard contents, tokens or
+Discord source links. Watched absolute paths are excluded by default and
+included only with consent. Import is verified and separately confirmed;
+auto-send and auto-capture are forced OFF, and startup settings unchanged.
+The image ZIP media pack is a separate workflow.
 
 ## Where your data lives
 
