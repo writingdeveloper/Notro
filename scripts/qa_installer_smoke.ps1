@@ -50,10 +50,22 @@ if ($baselineVersion -ne "2.10.3") {
 
 $installArgs = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/NOICONS",
                  ('/DIR="' + $installDir + '"'))
+function Wait-OnlyInstallerProcess {
+    param([System.Diagnostics.Process] $Process)
+    # Start-Process -Wait waits for child processes too. The published
+    # v2.10.3 installer starts a persistent tray process on exit, which
+    # would otherwise make our upgrade QA hang forever.
+    if (-not $Process.WaitForExit(120000)) {
+        try { $Process.Kill() } catch {}
+        throw "Installer process did not terminate within 120 seconds."
+    }
+    return $Process.ExitCode
+}
 Write-Host "NOTRO_QA_BASELINE_VERIFIED" $baselineVersion
-$baseline = Start-Process -FilePath $baselineExe -ArgumentList $installArgs -Wait -PassThru
-if ($baseline.ExitCode -ne 0) {
-    throw "Baseline silent installation failed: $($baseline.ExitCode)"
+$baseline = Start-Process -FilePath $baselineExe -ArgumentList $installArgs -PassThru
+$baselineExit = Wait-OnlyInstallerProcess -Process $baseline
+if ($baselineExit -ne 0) {
+    throw "Baseline silent installation failed: $baselineExit"
 }
 $exe = Join-Path $installDir "Notro.exe"
 $uninstall = Join-Path $installDir "unins000.exe"
@@ -79,9 +91,10 @@ $fixtureText = "qa-public-baseline-to-new-unsigned-release"
 Set-Content -LiteralPath $fixture -Value $fixtureText -Encoding UTF8
 
 Write-Host "NOTRO_QA_UPGRADING_UNSIGNED" $ExpectedVersion
-$installed = Start-Process -FilePath $installer -ArgumentList $installArgs -Wait -PassThru
-if ($installed.ExitCode -ne 0) {
-    throw "Candidate silent upgrade failed: $($installed.ExitCode)"
+$installed = Start-Process -FilePath $installer -ArgumentList $installArgs -PassThru
+$installedExit = Wait-OnlyInstallerProcess -Process $installed
+if ($installedExit -ne 0) {
+    throw "Candidate silent upgrade failed: $installedExit"
 }
 if (-not (Test-Path -LiteralPath $exe)) { throw "Candidate Notro.exe not installed." }
 if (-not (Test-Path -LiteralPath $uninstall)) { throw "Candidate uninstaller missing." }
@@ -99,9 +112,10 @@ Write-Host "NOTRO_QA_BASELINE_TO_CANDIDATE_UPGRADE_PRESERVED_DATA"
 
 $uninstalled = Start-Process -FilePath $uninstall -ArgumentList @(
     "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"
-) -Wait -PassThru
-if ($uninstalled.ExitCode -ne 0) {
-    throw "Uninstall failed: $($uninstalled.ExitCode)"
+) -PassThru
+$uninstalledExit = Wait-OnlyInstallerProcess -Process $uninstalled
+if ($uninstalledExit -ne 0) {
+    throw "Uninstall failed: $uninstalledExit"
 }
 Start-Sleep -Seconds 1
 if (Test-Path -LiteralPath $exe) { throw "Notro.exe remains after uninstall." }

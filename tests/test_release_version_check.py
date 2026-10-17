@@ -286,3 +286,14 @@ def test_qa_installer_upgrade_from_checksum_verified_public_release():
     assert "Synthetic settings/data marker" in script
     assert "NOTRO_QA_BASELINE_TO_CANDIDATE_UPGRADE_PRESERVED_DATA" in script
     assert "NOTRO_QA_UPGRADE_UNINSTALL_PASSED" in script
+
+
+def test_installer_upgrade_waits_for_installer_only_not_persistent_tray_child():
+    script = Path("scripts/qa_installer_smoke.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "$Process.WaitForExit(120000)" in script
+    assert "Wait-OnlyInstallerProcess -Process $baseline" in script
+    assert "Wait-OnlyInstallerProcess -Process $installed" in script
+    assert "Wait-OnlyInstallerProcess -Process $uninstalled" in script
+    assert not any("-Wait -PassThru" in line for line in script.splitlines())
