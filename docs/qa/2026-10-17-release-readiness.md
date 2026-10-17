@@ -140,3 +140,38 @@ certification and not a recommendation to bypass Windows security warnings.
 - **Remaining NO-GO**: real user GUI first run, v2.10.3 upgrade, Windows 10,
   actual Discord non-sending draft Ctrl+V/focus, portfolio dependency audit +
   stale landing page, and rights-cleared authentic marketing media.
+
+
+## 2026-10-17 verified public-to-candidate upgrade
+
+Source commit 413623c, GitHub Actions CI 39058070961 **PASS** (449 tests)
+and unsigned manual build 39058080501 **PASS**.
+
+CI logs show these named checkpoints in chronological order:
+
+- NOTRO_QA_BASELINE_VERIFIED 2.10.3
+- NOTRO_QA_UPGRADING_UNSIGNED 2.11.0
+- NOTRO_QA_BASELINE_TO_CANDIDATE_UPGRADE_PRESERVED_DATA
+- NOTRO_QA_UPGRADE_UNINSTALL_PASSED
+- NOTRO_QA_INSTALL_UNINSTALL_PASSED
+
+The baseline public v2.10.3 installer and its released SHA-256 were downloaded
+and matched on a disposable hosted Windows runner, then replaced in-place with
+v2.11.0. A synthetic profile file survived upgrade and intentional uninstall;
+the actual personal library was never accessed. The old installer launches
+Notro even when unattended, so the QA script stops only the ephemeral
+runner's Notro process. PowerShell's process-tree wait bug was fixed by
+bounded waits on the installer process itself.
+
+After the workflow succeeded, @4080 downloaded the unsigned QA artifact into
+an isolated temporary folder WITHOUT executing/installing it. Evidence:
+NotroSetup.exe size **17,196,309 bytes**, SHA-256
+df91f3e77b7e81405511f767ef7f2f6f3a0c1f376f5c96d0b75f56680671ba73
+(matched same-run checksum), Windows ProductName Notro, ProductVersion 2.11.0
+and Authenticode **NotSigned**. The Publish release step was skipped as
+designed and latest public is still v2.10.3.
+
+This closes the **synthetic automated upgrade** sub-gate only. Windows 10/11
+interactive GUI first-run, real installed app tray/hotkey and Discord
+non-sending attachment drafts remain hard launch blockers. Exact procedure:
+docs/qa/2026-10-17-manual-release-acceptance.md.
