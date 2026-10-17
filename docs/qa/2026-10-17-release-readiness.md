@@ -205,3 +205,42 @@ docs/qa/2026-10-17-manual-release-acceptance.md.
   evidence, rights/metadata review for the live portfolio and external
   marketing remain NO-GO. Separate manual QA in
   docs/qa/2026-10-17-manual-release-acceptance.md is still necessary.
+
+
+## Source fa3aff1: owned UI evidence and real disposable-runner clipboard QA
+
+- Source code: fa3aff1. GitHub Windows CI run 39072813556 **PASS**,
+  including 454 Python tests, Ruff, pip-audit and real-pixel media preflight.
+- Manual unsigned Windows run:
+  https://github.com/writingdeveloper/Notro/actions/runs/39072830662
+  **PASS**. Native Win32 clipboard log includes runner_only=true,
+  filesystem_unicode=true, unicode_text=true, marker=true,
+  stale_guard=true, passed=true, errors=[].
+  Tested actual CF_HDROP with Hangul temporary file path through
+  DragQueryFileW, Unicode text, Notro marker and protection against
+  overwriting a newer copy. Synthetic clipboard was cleared at end.
+  No Ctrl+V/Enter or Discord client interaction took place.
+- Same disposable-runner workflow again PASSED pinned PyInstaller/Inno
+  build and verified public v2.10.3 -> 2.11.0 upgrade with a synthetic
+  profile marker retained after upgrade and uninstall. Publish release
+  step SKIPPED.
+- The unsigned QA installer was downloaded for HASH/metadata validation
+  into a temporary directory on @4080, not executed on the user's PC.
+  NotroSetup.exe: 17,199,943 bytes; SHA256
+  d8ce5174c3e5462d03cc3f524a6bf861560becaf36ef91b1e8e6f399bf0b1848,
+  matching the generated manifest; ProductVersion=2.11.0 and
+  Authenticode=NotSigned.
+- New source-owned actual WebView2 UI animation is in five-language
+  READMEs; auto-send and capture are explicitly OFF in the test fixture
+  rather than inheriting registry settings. No third-party character
+  media, user clipboard, chats or desktop windows are captured.
+- Plane NOTRO-27 owned native UI demo and NOTRO-28 hosted Win32 clipboard
+  QA are Done; NOTRO-25 full marketing evidence remains In Progress and
+  NOTRO-5 real Discord unsent draft remains In Progress.
+- No signing, main merge, production release/tag or public marketing post.
+  Published latest GitHub release remains v2.10.3.
+
+Critical NO-GO gates remain: actual user-approved non-sending Discord
+attachment preview/focus and clipboard behavior, Windows 10/11 human GUI
+first run/offline conditions, portfolio dependency-audited live landing,
+and approved authentic screenshot/video attachment evidence.
