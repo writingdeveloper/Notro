@@ -276,3 +276,34 @@ and approved authentic screenshot/video attachment evidence.
   portfolio Draft PR #36 still fails GitHub npm audit.
 - Neither marketing research nor new QA triggers a release, a community post,
   a Discord message or a code-signing flow.
+
+
+## 2026-10-17 source 77689d6: owned-target REAL Win32 paste QA PASS
+
+- The first manual workflow attempt failed because the test harness depended
+  on pywin32/win32gui not installed in plain GitHub-hosted Python. Replaced
+  the unnecessary QA dependency with Windows native ctypes.FindWindowW;
+  no runtime dependency or actual Discord client was changed.
+- [GitHub Windows CI 39075255709](https://github.com/writingdeveloper/Notro/actions/runs/39075255709)
+  PASSED: 465 tests, Ruff, pip-audit and real 20MB media preflight.
+- [Manual QA workflow 39075263021](https://github.com/writingdeveloper/Notro/actions/runs/39075263021)
+  PASSED, including real original-target Win32 focus and SendInput:
+  NOTRO_OWN_WINDOW_PASTE_QA reports runner_only=true, owned_window=true,
+  foreground_file_ctrl_v=true, lost_target_preserved=true,
+  newer_copy_preserved=true, auto_send_called=false, errors=[],
+  passed=true. Native CF_HDROP/Unicode clipboard marker/stale guard
+  QA also passed. The event was delivered to a separately owned Tk window,
+  **not Discord**; no message was sent or user clipboard examined.
+- Same disposable runner successfully built the candidate unsigned EXE/
+  Inno installer, verified a released v2.10.3 -> candidate 2.11.0
+  upgrade, retained a synthetic user profile file and removed the app.
+  Publish release skipped by design.
+- @4080 downloaded the QA installer into a private TEMP directory
+  but did not execute/install on the user's PC. It is 17,199,014 bytes
+  with verified same-run SHA256:
+  2529718fe90e54b28a8fc96ca03915ebc050bc033f5d9238f055e5580c8e888c.
+  ProductVersion=2.11.0, Authenticode=NotSigned. Public latest still v2.10.3.
+- This closes Plane's *owned-window Windows paste integration* task;
+  user-approved real Discord unsent-draft attachment and human Windows10/11
+  GUI, audited live landing and separate genuine full workflow marketing
+  evidence remain hard public release and outreach blockers.

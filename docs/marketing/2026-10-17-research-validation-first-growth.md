@@ -211,9 +211,11 @@ than 5 testers respond, label evidence exploratory.
 
 ## 9. Next development handoff
 
-- Implemented/being QA'd: clipboard focus-before-mutate guard, newer-copy
-  detection, Win32 SendInput acknowledgment, isolated owned-target Ctrl+V
-  on disposable GitHub runner.
+- Implemented AND VERIFIED on GitHub-hosted Windows runner 39075263021
+  (source 77689d6): clipboard focus-before-mutate, newer-copy detection,
+  Win32 SendInput acknowledgment and actual Ctrl+V delivery to a separately
+  owned Tk foreground test window. No Discord attachment was made; that
+  remains distinct P0 NOTRO-5.
 - Still P0: real Discord unsent attachment on a dedicated safe test surface,
   real Windows 10/11 first run, audited bilingual portfolio landing, then
   real working v2.11.0 release with honest unsigned disclosure.
