@@ -29,7 +29,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import tkinter as tk
 
-import win32gui
 from PIL import Image
 
 from notro_app import clipboard_win as cb
@@ -138,7 +137,12 @@ def main() -> int:
             root.update()
             time.sleep(.08)
 
-            hwnd = int(win32gui.FindWindow(None,title))
+            # CPython Windows runner has ctypes but not pywin32 by default.
+            # Avoid a QA-only pywin32 dependency: call the public OS API.
+            user32 = ctypes.windll.user32
+            user32.FindWindowW.restype = wt.HWND
+            user32.FindWindowW.argtypes = [wt.LPCWSTR, wt.LPCWSTR]
+            hwnd = int(user32.FindWindowW(None, title))
             if not hwnd:
                 raise RuntimeError("Owned QA HWND not visible")
             outcome["owned_window"] = True
