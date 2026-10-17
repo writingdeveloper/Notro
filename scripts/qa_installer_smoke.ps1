@@ -110,6 +110,13 @@ if ((Get-Content -LiteralPath $fixture -Raw).Trim() -ne $fixtureText) {
 }
 Write-Host "NOTRO_QA_BASELINE_TO_CANDIDATE_UPGRADE_PRESERVED_DATA"
 
+# Check the actual installed EXE first-run window with isolated APPDATA in
+# the disposable hosted runner. Does not touch Discord or personal media.
+python scripts/qa_runner_installed_first_run.py --exe $exe --expected-version $ExpectedVersion
+if ($LASTEXITCODE -ne 0) {
+    throw "Installed v2.11.0 first-run GUI smoke failed"
+}
+
 $uninstalled = Start-Process -FilePath $uninstall -ArgumentList @(
     "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"
 ) -PassThru

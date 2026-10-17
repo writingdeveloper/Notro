@@ -335,3 +335,23 @@ def test_hosted_runner_own_window_paste_qa_does_not_send_discord_messages():
     assert "window.config.get_setting_flag = lambda name: False" in source
     assert "clear_clipboard()" in source
     assert "discord.com" not in source
+
+
+def test_real_installed_candidate_first_run_gui_is_runner_only():
+    script = Path("scripts/qa_runner_installed_first_run.py").read_text(
+        encoding="utf-8"
+    )
+    ps = Path("scripts/qa_installer_smoke.ps1").read_text(encoding="utf-8")
+    assert "qa_runner_installed_first_run.py" in ps
+    assert "--exe $exe --expected-version $ExpectedVersion" in ps
+    assert 'os.environ.get("GITHUB_ACTIONS") != "true"' in script
+    assert 'os.environ.get("RUNNER_TEMP")' in script
+    assert 'env["APPDATA"] = str(private_appdata)' in script
+    assert '"auto_send", 0' in script and '"auto_capture_save", 0' in script
+    assert '"auto_update", 0' in script and '"hotkey"' in script
+    assert 'w["title"] == "Notro" and w["visible"]' in script
+    assert 'w["title"] == "Notro Picker"' in script
+    assert '"taskkill.exe", "/PID", str(proc.pid), "/T", "/F"' in script
+    assert "GetWindowThreadProcessId" in script
+    assert "SendInput" not in script
+    assert "set_clipboard_file" not in script

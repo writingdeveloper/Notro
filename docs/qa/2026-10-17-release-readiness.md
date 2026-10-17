@@ -307,3 +307,19 @@ and approved authentic screenshot/video attachment evidence.
   user-approved real Discord unsent-draft attachment and human Windows10/11
   GUI, audited live landing and separate genuine full workflow marketing
   evidence remain hard public release and outreach blockers.
+
+
+## Hosted Windows installed EXE first-run QA added (status pending actual run)
+
+New script scripts/qa_runner_installed_first_run.py is gated by GITHUB_ACTIONS
+and RUNNER_TEMP, invoked only after candidate Notro.exe has been installed
+on the disposable Windows runner. It starts the REAL candidate executable
+with isolated temporary APPDATA; runner-only registry disables update checks,
+hotkey, auto-send and auto-capture. The test observes only windows belonging
+to the spawned PID and requires native picker window creation, visible first
+run welcome, unchanged startup registration, a live process and isolated
+data folder. It terminates only that spawned process tree before uninstall.
+
+Do not mark GUI installed-executable proof until a GitHub manual QA run
+passes. This is NOT interactive human Windows10/11 use or real Discord
+attachment acceptance. No signing, customer contact or release is involved.

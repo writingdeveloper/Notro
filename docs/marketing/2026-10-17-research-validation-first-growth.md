@@ -221,3 +221,73 @@ than 5 testers respond, label evidence exploratory.
   real working v2.11.0 release with honest unsigned disclosure.
 - Already Done: actual native WebView2 picker demo with original icons and
   hosted-runner CF_HDROP/Unicode clipboard primitives.
+
+
+## Product Hunt effectiveness — updated October 17, 2026
+
+Decision: DEFER Product Hunt as a primary acquisition channel for Notro.
+It is not necessarily dead, but upvotes and launch-day traffic are unreliable
+proxies for installed users or repeat use. Notro's public audience is small
+and candidate v2.11.0 is not yet publicly downloadable.
+
+### Recent founder experiences — not representative statistics
+
+| Self-report / date | Observed result | Interpretation |
+| --- | --- | --- |
+| ProductHunters, Oct 9 2026 (Ranks Hawk) | #34, 46 votes, 17 comments, 20 site visits, no sales | Votes did not equal customer acquisition |
+| r/SaaS, July 2 2026 | Unsolicited sales-agency emails, zero customers claimed | Spam/vendor-solicitation cost |
+| r/digital_marketing, Jan 14 2026 | #1 day/week, ~4,500 visitors, 370 signups, ~10 teams actually using it at 2 weeks | Exceptional ranking CAN drive visits, not equivalent to durable adoption |
+| r/SaaS, Oct 14 2026 | Free dev tool Top 5, thousands of visitors; later ~10 active users, 300 downloads | Free launch exposure may decay without repeat use |
+
+These are individuals' potentially biased/unverified experiences, not a
+representative sample, Notro forecasts or causal evidence:
+- https://www.reddit.com/r/ProductHunters/comments/1x1g9fa/
+- https://www.reddit.com/r/SaaS/comments/1ulbwia/
+- https://www.reddit.com/r/digital_marketing/comments/1qcpxhp/
+- https://www.reddit.com/r/SaaS/comments/1x5lwbe/
+
+### Platform rules as of October 2026
+
+Product Hunt started engagement-based POINTS rather than raw upvotes in
+October 2025; authentic activity and comments matter, and ranking factors
+are not fully disclosed:
+https://help.producthunt.com/en/articles/10275873-what-are-points
+
+Its March 2026 Featuring Guidelines emphasize live, useful, novel and
+well-crafted products. Homepage featuring is editorial, never guaranteed:
+https://help.producthunt.com/en/articles/9883485-product-hunt-featuring-guidelines
+
+Official launch guide says quality preparation starts weeks before launch
+and real audience engagement matters:
+https://help.producthunt.com/en/articles/17350772-launch-guide
+
+The official launch page says listing is free, maker self-hunting is
+allowed, and founders must NOT directly ask for upvotes or coordinate
+vote rings:
+https://www.producthunt.com/launch
+
+### Notro-specific channel decision and time budget
+
+1. Now: zero ad spend and zero PH preparation; complete real installed
+   Windows GUI/unsent Discord draft, audited bilingual portfolio landing,
+   and consented 5-10 person beta. Fix failures as Plane P0s first.
+2. After P0s: publish the actual version-matched unsigned product with
+   checksum/known limitations and rights-cleared demos. Reach Windows
+   and Discord utility users through permitted, authentic discussions and
+   task-oriented own-site documentation.
+3. If at least 5 volunteers complete the core workflow and at least
+   2 independently express intent to reuse it, allocate at most 2-4
+   developer hours for an optional FREE Product Hunt listing; otherwise
+   skip until subsequent major updates. These are exploratory thresholds,
+   not statistical proof.
+4. Measure source-attributed visits if voluntary privacy-safe metrics
+   become available, verified installed beta users, first unsent draft
+   completion, understanding that emoji are attachments, and voluntary
+   week-1 return. Stars, PH points and release downloads are not users.
+5. If PH yields mostly agency solicitations with no verified installs
+   or actionable feedback, do not invest more. Prioritize FAQ/how-to
+   videos, long-tail Windows/Discord task SEO, own GitHub and approved
+   community conversations instead.
+
+Conclusion: Product Hunt is a later optional small discovery experiment,
+not the main Notro product-market validation or launch strategy.
