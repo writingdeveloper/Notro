@@ -315,3 +315,23 @@ def test_runner_clipboard_contract_cannot_run_on_real_user_pc():
     assert "guard_seq=before" in script
     assert "clear_runner_clipboard()" in script
     assert "cb.send_ctrl_v" not in script and "cb.send_enter" not in script
+
+
+def test_hosted_runner_own_window_paste_qa_does_not_send_discord_messages():
+    workflow = _workflow(RELEASE_WORKFLOW)
+    step = _step(workflow, "QA own-window Win32 Ctrl+V and focus recovery")
+    assert "if: github.event_name == 'workflow_dispatch'" in step
+    assert "python scripts/qa_runner_owned_target_paste.py" in step
+    source = Path("scripts/qa_runner_owned_target_paste.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'os.environ.get("GITHUB_ACTIONS") != "true"' in source
+    assert "IsolatedLibrary" in source
+    assert "PickerController" in source
+    assert "cb.focus_window(hwnd)" in source
+    assert "root = tk.Tk()" in source
+    assert "entry.bind" in source
+    assert "cb.send_enter = reject_enter" in source
+    assert "window.config.get_setting_flag = lambda name: False" in source
+    assert "clear_clipboard()" in source
+    assert "discord.com" not in source

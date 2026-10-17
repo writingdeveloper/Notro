@@ -1011,3 +1011,31 @@ _PROFILE_BACKUP_STRINGS = {
 for _profile_lang, _profile_strings in _PROFILE_BACKUP_STRINGS.items():
     STRINGS[_profile_lang].update(_profile_strings)
 del _PROFILE_BACKUP_STRINGS
+
+# Safe paste messages — all five UI locales, distinct from "clipboard ready".
+_FOCUS_CLIPBOARD_GUARDS = {
+    "en": (
+        "Original target window is no longer focused. Clipboard was not changed.",
+        "A newer clipboard copy was detected. Notro kept your new copy.",
+    ),
+    "ko": (
+        "원래 붙여넣을 창이 활성화되지 않았습니다. 클립보드는 변경하지 않았습니다.",
+        "새로 복사한 내용이 감지되어 해당 클립보드 내용을 보존했습니다.",
+    ),
+    "ja": (
+        "元の貼り付け先がフォーカスされていません。クリップボードは変更しませんでした。",
+        "新しいコピーが見つかりました。新しいクリップボード内容を保持しました。",
+    ),
+    "zh": (
+        "原来的粘贴窗口未获得焦点，剪贴板没有被修改。",
+        "检测到更新的复制内容，已保留新的剪贴板内容。",
+    ),
+    "es": (
+        "La ventana de destino ya no tiene el foco. No se modificó el portapapeles.",
+        "Se detectó una copia posterior; se conservó ese contenido del portapapeles.",
+    ),
+}
+for _locale, (_target_lost, _newer_copy) in _FOCUS_CLIPBOARD_GUARDS.items():
+    STRINGS[_locale]["notify_paste_target_lost"] = _target_lost
+    STRINGS[_locale]["notify_clipboard_changed"] = _newer_copy
+del _FOCUS_CLIPBOARD_GUARDS

@@ -244,3 +244,35 @@ Critical NO-GO gates remain: actual user-approved non-sending Discord
 attachment preview/focus and clipboard behavior, Windows 10/11 human GUI
 first run/offline conditions, portfolio dependency-audited live landing,
 and approved authentic screenshot/video attachment evidence.
+
+
+## 2026-10-17 next pass: original-target paste safety and parallel growth research
+
+- Previous PickerController.select wrote CF_HDROP before establishing that
+  the original target could regain focus, risking replacing the clipboard
+  even though there was nowhere safe to paste. The new code checks the target
+  before clipboard mutation, compares clipboard sequence numbers (also for
+  URL/text copies) to preserve newer user data, rechecks focus after commit,
+  and only counts a Win32 Ctrl+V operation when SendInput accepted all keys.
+  Accepting the key sequence is NOT proof of target application acceptance.
+- Unit tests now cover focus failure before/after copy, newer-copy race,
+  failed SendInput and bad media preparation, without touching a real user
+  clipboard; five localized explanations distinguish outcomes.
+- New manual GitHub-hosted Windows test scripts/qa_runner_owned_target_paste.py
+  is guarded to refuse execution outside disposable runner. It exercises
+  owned Tk Win32 target window -> PickerController.select -> real CF_HDROP
+  -> SendInput Ctrl+V -> owned entry binding, invalid-target copy
+  preservation and newer-copy race. It explicitly blocks Enter/auto-send
+  and never opens Discord. Record actual remote status before marking Done.
+- In parallel, segmentation, competitor alternatives, distribution ethics,
+  three controlled beta tasks, 5-10 volunteer cohort thresholds and
+  aggregate privacy-safe measurement are documented in
+  docs/marketing/2026-10-17-research-validation-first-growth.md and
+  docs/marketing/2026-10-17-beta-user-scorecard.md.
+- 2026-10-17 GitHub metrics baseline: 0 stars, 0 forks, 35 public v2.10.3
+  installer asset downloads (not unique users), trailing 14-day GitHub repo
+  views 13 / unique visitors 8. These are NOT installed/active users.
+  writingdeveloper.blog/projects/notro still has stale 10MB/v2.0 claims,
+  portfolio Draft PR #36 still fails GitHub npm audit.
+- Neither marketing research nor new QA triggers a release, a community post,
+  a Discord message or a code-signing flow.

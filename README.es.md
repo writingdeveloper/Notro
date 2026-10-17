@@ -93,6 +93,7 @@ cierra. Después del atajo no hace falta soltar el teclado.
 - Hay un envío automático opcional que pulsa <kbd>Enter</kbd> por ti después de pegar —
   desactivado de forma predeterminada.
   Solo funciona si Discord de escritorio sigue enfocado; en otras aplicaciones debes enviar manualmente. No detecta cambios de canal dentro de la misma ventana.
+  Antes de reemplazar el portapapeles comprueba que la ventana original siga enfocada; si copias algo nuevo mientras prepara la imagen, **conserva esa copia y cancela**. Verificar que Windows aceptó Ctrl+V no garantiza que la aplicación haya adjuntado el archivo.
 
 </details>
 

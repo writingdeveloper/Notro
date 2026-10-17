@@ -603,35 +603,55 @@ class PickerController:
         item = self._resolve(item_id)
         if not item:
             return False
+        # Preserve any newer copy made while an image is being prepared.
+        seq_before = cb.get_sequence_number() or None
         self.hide()
         warn = False
         if override_path is not None:
-            ok = cb.set_clipboard_file(override_path)
+            path = override_path
         elif mode == "url" and item.get("source_url"):
-            ok = cb.set_clipboard_text(item["source_url"])
+            path = None
         else:
-            path, warn = prepare_for_paste(
-                self.library.asset_path(item), config.LIMIT_BYTES,
-                config.TEMP_DIR, target_px=resize.target_px_for(item["type"]),
-                upload_ceiling_bytes=config.UPLOAD_CEILING_BYTES)
-            ok = cb.set_clipboard_file(path)
+            try:
+                path, warn = prepare_for_paste(
+                    self.library.asset_path(item), config.LIMIT_BYTES,
+                    config.TEMP_DIR, target_px=resize.target_px_for(item["type"]),
+                    upload_ceiling_bytes=config.UPLOAD_CEILING_BYTES)
+            except (OSError, ValueError):
+                self._notify(tr("notify_clipboard_fail"))
+                return False
+
+        # Check target BEFORE changing the clipboard. If the original
+        # window was closed or focus changed, preserve the user's copy.
+        target_hwnd = self.prev_hwnd
+        if not cb.focus_window(target_hwnd):
+            self._notify(tr("notify_paste_target_lost"))
+            return False
+        _t.sleep(0.12)
+        if not cb.is_window_focused(target_hwnd):
+            self._notify(tr("notify_paste_target_lost"))
+            return False
+
+        if path is None:
+            ok = cb.set_clipboard_text(
+                item["source_url"], guard_seq=seq_before)
+        else:
+            ok = cb.set_clipboard_file(path, guard_seq=seq_before)
+        if ok is None:
+            self._notify(tr("notify_clipboard_changed"))
+            return False
         if not ok:
             self._notify(tr("notify_clipboard_fail"))
             return False
 
-        target_hwnd = self.prev_hwnd
-        if not cb.focus_window(target_hwnd):
-            self._notify(tr("notify_paste_manual"))
-            return False
-
-        # Focus may change while the picker closes or an attachment is prepared.
-        # Never press keys into whatever window the user switched to.
-        _t.sleep(0.12)
+        # Clipboard writes may yield to another process; recheck right
+        # before injecting keys, and do not count a rejected SendInput.
         if not cb.is_window_focused(target_hwnd):
             self._notify(tr("notify_paste_manual"))
             return False
-
-        cb.send_ctrl_v()
+        if not cb.send_ctrl_v():
+            self._notify(tr("notify_paste_manual"))
+            return False
         self.library.touch(item["id"])
         if warn:
             self._notify(tr("picker_oversize_warn"))

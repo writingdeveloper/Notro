@@ -32,8 +32,27 @@ without reading the Discord process. It cannot detect switching channels
 inside the same Discord window; auto-send is therefore off by default.
 It does not read your keystrokes.
 
-**It never touches the Discord client, your account, or your token.** There is no
-self-bot behaviour, no injection, and no patching of any application.
+**It does not modify or inject into Discord, require a Discord account
+token or perform private client IPC.** Notro is an independent Windows OS-level
+utility, not affiliated with or endorsed by Discord. Its behavior cannot be
+guaranteed compliant with every current or future Discord policy; read the
+published architecture and keep user-directed sending manual.
+
+## Original-window focus and newer-copy protection
+
+Before changing clipboard content for a picker paste, Notro checks that the
+original target window still exists and is focused. Windows clipboard
+sequence-number checks protect newer text or file copies made while image
+preparation runs; if a newer copy is found, the paste is canceled without
+overwriting it. Windows SendInput return values are checked so rejected
+Ctrl+V injection cannot be reported as a successful paste. A successful
+SendInput return is **not proof** that Discord or another application
+accepted the attachment. Switching channels inside the same Discord
+window is not detectable. Auto-send is OFF by default.
+
+These checks use only public Win32 APIs, not Discord client hooks or REA.
+They reduce accidental copy loss but cannot guarantee uninterrupted focus
+against all external OS/clipboard interleavings.
 
 ## Network access
 

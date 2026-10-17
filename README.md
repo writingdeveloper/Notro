@@ -89,6 +89,7 @@ collection with no registration step at all.
   sending remains manual. Your original file and library are never modified.
 - Optional auto-send presses <kbd>Enter</kbd> for you after pasting — off by default.
   It is limited to a still-focused Discord desktop window; pasted items in other apps must be sent manually. Switching channels inside the same window cannot be detected.
+  The picker now checks the original window **before** modifying the clipboard. If you copy something new while an image is prepared, it cancels rather than overwriting that copy. Windows input acceptance is checked but cannot guarantee that a receiving app accepts the attachment.
 
 </details>
 

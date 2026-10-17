@@ -57,6 +57,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Added isolated native Windows Edge WebView2 fixture smoke that verifies real
   thumbnails, picker search/settings, all five language bridges and ZIP drop
   import using synthetic data, without opening chats or modifying Discord.
+- Paste safety: checks the original window BEFORE modifying the clipboard,
+  preserves any newer copy made while preparing media and verifies that
+  Windows accepted Ctrl+V key events before reporting success.
+  When focus is already lost, the clipboard is not changed. Included
+  five-language explanatory notifications and a separately owned
+  Win32 target-window QA harness on a disposable Windows runner.
 - A single ZIP media pack may now be dragged onto the picker to import via
   the same validated media pack path used by the explicit Import button.
 - Added repeatable native Win32 Save As/Open dialog E2E on Korean ZIP

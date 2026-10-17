@@ -87,6 +87,13 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: python scripts/qa_runner_clipboard_cf_hdrop.py
 
+      # The target window is owned by the disposable hosted runner only.
+      # This exercises PickerController -> Win32 CF_HDROP -> SendInput -> own
+      # Tk text field, never Discord or a user's live desktop/clipboard.
+      - name: QA own-window Win32 Ctrl+V and focus recovery
+        if: github.event_name == 'workflow_dispatch'
+        run: python scripts/qa_runner_owned_target_paste.py
+
       # --collect-all webview가 numpy·cryptography까지 끌어온다 (앱은 둘 다 쓰지 않는다).
       # build.bat과 같은 제외 플래그를 유지할 것 — 어긋나면 CI 산출물만 40MB 커진다.
       - name: Build EXE

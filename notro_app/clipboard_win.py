@@ -115,12 +115,14 @@ def set_clipboard_file(path: str, guard_seq: int | None = None) -> bool | None:
         user32.CloseClipboard()
 
 
-def set_clipboard_text(text: str) -> bool:
+def set_clipboard_text(text: str, guard_seq: int | None = None) -> bool | None:
     """URL 등 텍스트를 클립보드에 넣는다 (마커 포함 — Monitor 재처리 방지)."""
     data = text.encode("utf-16-le") + b"\0\0"
     if not _open_clipboard_retry():
         return False
     try:
+        if guard_seq is not None and get_sequence_number() != guard_seq:
+            return None
         user32.EmptyClipboard()
         if not _global_put(CF_UNICODETEXT, data):
             return False
@@ -238,24 +240,28 @@ def is_window_focused(hwnd: int) -> bool:
     return bool(hwnd and user32.IsWindow(hwnd) and get_foreground_window() == hwnd)
 
 
-def _send_keys(seq) -> None:
+user32.SendInput.restype = wt.UINT
+user32.SendInput.argtypes = [wt.UINT, ctypes.POINTER(_INPUT), ctypes.c_int]
+
+
+def _send_keys(seq) -> bool:
+    """Whether SendInput accepted every key event (not app delivery proof)."""
     arr = (_INPUT * len(seq))()
     for i, (vk, flags) in enumerate(seq):
         arr[i].type = INPUT_KEYBOARD
         arr[i].u.ki = _KEYBDINPUT(vk, 0, flags, 0, 0)
-    user32.SendInput(len(seq), arr, ctypes.sizeof(_INPUT))
+    return int(user32.SendInput(len(seq), arr, ctypes.sizeof(_INPUT))) == len(seq)
 
 
-def send_ctrl_v() -> None:
-    """OS 수준 Ctrl+V 입력 (클라이언트 수정·계정 자동화 아님 — Win+. 패널과 동일 방식)."""
-    _send_keys([(VK_CONTROL, 0), (VK_V, 0),
-                (VK_V, KEYEVENTF_KEYUP), (VK_CONTROL, KEYEVENTF_KEYUP)])
+def send_ctrl_v() -> bool:
+    """OS-only Ctrl+V; returns False when Windows blocked key injection."""
+    return _send_keys([(VK_CONTROL, 0), (VK_V, 0),
+                       (VK_V, KEYEVENTF_KEYUP), (VK_CONTROL, KEYEVENTF_KEYUP)])
 
 
-def send_enter() -> None:
-    """OS 수준 Enter 입력. 자동 전송 설정이 켜졌을 때만 쓴다 — 붙여넣기와 달리
-    되돌릴 수 없는 동작이라 기본은 꺼져 있다."""
-    _send_keys([(VK_RETURN, 0), (VK_RETURN, KEYEVENTF_KEYUP)])
+def send_enter() -> bool:
+    """Opt-in keyboard Enter; never claim success when SendInput fails."""
+    return _send_keys([(VK_RETURN, 0), (VK_RETURN, KEYEVENTF_KEYUP)])
 
 
 def focus_window(hwnd: int) -> bool:

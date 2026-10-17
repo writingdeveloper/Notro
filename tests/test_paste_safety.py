@@ -28,7 +28,7 @@ class FakeLibrary:
         self.used.append(item_id)
 
 
-def prepare(monkeypatch, *, autosend, target_is_discord, focused=(True, True),
+def prepare(monkeypatch, *, autosend, target_is_discord, focused=(True, True, True),
             focus_restore=True, clipboard_ok=True):
     lib = FakeLibrary()
     picker = window.PickerController(library=lib)
@@ -41,17 +41,20 @@ def prepare(monkeypatch, *, autosend, target_is_discord, focused=(True, True),
                         lambda key: autosend if key == "auto_send" else False)
     monkeypatch.setattr(window, "auto_send_delay", lambda: 0.1)
     monkeypatch.setattr(time, "sleep", lambda *_: None)
-    monkeypatch.setattr(cb, "set_clipboard_file", lambda *_: clipboard_ok)
+    monkeypatch.setattr(cb, "get_sequence_number", lambda: 100)
+    monkeypatch.setattr(cb, "set_clipboard_file",
+                        lambda *_args, **_kwargs: clipboard_ok)
     monkeypatch.setattr(cb, "focus_window", lambda hwnd: focus_restore)
     focused_state = iter(focused)
     monkeypatch.setattr(cb, "is_window_focused",
-                        lambda hwnd: next(focused_state))
+                        lambda hwnd: next(focused_state, True))
     monkeypatch.setattr(cb, "is_discord_desktop_window",
                         lambda hwnd: target_is_discord)
     calls = []
     msgs = []
     picker.on_notify = msgs.append
-    monkeypatch.setattr(cb, "send_ctrl_v", lambda: calls.append("paste"))
+    monkeypatch.setattr(cb, "send_ctrl_v",
+                        lambda: calls.append("paste") or True)
     monkeypatch.setattr(cb, "send_enter", lambda: calls.append("send"))
     return picker, lib, calls, msgs
 
@@ -92,7 +95,7 @@ def test_select_does_not_paste_into_a_newly_focused_window(monkeypatch):
 def test_auto_send_does_not_enter_after_focus_switch(monkeypatch):
     picker, lib, calls, msgs = prepare(
         monkeypatch, autosend=True, target_is_discord=True,
-        focused=(True, False))
+        focused=(True, True, False))
     picker.select("fixture")
     assert calls == ["paste"]
     assert lib.used == ["fixture"]
@@ -141,7 +144,8 @@ def test_link_mode_pastes_but_never_auto_sends(monkeypatch):
     picker, lib, calls, msgs = prepare(
         monkeypatch, autosend=True, target_is_discord=True, focused=(True,))
     picker.library.item["source_url"] = "https://cdn.discordapp.com/emojis/123.png"
-    monkeypatch.setattr(cb, "set_clipboard_text", lambda *_: True)
+    monkeypatch.setattr(cb, "set_clipboard_text",
+                        lambda *_args, **_kwargs: True)
     picker.select("fixture", mode="url")
     assert calls == ["paste"]
     assert lib.used == ["fixture"]
@@ -157,3 +161,118 @@ def test_optimized_preview_paste_never_auto_sends_even_when_enabled(monkeypatch)
     assert calls == ["paste"]
     assert lib.used == ["fixture"]
     assert not msgs
+
+
+def test_focus_lost_before_clipboard_write_preserves_user_copy(monkeypatch):
+    picker, lib, calls, msgs = prepare(
+        monkeypatch, autosend=False, target_is_discord=False,
+        focus_restore=False, focused=())
+    writes = []
+    monkeypatch.setattr(cb, "set_clipboard_file",
+                        lambda *_args, **kwargs: writes.append(kwargs) or True)
+    assert picker.select("fixture") is False
+    assert writes == [] and calls == [] and lib.used == []
+    assert msgs
+
+
+def test_user_new_clipboard_copy_during_preparation_blocks_paste(monkeypatch):
+    picker, lib, calls, msgs = prepare(
+        monkeypatch, autosend=True, target_is_discord=True)
+    writes = []
+    monkeypatch.setattr(cb, "set_clipboard_file",
+                        lambda *_args, **kwargs: writes.append(kwargs) or None)
+    assert picker.select("fixture") is False
+    assert writes == [{"guard_seq": 100}]
+    assert calls == [] and lib.used == [] and msgs
+
+
+def test_focus_lost_during_clipboard_commit_does_not_send_keys(monkeypatch):
+    picker, lib, calls, msgs = prepare(
+        monkeypatch, autosend=True, target_is_discord=True,
+        focused=(True, False))
+    assert picker.select("fixture") is False
+    assert calls == [] and lib.used == [] and msgs
+
+
+def test_failed_win32_sendinput_not_counted_as_a_paste(monkeypatch):
+    picker, lib, calls, msgs = prepare(
+        monkeypatch, autosend=True, target_is_discord=True)
+    monkeypatch.setattr(cb, "send_ctrl_v",
+                        lambda: calls.append("rejected") or False)
+    assert picker.select("fixture") is False
+    assert calls == ["rejected"] and lib.used == [] and msgs
+
+
+def test_url_text_also_respects_newer_user_copy(monkeypatch):
+    picker, lib, calls, msgs = prepare(
+        monkeypatch, autosend=True, target_is_discord=False)
+    lib.item["source_url"] = "https://cdn.discordapp.com/emojis/123.png"
+    guards = []
+    monkeypatch.setattr(cb, "set_clipboard_text",
+                        lambda *_args, **kw: guards.append(kw) or None)
+    assert picker.select("fixture", mode="url") is False
+    assert guards == [{"guard_seq": 100}]
+    assert calls == [] and lib.used == [] and msgs
+
+
+def test_win32_sendinput_reports_partial_keyboard_injection(monkeypatch):
+    from types import SimpleNamespace
+    events = []
+    monkeypatch.setattr(cb, "user32", SimpleNamespace(
+        SendInput=lambda count, arr, size: events.append(count) or (count - 1)
+    ))
+    assert cb.send_ctrl_v() is False
+    assert events == [4]
+    assert cb.send_enter() is False
+    assert events == [4, 2]
+
+
+def test_all_locale_copy_and_target_interruption_messages_exist():
+    from notro_app.i18n import STRINGS
+    for lang in ("en", "ko", "ja", "zh", "es"):
+        assert STRINGS[lang]["notify_clipboard_changed"]
+        assert STRINGS[lang]["notify_paste_target_lost"]
+
+
+def test_prepare_failure_does_not_touch_target_clipboard(monkeypatch):
+    picker, lib, calls, msgs = prepare(
+        monkeypatch, autosend=False, target_is_discord=False)
+    monkeypatch.setattr(window, "prepare_for_paste",
+                        lambda *args, **kwargs: (_ for _ in ()).throw(OSError()))
+    writes = []
+    monkeypatch.setattr(cb, "set_clipboard_file",
+                        lambda *_a, **_kw: writes.append(True) or True)
+    assert picker.select("fixture") is False
+    assert writes == [] and lib.used == [] and calls == [] and msgs
+
+
+def test_win32_text_guard_never_empties_a_newer_copy(monkeypatch):
+    from types import SimpleNamespace
+
+    action = []
+    monkeypatch.setattr(cb, "_open_clipboard_retry", lambda: True)
+    monkeypatch.setattr(cb, "get_sequence_number", lambda: 121)
+    monkeypatch.setattr(cb, "user32", SimpleNamespace(
+        EmptyClipboard=lambda: action.append("empty"),
+        CloseClipboard=lambda: action.append("close"),
+    ))
+    monkeypatch.setattr(cb, "_global_put",
+                        lambda fmt, data: action.append("put") or True)
+    assert cb.set_clipboard_text("new text", guard_seq=120) is None
+    assert action == ["close"]  # neither empty nor put
+
+
+def test_win32_text_guard_accepts_unchanged_sequence(monkeypatch):
+    from types import SimpleNamespace
+
+    action = []
+    monkeypatch.setattr(cb, "_open_clipboard_retry", lambda: True)
+    monkeypatch.setattr(cb, "get_sequence_number", lambda: 150)
+    monkeypatch.setattr(cb, "user32", SimpleNamespace(
+        EmptyClipboard=lambda: action.append("empty"),
+        CloseClipboard=lambda: action.append("close"),
+    ))
+    monkeypatch.setattr(cb, "_global_put",
+                        lambda fmt, data: action.append(fmt) or True)
+    assert cb.set_clipboard_text("original", guard_seq=150) is True
+    assert action == ["empty", cb.CF_UNICODETEXT, cb.MARKER_FORMAT, "close"]
