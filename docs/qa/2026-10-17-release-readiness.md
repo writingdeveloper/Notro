@@ -355,3 +355,26 @@ attachment acceptance. No signing, customer contact or release is involved.
   first actual Discord non-sending draft, portfolio security audit or
   marketing readiness. They remain NO-GO/P0. Signing remains excluded
   by explicit user decision.
+
+
+## Latest 2026-10-17 Notro readiness follow-up
+
+- @4080 actual native WebView2 popup DPI QA discovered a logical-to-
+  physical positioning bug at 200% display scaling; corrected and
+  verified 362x532 CSS -> 724x1064 physical Win32 frame.
+- Five-language About, accessible keyboard GitHub link, native 330x420
+  compact window and 100/125/150% in-browser text zoom regression
+  passed. Human mixed-DPI/Windows10/11 tasks are still NOT done.
+- Isolated portfolio upstream audit triage found five HIGH advisories
+  through eslint-config-next -> fast-glob -> micromatch -> braces
+  v3.0.3 (npm's latest at test, still affected). Production build and
+  production-only audit passed, but the enforced full security audit
+  remains FAILED. See docs/qa/2026-10-17-portfolio-audit-triage.md.
+  NO portfolio PR/active worktree was altered. Do not bypass CI
+  or advertise the old website as release-ready.
+- Runner-only real Notro installed systray Win32 right-click event
+  simulation is prepared; keep its Plane state in QA until a real
+  Windows Actions workflow PASS, and do not touch the user's
+  tray/global clipboard/Discord sessions.
+- User explicitly does NOT want signing; no certificate, public tag,
+  release, main merge, advertising, or Discord messages were sent.

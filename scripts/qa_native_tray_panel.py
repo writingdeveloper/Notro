@@ -80,8 +80,10 @@ def main() -> int:
               "about_github": False, "about_unsigned": False,
               "native_rightclick": False, "settings_actions": False,
               "fallback_ready_gate": False, "picker_action": False,
-              "esc_close": False, "screenshots": [], "errors": [],
-              "passed": False}
+              "esc_close": False, "language_layout": False,
+              "keyboard_focus": False, "zoom_scroll_accessible": False,
+              "compact_window_accessible": False,
+              "screenshots": [], "errors": [], "passed": False}
 
     try:
         result["fallback_ready_gate"] = bool(
@@ -114,6 +116,33 @@ def main() -> int:
                 ))
                 result["native_rightclick"] = True
                 result["native_webview2"] = True
+                import ctypes
+                from ctypes import wintypes as wt
+                hwnd_diag = tray_panel.user32.FindWindowW(
+                    None, tray_panel.WINDOW_TITLE)
+                rect_diag = wt.RECT()
+                tray_panel.user32.GetWindowRect(
+                    hwnd_diag, ctypes.byref(rect_diag))
+                result["startup_geometry"] = {
+                    "hwnd_width": rect_diag.right-rect_diag.left,
+                    "hwnd_height": rect_diag.bottom-rect_diag.top,
+                    "browser_width": window.evaluate_js(
+                        "document.documentElement.clientWidth"),
+                    "browser_height": window.evaluate_js(
+                        "document.documentElement.clientHeight"),
+                    "device_pixel_ratio": window.evaluate_js(
+                        "window.devicePixelRatio"),
+                    "windows_dpi": tray_panel.user32.GetDpiForWindow(hwnd_diag),
+                }
+                measured = result["startup_geometry"]
+                assert abs(measured["browser_width"] - tray_panel.PANEL_W) <= 2
+                assert abs(measured["browser_height"] - tray_panel.PANEL_H) <= 2
+                assert abs(measured["hwnd_width"] -
+                           round(tray_panel.PANEL_W *
+                                 measured["windows_dpi"] / 96)) <= 4
+                assert abs(measured["hwnd_height"] -
+                           round(tray_panel.PANEL_H *
+                                 measured["windows_dpi"] / 96)) <= 4
                 with tempfile.TemporaryDirectory(prefix="notro-tray-capture-") as root:
                     root = Path(root)
                     img = native_capture(window, root / "home.png")
@@ -178,6 +207,106 @@ def main() -> int:
                     )
                     assert until(lambda: settings.get("limit_mb")==50)
                     result["settings_actions"] = True
+
+                    # Same actual Windows WebView2 UI, independent local
+                    # language values. Never read user locale/registry.
+                    for lang in ("en", "ko", "ja", "zh", "es"):
+                        settings["lang"] = lang
+                        i18n.set_language(lang)
+                        window.evaluate_js("window.notroPanelOpen('about')")
+                        assert until(lambda lang=lang: window.evaluate_js(
+                            "document.documentElement.lang"
+                        ) == lang), "Missing localized About page: " + lang
+                        expected = i18n.STRINGS[lang]["tray_about"]
+                        assert window.evaluate_js(
+                            "document.getElementById('txt-about').textContent"
+                        ) == expected, "Incorrect translation: " + lang
+                        assert window.evaluate_js(
+                            "document.getElementById('about-quick-github')"
+                            ".getAttribute('aria-label').length > 2"
+                        )
+                    result["language_layout"] = True
+
+                    # Keyboard-only access to the visible, actual About
+                    # GitHub link: focus navigation must never invoke the
+                    # link or launch a browser on its own.
+                    window.evaluate_js(
+                        "document.getElementById('about-quick-github').focus()"
+                    )
+                    result["keyboard_focus"] = bool(window.evaluate_js(
+                        "document.activeElement.id === 'about-quick-github'"
+                    ))
+
+                    # Simulated in-browser text zoom is NOT proof of real
+                    # 125/150% physical monitor DPI. It ensures that a
+                    # scroll container and links remain keyboard accessible.
+                    for zoom in ("1.0", "1.25", "1.5"):
+                        window.evaluate_js(
+                            f"document.documentElement.style.zoom='{zoom}';"
+                            "document.getElementById('link-license')"
+                            ".scrollIntoView({block:'nearest'})"
+                        )
+                        assert window.evaluate_js(
+                            "document.activeElement.id === 'about-quick-github'"
+                        )
+                        assert bool(window.evaluate_js(
+                            "document.getElementById('link-license').offsetWidth > 0"
+                            " && document.getElementById('page-about').scrollHeight > 0"
+                        )), "About links inaccessible at zoom " + zoom
+                    window.evaluate_js(
+                        "document.documentElement.style.zoom='1.0';"
+                        "window.notroPanelOpen('settings')"
+                    )
+                    assert until(lambda: window.evaluate_js(
+                        "!document.getElementById('page-settings').classList.contains('hidden')"
+                    ))
+                    result["zoom_scroll_accessible"] = True
+
+                    # Exercise the actual Win32/WebView2 compact-window
+                    # layout, accounting for device physical pixel scale.
+                    # This is not a substitute for a real second monitor.
+                    native_hwnd = tray_panel.user32.FindWindowW(
+                        None, tray_panel.WINDOW_TITLE
+                    )
+                    dpi_scale = float(window.evaluate_js(
+                        "window.devicePixelRatio") or 1)
+                    scaled_w = int(330 * dpi_scale)
+                    scaled_h = int(420 * dpi_scale)
+                    if not tray_panel.user32.SetWindowPos(
+                            native_hwnd, 0, 100, 90,
+                            scaled_w, scaled_h, 0x0004):
+                        raise AssertionError("cannot resize owned QA popup")
+                    assert until(lambda: 300 <= int(window.evaluate_js(
+                        "document.documentElement.clientWidth")) <= 370), (
+                        "compact WebView2 width not applied")
+                    window.evaluate_js("window.notroPanelOpen('about')")
+                    assert until(lambda: window.evaluate_js(
+                        "!document.getElementById('page-about').classList.contains('hidden')"
+                    ))
+                    window.evaluate_js(
+                        "document.getElementById('link-license')"
+                        ".scrollIntoView({block:'nearest'})"
+                    )
+                    result["compact_window_accessible"] = bool(
+                        window.evaluate_js(
+                            "(() => { const link=document.getElementById('link-license');"
+                            "const rect=link.getBoundingClientRect();"
+                            "return link.offsetHeight>0 && rect.left>=-2"
+                            " && rect.right<=window.innerWidth+2"
+                            " && document.documentElement.clientWidth<=340;"
+                            "})()"
+                        ))
+                    assert result["compact_window_accessible"], (
+                        "Narrow WebView2 popup clipped the About license link")
+                    tray_panel.user32.SetWindowPos(
+                        native_hwnd, 0, 100, 90,
+                        int(tray_panel.PANEL_W*dpi_scale),
+                        int(tray_panel.PANEL_H*dpi_scale), 0x0004,
+                    )
+                    window.evaluate_js("window.notroPanelOpen('settings')")
+                    assert until(lambda: window.evaluate_js(
+                        "!document.getElementById('page-settings').classList.contains('hidden')"
+                    ))
 
                     window.evaluate_js(
                         "document.dispatchEvent(new KeyboardEvent("

@@ -16,6 +16,7 @@ from . import APP_NAME, __version__
 
 WINDOW_TITLE = "Notro Tray Menu"
 PANEL_W, PANEL_H = 362, 532
+MIN_PANEL_W, MIN_PANEL_H = 310, 320
 PROJECT_URL = "https://github.com/writingdeveloper/Notro"
 LINKS = {
     "source": PROJECT_URL,
@@ -50,6 +51,31 @@ user32.SetWindowPos.argtypes = [
     wt.HWND, wt.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
     wt.UINT,
 ]
+
+user32.GetDpiForWindow.restype = wt.UINT
+user32.GetDpiForWindow.argtypes = [wt.HWND]
+
+
+def _window_pixel_scale(hwnd) -> float:
+    """Scale pywebview logical dimensions to Win32 physical monitor pixels.
+
+    WebView2/WinForms uses DIP logical widths. At 200% Windows scaling,
+    passing 362x532 straight to native SetWindowPos shrinks/clips the
+    popup. GetDpiForWindow returns 192 in that case, so scale by 2.
+    Windows 10 without this API falls back to 96 DPI.
+    """
+    try:
+        dpi = int(user32.GetDpiForWindow(hwnd)) if hwnd else 96
+    except (OSError, AttributeError):
+        dpi = 96
+    return max(1.0, (dpi or 96) / 96)
+
+
+def _scaled_panel_bounds(hwnd) -> tuple[int, int, int, int, float]:
+    scale = _window_pixel_scale(hwnd)
+    x, y, w, h = geometry_from_cursor(
+        round(PANEL_W * scale), round(PANEL_H * scale))
+    return x, y, w, h, scale
 
 
 def panel_index_path() -> str:
@@ -112,15 +138,18 @@ def info_payload() -> dict:
 
 
 def native_about_fallback() -> None:
-    """Accessible About when WebView2 is missing, without altering settings."""
+    """Localized native About when WebView2 is unavailable; read-only."""
+    from .i18n import tr
+
     detail = (
         f"{APP_NAME} v{__version__}\n"
-        "Windows image, sticker & GIF picker\n\n"
+        f"{tr('tray_about_note')}\n\n"
         f"GitHub: {PROJECT_URL}\n"
-        "License: MIT · Publisher: writingdeveloper\n"
-        "Unsigned build. Not affiliated with Discord."
+        f"{tr('tray_license')}: MIT · writingdeveloper\n"
+        f"{tr('tray_platform')}: Windows 10 / 11\n\n"
+        f"{tr('tray_disclosure')}"
     )
-    user32.MessageBoxW(None, detail, f"About {APP_NAME}", 0x00000040)
+    user32.MessageBoxW(None, detail, tr("tray_about"), 0x00000040)
 
 
 def open_project_link(which: str) -> bool:
@@ -175,7 +204,8 @@ class TrayPanel:
             WINDOW_TITLE, url=panel_index_path(), js_api=self._api,
             width=PANEL_W, height=PANEL_H,
             hidden=True, frameless=True, easy_drag=False,
-            on_top=True, resizable=False, min_size=(PANEL_W, PANEL_H),
+            on_top=True, resizable=False,
+            min_size=(MIN_PANEL_W, MIN_PANEL_H),
             background_color="#17191f",
         )
         return self._window
@@ -198,6 +228,15 @@ class TrayPanel:
         """Called from pystray Win32 message thread; do not block that loop."""
         if not self._ready.is_set() or self._window is None:
             return False  # native context menu remains available
+        # If a tiny monitor/work area cannot fit the compact popup,
+        # keep the classic native menu accessible instead of clipping UI.
+        try:
+            hwnd = user32.FindWindowW(None, WINDOW_TITLE)
+            _, _, w, h, scale = _scaled_panel_bounds(hwnd)
+        except OSError:
+            return False
+        if w < round(MIN_PANEL_W * scale) or h < round(MIN_PANEL_H * scale):
+            return False
         target = page if page in ("home", "about", "settings") else "home"
         threading.Thread(
             target=self._show, args=(target,),
@@ -216,21 +255,24 @@ class TrayPanel:
                 if self._visible and page == "home":
                     self.hide()
                     return
-                x, y, w, h = geometry_from_cursor(PANEL_W, PANEL_H)
                 self._last_step = "show"
                 self._window.show()
-                # Avoid pywebview 6.x WinForms Window.move(x,y): its native
-                # SetWindowPos wrapper passes None for unused size parameters
-                # and fails on typed Windows APIs. Position our own HWND
-                # directly using a PRIVATE user32 function table instead.
+                # pywebview 6.x WinForms Window.move(x,y) sometimes passes
+                # None for unused size arguments to SetWindowPos. Use our
+                # private typed Win32 function table on OWN popup HWND.
                 self._last_step = "find"
                 hwnd = user32.FindWindowW(None, WINDOW_TITLE)
-                if hwnd:
-                    self._last_step = "setpos"
-                    user32.SetWindowPos(
+                if not hwnd:
+                    raise OSError("owned tray popup window missing")
+                self._last_step = "dpi-layout"
+                x, y, w, h, scale = _scaled_panel_bounds(hwnd)
+                if w < round(MIN_PANEL_W * scale) or h < round(MIN_PANEL_H * scale):
+                    raise OSError("monitor cannot accommodate compact popup")
+                self._last_step = "setpos"
+                if not user32.SetWindowPos(
                         hwnd, -1, x, y, w, h,
-                        0x0040 | 0x4000,  # SHOWWINDOW | ASYNCWINDOWPOS
-                    )
+                        0x0040 | 0x4000):  # SHOWWINDOW | ASYNCWINDOWPOS
+                    raise OSError("could not position owned tray popup")
                 self._visible = True
                 self._last_step = "javascript"
                 # JSON/state comes from the safe bridge, never interpolated

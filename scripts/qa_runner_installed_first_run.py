@@ -42,6 +42,16 @@ user32.GetWindowTextW.restype = ctypes.c_int
 user32.GetWindowTextW.argtypes = [wt.HWND, wt.LPWSTR, ctypes.c_int]
 user32.IsWindowVisible.restype = wt.BOOL
 user32.IsWindowVisible.argtypes = [wt.HWND]
+user32.GetClassNameW.restype = ctypes.c_int
+user32.GetClassNameW.argtypes = [wt.HWND, wt.LPWSTR, ctypes.c_int]
+user32.PostMessageW.restype = wt.BOOL
+user32.PostMessageW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
+
+# pystray._win32 binds its own registered notification-area window's
+# WM_NOTIFY callback to the OS-provided WM_RBUTTONUP event.
+WM_NOTIFY_ICON = 0x040B
+WM_RBUTTONUP = 0x0205
+WM_CLOSE = 0x0010
 
 SETTINGS = r"Software\Notro"
 RUN = r"Software\Microsoft\Windows\CurrentVersion\Run"
@@ -80,11 +90,85 @@ def get_owned_windows(process_id: int) -> list[dict]:
             found.append({
                 "title": name.value[:120],
                 "visible": bool(user32.IsWindowVisible(hwnd)),
+                "hwnd": int(hwnd),
             })
         return True
 
     user32.EnumWindows(visit, 0)
     return found
+
+
+def owned_tray_windows(process_id: int) -> list[int]:
+    """Find only Notro's registered pystray window(s) in the new EXE PID."""
+    found = []
+    cb = ctypes.WINFUNCTYPE(wt.BOOL, wt.HWND, wt.LPARAM)
+
+    @cb
+    def visit(hwnd, _):
+        pid = wt.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if pid.value != process_id:
+            return True
+        name = ctypes.create_unicode_buffer(260)
+        user32.GetClassNameW(hwnd, name, len(name))
+        if name.value.startswith("Notro") and name.value.endswith(
+                "SystemTrayIcon"):
+            found.append(int(hwnd))
+        return True
+
+    user32.EnumWindows(visit, 0)
+    return found
+
+
+def visible_own_window(process_id: int, title: str) -> bool:
+    return any(w["title"] == title and w["visible"]
+               for w in get_owned_windows(process_id))
+
+
+def verify_own_tray_rightclick(process_id: int) -> tuple[bool, bool]:
+    """Test pystray Win32 dispatcher without clicking user's desktop.
+
+    The process runs ONLY in a disposable hosted-runner session. Close
+    its own welcome via WM_CLOSE, then send WM_NOTIFY/WM_RBUTTONUP to only
+    its own systray window. No real cursor, Ctrl+V or Discord interaction.
+    """
+    def first_welcome():
+        return next((w for w in get_owned_windows(process_id)
+                     if w["title"] == "Notro" and w["visible"]), None)
+
+    # The first-run dialog otherwise owns focus, which could hide the tray
+    # popup immediately. Only close that dialog for the ephemeral test.
+    owned_welcome = first_welcome()
+    if owned_welcome:
+        user32.PostMessageW(owned_welcome["hwnd"], WM_CLOSE, 0, 0)
+        time.sleep(0.6)
+
+    handles = owned_tray_windows(process_id)
+    if not handles:
+        return False, False
+    # The first one is often pystray's menu HWND, which has no dispatcher
+    # binding. Try each; stop after the actual owned panel becomes visible.
+    opened = False
+    for hwnd in handles:
+        if not user32.PostMessageW(hwnd, WM_NOTIFY_ICON, 0, WM_RBUTTONUP):
+            continue
+        for _ in range(12):
+            if visible_own_window(process_id, "Notro Tray Menu"):
+                opened = True
+                break
+            time.sleep(.15)
+        if opened:
+            break
+    if not opened:
+        return False, False
+    # A second right-click notification should close the currently-open
+    # popup, without touching the system clipboard or injecting keys.
+    user32.PostMessageW(hwnd, WM_NOTIFY_ICON, 0, WM_RBUTTONUP)
+    for _ in range(15):
+        if not visible_own_window(process_id, "Notro Tray Menu"):
+            return True, True
+        time.sleep(.15)
+    return True, False
 
 
 def main() -> int:
@@ -114,6 +198,8 @@ def main() -> int:
         "runner_only": True, "exe_started": False,
         "welcome_visible": False, "picker_created": False,
         "tray_panel_created": False,
+        "real_tray_notification_open": False,
+        "real_tray_notification_close": False,
         "auto_send_off": False, "auto_capture_off": False,
         "startup_unchanged": False, "profile_isolated": False,
         "process_alive": False, "errors": [], "passed": False,
@@ -174,6 +260,14 @@ def main() -> int:
                     break
                 time.sleep(0.3)
 
+            if result["tray_panel_created"] and proc.poll() is None:
+                # Wait briefly for the pywebview JS API to finish registration
+                # after its HWND exists. Never send to other processes.
+                time.sleep(1.5)
+                opened, closed = verify_own_tray_rightclick(proc.pid)
+                result["real_tray_notification_open"] = opened
+                result["real_tray_notification_close"] = closed
+
             result["process_alive"] = proc.poll() is None
             result["auto_send_off"] = read_setting("auto_send", 1) == 0
             result["auto_capture_off"] = (
@@ -189,6 +283,8 @@ def main() -> int:
             result["passed"] = all((
                 result["exe_started"], result["welcome_visible"],
                 result["picker_created"], result["tray_panel_created"],
+                result["real_tray_notification_open"],
+                result["real_tray_notification_close"],
                 result["process_alive"],
                 result["auto_send_off"], result["auto_capture_off"],
                 result["startup_unchanged"], result["profile_isolated"],

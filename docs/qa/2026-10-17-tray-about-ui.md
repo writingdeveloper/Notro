@@ -109,3 +109,36 @@ A fresh native QA run confirms normal open, About, settings and close.
   QA and packaged hidden-window smoke; a person's actual Windows 10/11
   right-click accessibility/DPI/SmartScreen review is separate NOTRO-24.
   Real Discord unsent-file attachment is separate NOTRO-5.
+
+
+## Follow-up: DPI-safe positioning and smaller display QA
+
+- On @4080 the real Win32 Notro test window runs at 200% DPI. During
+  compact-window testing, the draft passed logical WebView2 width/height
+  directly to physical Win32 SetWindowPos and the panel unexpectedly
+  collapsed from intended 362x532 CSS px to 310x320 CSS px. The previous
+  minimum-window setting masked this real DPI bug.
+- Fixed by requesting native GetDpiForWindow on the owned popup's HWND
+  and scaling CSS layout to physical pixels before SetWindowPos.
+  Independently verified actual 192 DPI, browser 362x532 CSS and
+  real Windows frame 724x1064 physical pixels. 100% and 200% conversion
+  have regression coverage.
+- Added 310x320 logical minimum and a native-menu fallback when
+  monitor work area is smaller than that minimum; no clipping
+  attempt is made in the impossible work-area case.
+- Repeated native @4080 WebView2 QA with five localizations,
+  keyboard navigation/accessible GitHub focus, simulated in-browser
+  100/125/150% zoom (not real monitor DPI), and a *real Win32*
+  330x420 logical pixel compact popup. The About license link
+  remains horizontally reachable after scrolling. These checks passed.
+- The no-WebView2 native Windows About dialog now uses current
+  language strings rather than fixed English. No real user setting
+  or clipboard was modified.
+- **NOT yet tested:** moving a real installed Notro popup between
+  two monitors of different 100%/200% native DPI, Windows 10
+  multi-monitor taskbar placement and physical user right-click.
+  These remain within NOTRO-24.
+- New hosted runner QA sends only an OS WM_NOTIFY/WM_RBUTTONUP message
+  to the registered systray window of the *test-installed Notro EXE*
+  and observes the owned popup opening/closing. It is **pending**
+  actual remote PASS and must never be conflated with human input.

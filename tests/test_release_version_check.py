@@ -364,3 +364,23 @@ def test_installed_candidate_creates_hidden_styled_tray_popup():
     assert '"tray_panel_created": False' in source
     assert 'w["title"] == "Notro Tray Menu" and not w["visible"]' in source
     assert 'result["tray_panel_created"],' in source
+
+
+def test_installed_exe_runner_receives_own_win32_tray_right_click():
+    source = Path("scripts/qa_runner_installed_first_run.py").read_text(
+        encoding="utf-8"
+    )
+    assert "GITHUB_ACTIONS" in source and "RUNNER_TEMP" in source
+    assert "owned_tray_windows(process_id)" in source
+    assert "GetWindowThreadProcessId" in source
+    assert 'name.value.startswith("Notro")' in source
+    assert 'name.value.endswith(' in source
+    assert "WM_NOTIFY_ICON = 0x040B" in source
+    assert "WM_RBUTTONUP = 0x0205" in source
+    assert "WM_CLOSE = 0x0010" in source
+    assert "user32.PostMessageW(hwnd, WM_NOTIFY_ICON, 0, WM_RBUTTONUP)" in source
+    assert 'result["real_tray_notification_open"]' in source
+    assert 'result["real_tray_notification_close"]' in source
+    assert "SendInput(" not in source
+    assert "set_clipboard_file(" not in source
+    assert "discordapp" not in source
