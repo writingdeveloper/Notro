@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notro Tray Menu</title>
+  <link rel="stylesheet" href="tray_panel.css">
+</head>
+<body>
+  <main id="shell" aria-label="Notro">
+    <header id="brand-header">
+      <div class="brand-lockup">
+        <div class="mark" aria-hidden="true"><span></span></div>
+        <div class="brand-name">
+          <strong>Notro</strong>
+          <span id="header-version" class="muted">v2</span>
+        </div>
+      </div>
+      <span id="status-pill" class="status" role="status"></span>
+    </header>
+
+    <section id="page-home" class="page">
+      <button type="button" class="hero" data-action="picker" id="btn-picker">
+        <span class="hero-icon" aria-hidden="true">✦</span>
+        <span class="hero-text">
+          <strong id="txt-picker"></strong>
+          <small id="txt-picker-note"></small>
+        </span>
+        <span class="arrow" aria-hidden="true">↗</span>
+      </button>
+
+      <p id="home-label" class="section-label"></p>
+      <div class="quick-grid">
+        <button type="button" data-action="toggle" class="quick" id="btn-toggle">
+          <span class="quick-icon" aria-hidden="true">◉</span>
+          <span id="txt-toggle"></span>
+        </button>
+        <button type="button" data-action="library" class="quick" id="btn-library">
+          <span class="quick-icon" aria-hidden="true">▣</span>
+          <span id="txt-library"></span>
+        </button>
+      </div>
+      <div class="mini-status">
+        <span id="txt-limit"></span><strong id="limit-value"></strong>
+      </div>
+
+      <div class="divider" role="separator"></div>
+      <nav class="menu-stack" aria-label="Notro navigation">
+        <button type="button" data-nav="settings" class="menu-item" id="btn-settings">
+          <span class="menu-symbol" aria-hidden="true">⚙</span>
+          <span id="txt-settings"></span><span class="chevron">›</span>
+        </button>
+        <button type="button" data-nav="about" class="menu-item" id="btn-about">
+          <span class="menu-symbol" aria-hidden="true">ⓘ</span>
+          <span id="txt-about"></span><span class="chevron">›</span>
+        </button>
+        <button type="button" data-action="quit" class="menu-item danger" id="btn-quit">
+          <span class="menu-symbol" aria-hidden="true">⏻</span>
+          <span id="txt-quit"></span>
+        </button>
+      </nav>
+      <footer id="home-footnote"></footer>
+    </section>
+
+    <section id="page-settings" class="page hidden">
+      <button type="button" data-nav="home" class="back"><span aria-hidden="true">‹</span> <span id="back-settings"></span></button>
+      <h1 id="settings-title"></h1>
+      <div class="settings-group">
+        <label for="select-limit" id="label-limit"></label>
+        <select id="select-limit" aria-describedby="limit-hint">
+          <option value="10">10 MB</option><option value="20">20 MB</option>
+          <option value="50">50 MB</option><option value="500">500 MB</option>
+          <option value="1024">1 GB</option>
+        </select>
+        <small id="limit-hint" class="muted"></small>
+        <label for="select-hotkey" id="label-hotkey"></label>
+        <select id="select-hotkey"></select>
+        <label for="select-language" id="label-language"></label>
+        <select id="select-language"></select>
+      </div>
+      <div class="divider" role="separator"></div>
+      <button type="button" data-action="startup" class="menu-item check-row" id="btn-startup">
+        <span id="txt-startup"></span><span class="toggle" id="toggle-startup" aria-hidden="true"></span>
+      </button>
+      <button type="button" data-action="auto_update" class="menu-item check-row" id="btn-auto-update">
+        <span id="txt-auto-update"></span><span class="toggle" id="toggle-auto-update" aria-hidden="true"></span>
+      </button>
+      <button type="button" data-action="check_update" class="menu-item" id="btn-check-update">
+        <span id="txt-check-update"></span><span class="chevron">↻</span>
+      </button>
+      <button type="button" data-action="restart_update" class="menu-item hidden" id="btn-restart-update">
+        <span id="txt-restart-update"></span><span class="chevron">↗</span>
+      </button>
+      <div class="divider" role="separator"></div>
+      <button type="button" data-action="output" class="menu-item" id="btn-output"><span id="txt-output"></span><span class="chevron">↗</span></button>
+      <button type="button" data-action="library" class="menu-item" id="btn-settings-library"><span id="txt-settings-library"></span><span class="chevron">↗</span></button>
+    </section>
+
+    <section id="page-about" class="page hidden">
+      <button type="button" data-nav="home" class="back"><span aria-hidden="true">‹</span> <span id="back-about"></span></button>
+      <div class="about-hero">
+        <div class="mark large" aria-hidden="true"><span></span></div>
+        <h1 id="about-title">Notro</h1>
+        <div id="about-version" class="version-tag">v2</div>
+        <p id="about-subtitle"></p>
+        <button type="button" class="about-source-link" data-link="source"
+                id="about-quick-github" aria-label="Open Notro GitHub repository">
+          github.com/writingdeveloper/Notro <span aria-hidden="true">↗</span>
+        </button>
+      </div>
+      <div class="info-lines" aria-label="App information">
+        <div><span id="about-attr-platform"></span><strong id="about-platform"></strong></div>
+        <div><span id="about-attr-engine"></span><strong id="about-engine"></strong></div>
+        <div><span id="about-attr-license"></span><strong id="about-license"></strong></div>
+      </div>
+      <p id="about-disclosure" class="disclosure"></p>
+      <p id="about-repo-label" class="section-label"></p>
+      <div class="menu-stack link-group">
+        <button type="button" data-link="source" class="menu-item" id="link-github"><span id="txt-github"></span><span class="chevron">↗</span></button>
+        <button type="button" data-link="releases" class="menu-item" id="link-releases"><span id="txt-releases"></span><span class="chevron">↗</span></button>
+        <button type="button" data-link="issues" class="menu-item" id="link-issues"><span id="txt-issues"></span><span class="chevron">↗</span></button>
+        <button type="button" data-link="license" class="menu-item" id="link-license"><span id="txt-license"></span><span class="chevron">↗</span></button>
+      </div>
+    </section>
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  </main>
+  <script src="tray_panel.js"></script>
+</body>
+</html>

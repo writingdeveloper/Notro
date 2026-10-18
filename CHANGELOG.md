@@ -6,6 +6,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ## [2.11.0] - Unreleased (candidate: 2026-10-13)
 
 ### Added
+- Windows notification-area right-click opens an owned Discord-inspired dark
+  WebView2 panel with picker shortcuts, monitoring controls and safe settings.
+  About displays the real program version, GitHub/Release/Issues, MIT,
+  platform and unsigned/independent disclosure. Native pystray menu and
+  About dialog remain available if WebView2 is missing or not yet ready.
+  The UI is localized to English, Korean, Japanese, Chinese and Spanish;
+  actual native WebView2 popup/screenshots were regression tested.
 - Portable user-controlled ZIP emoji/sticker/GIF pack import/export with content
   verification, size limits and duplicate detection. Private Captures and original
   source URLs are excluded. This is **not** a full settings backup.

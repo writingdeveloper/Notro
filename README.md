@@ -47,6 +47,27 @@ your emoji as image attachments, not as native inline emoji.
 
 > [Discord's File Attachments FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ) (updated September 30, 2026) and [Nitro FAQ](https://support.discord.com/hc/en-us/articles/115000435108-What-are-Nitro-Nitro-Basic): Free 20 MB / Nitro Basic 50 MB / Nitro up to 1 GB. The 10 MB and 500 MB custom presets remain available. Actual limits can vary by account and experiments. The optional 1 GB preset conservatively uses decimal 1,000,000,000 bytes.
 
+## Tray menu and About (v2.11.0 candidate)
+
+**New in the unreleased v2.11.0 candidate** (not in public v2.10.3):
+right-click the **Notro notification-area icon beside the clock** to open a
+dark, Discord-inspired **Notro-owned** popup. From there you can open the
+picker, pause monitoring, open the library, change upload limit/language/
+hotkey/startup/update preferences, and choose **About Notro**.
+
+About displays the **actual installed program version**, publisher, Windows
+compatibility, WebView2 engine, MIT license and hardcoded GitHub repository,
+Releases and Issues links. The product is **unsigned** and independent of,
+not endorsed by, Discord. When WebView2 is missing/not ready, the original
+Windows tray context menu remains usable and provides a native About dialog.
+
+![Notro custom tray menu in Windows WebView2](docs/qa/tray-menu-native-preview.png)
+
+![Notro About with version and GitHub in Windows WebView2](docs/qa/tray-about-native-preview.png)
+
+These screenshots were captured from an isolated synthetic native WebView2
+fixture, **not** a normal installed end-user session or Discord chat.
+
 ## The picker
 
 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> anywhere opens a dark popup at your cursor

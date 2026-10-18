@@ -47,6 +47,26 @@ Discord が課金対象にしている 2 つのことを、アプリの外側か
 
 > 2026年9月30日更新の[Discord公式添付FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ)と[Nitro FAQ](https://support.discord.com/hc/en-us/articles/115000435108-What-are-Nitro-Nitro-Basic)では、無料20MB・Nitro Basic 50MB・Nitro最大1GBです。従来の10MB・500MBも手動で選択できます。利用者によって上限が異なる場合があります。
 
+## トレイメニューと About（開発中の v2.11.0）
+
+**現行公開版 v2.10.3 には未搭載**です。時計の横にある Notro の
+通知領域アイコンを右クリックすると、Discord 風のダーク配色を使った
+独立した Notro メニューを表示します。ピッカー、監視の一時停止、
+ライブラリ、容量上限、言語・ショートカット・起動・更新設定、
+**Notro について**を開けます。
+
+About には実際のプログラムバージョン、発行元、対応 Windows、
+WebView2、MIT ライセンスと GitHub・Releases・Issues が表示されます。
+未署名で Discord とは公式の関係がありません。WebView2 のない環境では
+従来の Windows メニューとネイティブの About を利用できます。
+
+![Windows の Notro トレイメニュー](docs/qa/tray-menu-native-preview.png)
+
+![Notro About 情報](docs/qa/tray-about-native-preview.png)
+
+これは合成データを使った実際の WebView2 の QA キャプチャです。
+Discord のチャット画面や一般ユーザーのインストール結果ではありません。
+
 ## ピッカー
 
 どこでも <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> を押すと、カーソルの近くに暗い

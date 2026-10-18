@@ -135,6 +135,7 @@ def main():
     from .hotkey import HotkeyListener
     from .picker.assets_server import AssetServer
     from .picker.window import PickerApi, PickerController
+    from .tray_panel import TrayPanel
 
     def _resolve_asset(item_id: str):
         item = library.resolve(item_id)
@@ -148,6 +149,10 @@ def main():
     picker = PickerController(library=library, api=api)
     api._ctrl = picker
     listener = HotkeyListener(on_hotkey=picker.toggle)
+    # Own frameless WebView2 tray popup. It is created hidden and can only
+    # replace the native Windows context menu after the JS bridge is ready.
+    # On systems without WebView2, the standard pystray menu remains intact.
+    tray_panel = TrayPanel(state=lambda: {}, action=lambda *_: False)
 
     from . import video as _video
     from . import video_window
@@ -162,7 +167,7 @@ def main():
         보장하지 못한다. 각 단계를 개별적으로 감싸 하나가 실패해도 나머지는 반드시
         실행되게 한다."""
         steps = [listener.stop, api.discard_gif_preview,
-                 asset_server.stop, picker.destroy,
+                 asset_server.stop, picker.destroy, tray_panel.destroy,
                  video_window.destroy_all,  # 열린 확인/진행 창부터 닫는다 — destroy()가
                                              # closed 이벤트를 통해 cancelled(+accepted)를
                                              # set해, 그 창에 매인 _work 스레드가 새 인코딩을
@@ -179,6 +184,7 @@ def main():
     icon = tray.build_icon(
         monitor, picker=picker, listener=listener, updater=upd,
         on_quit_extra=_on_quit_extra,
+        tray_panel=tray_panel,
     )
     listener.on_register_fail = lambda label: icon.notify(
         tr("notify_hotkey_fail", combo=label), APP_NAME)
@@ -377,6 +383,7 @@ def main():
     monitor.on_video_oversize = _on_video_oversize
 
     picker.create_window()
+    tray_panel.create_window()
     icon.run_detached()
     combo = get_setting_str("hotkey", "ctrl+shift+e")
     if combo != "off":

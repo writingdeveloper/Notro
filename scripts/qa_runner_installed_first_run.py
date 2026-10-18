@@ -113,6 +113,7 @@ def main() -> int:
     result = {
         "runner_only": True, "exe_started": False,
         "welcome_visible": False, "picker_created": False,
+        "tray_panel_created": False,
         "auto_send_off": False, "auto_capture_off": False,
         "startup_unchanged": False, "profile_isolated": False,
         "process_alive": False, "errors": [], "passed": False,
@@ -164,7 +165,11 @@ def main() -> int:
                 if any(w["title"] == "Notro Picker"
                        for w in windows):
                     result["picker_created"] = True
-                if result["welcome_visible"] and result["picker_created"]:
+                if any(w["title"] == "Notro Tray Menu" and not w["visible"]
+                       for w in windows):
+                    result["tray_panel_created"] = True
+                if (result["welcome_visible"] and result["picker_created"]
+                        and result["tray_panel_created"]):
                     time.sleep(0.65)
                     break
                 time.sleep(0.3)
@@ -183,7 +188,8 @@ def main() -> int:
             result["welcome_marked"] = read_setting("welcomed", 0) == 1
             result["passed"] = all((
                 result["exe_started"], result["welcome_visible"],
-                result["picker_created"], result["process_alive"],
+                result["picker_created"], result["tray_panel_created"],
+                result["process_alive"],
                 result["auto_send_off"], result["auto_capture_off"],
                 result["startup_unchanged"], result["profile_isolated"],
                 result["welcome_marked"],

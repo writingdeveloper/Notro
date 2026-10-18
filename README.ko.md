@@ -47,6 +47,27 @@
 
 > 2026년 9월 30일 갱신된 [Discord 공식 첨부파일 FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ) 및 [Nitro 안내](https://support.discord.com/hc/en-us/articles/115000435108-What-are-Nitro-Nitro-Basic): 무료 20MB, Nitro Basic 50MB, Nitro 최대 1GB. 기존 10MB·500MB 선택지도 유지합니다. 사용자별 실험에 따라 실제 한도가 다를 수 있습니다.
 
+## 트레이 메뉴 및 About (v2.11.0 개발 후보)
+
+**현재 공개된 v2.10.3에는 아직 없고**, 개발 중인 v2.11.0 후보에 추가된
+기능입니다. **시계 옆 Notro 트레이 아이콘을 우클릭**하면 Discord풍
+다크 테마의 **Notro 자체 메뉴**가 열립니다. 피커, 감시 중지, 라이브러리,
+업로드 한도, 단축키·언어·시작 프로그램·업데이트 설정과 **Notro 정보**로
+이동할 수 있습니다.
+
+About에서는 **실제 프로그램 버전**, 개발자, 지원 Windows,
+WebView2 엔진, MIT 라이선스와 GitHub·Releases·Issues 링크를 확인할 수
+있습니다. Notro는 **미서명 Windows 프로그램**이며 Discord 공식 제품이
+아닙니다. WebView2가 없거나 준비 전에는 기본 Windows 트레이 메뉴와
+기본 About 정보 창을 사용합니다.
+
+![Notro Windows 트레이 메뉴](docs/qa/tray-menu-native-preview.png)
+
+![Notro 버전 및 GitHub를 표시한 About](docs/qa/tray-about-native-preview.png)
+
+위 화면은 임시 테스트 데이터로 촬영한 **실제 WebView2 화면**이며,
+사용자 컴퓨터의 설치본이나 Discord 채팅을 촬영한 것은 아닙니다.
+
 ## 피커
 
 어디서든 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>를 누르면 커서 옆에 어두운 팝업이

@@ -355,3 +355,12 @@ def test_real_installed_candidate_first_run_gui_is_runner_only():
     assert "GetWindowThreadProcessId" in script
     assert "SendInput" not in script
     assert "set_clipboard_file" not in script
+
+
+def test_installed_candidate_creates_hidden_styled_tray_popup():
+    source = Path("scripts/qa_runner_installed_first_run.py").read_text(
+        encoding="utf-8"
+    )
+    assert '"tray_panel_created": False' in source
+    assert 'w["title"] == "Notro Tray Menu" and not w["visible"]' in source
+    assert 'result["tray_panel_created"],' in source

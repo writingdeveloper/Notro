@@ -46,6 +46,25 @@ Discord 要收费的两件事，在应用之外解决：
 
 > 根据 2026 年 9 月 30 日更新的 [Discord 附件 FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ)及 [Nitro FAQ](https://support.discord.com/hc/en-us/articles/115000435108-What-are-Nitro-Nitro-Basic)：免费 20MB、Nitro Basic 50MB、Nitro 最多 1GB。仍保留原来的 10MB 与 500MB 手动选项，实际上传额度可能因账户实验而变化。
 
+## 托盘菜单与 About（开发中的 v2.11.0）
+
+**当前公开版 v2.10.3 尚未包含此功能。** 右键点击系统时钟旁的
+Notro 托盘图标，会打开使用 Discord 风格深色配色的独立 Notro 菜单。
+可启动选择器、暂停监视、打开库、修改上传限额、快捷键、语言、
+开机启动与更新选项，并访问 **关于 Notro**。
+
+About 显示实际程序版本、发布者、Windows 支持信息、WebView2、
+MIT 许可，以及 GitHub、Releases 和 Issues 链接。本程序未签名，
+也不是 Discord 官方产品。没有 WebView2 时保留原生 Windows 菜单
+和基本 About 对话框。
+
+![Notro Windows 托盘菜单](docs/qa/tray-menu-native-preview.png)
+
+![Notro About 版本与 GitHub](docs/qa/tray-about-native-preview.png)
+
+截图来自使用合成测试数据的真实 WebView2 QA，并非 Discord 聊天
+或普通用户机器的实际安装画面。
+
 ## 选择器
 
 在任何地方按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>，光标旁会弹出一个深色窗口，

@@ -47,6 +47,26 @@ quien lo recibe ve tus emojis como imágenes adjuntas, no como emojis integrados
 
 > Según la [FAQ de archivos de Discord](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ), actualizada el 30 de septiembre de 2026, y la [FAQ de Nitro](https://support.discord.com/hc/en-us/articles/115000435108-What-are-Nitro-Nitro-Basic): 20 MB gratis, 50 MB Nitro Basic y hasta 1 GB Nitro. Se mantienen las opciones manuales antiguas de 10 y 500 MB. El límite real puede variar según la cuenta.
 
+## Menú de la bandeja y About (v2.11.0 candidato)
+
+**Todavía no disponible en la versión pública v2.10.3.** Con clic derecho
+sobre el icono de Notro junto al reloj, la próxima versión mostrará un
+panel propio con colores oscuros inspirados en Discord. Desde ahí podrás
+abrir el selector, pausar la supervisión, abrir la biblioteca y editar
+límite de carga, idioma, atajo, inicio y actualizaciones.
+
+**Acerca de Notro** muestra la versión real del programa, autor, sistemas
+Windows compatibles, WebView2, licencia MIT y enlaces a GitHub, Releases
+e Issues. Es una aplicación **sin firma** e independiente de Discord.
+Sin WebView2 se mantiene el menú clásico de Windows y el cuadro About.
+
+![Menú de Notro en Windows](docs/qa/tray-menu-native-preview.png)
+
+![About con versión y GitHub](docs/qa/tray-about-native-preview.png)
+
+Capturas de un WebView2 real con datos sintéticos para QA, no de una
+instalación personal ni de un chat de Discord.
+
 ## El selector
 
 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> en cualquier sitio abre una ventana oscura
