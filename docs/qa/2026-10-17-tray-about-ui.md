@@ -179,3 +179,33 @@ A second notification verifies the owned Notro Tray Menu closes again.
 - This proves real Windows event dispatch to the installed EXE in a
   hosted disposable service session, not an actual person's physical
   mouse action, two-monitor taskbar use, SmartScreen approval, or Discord.
+
+
+## FINAL: own-HWND/PID-safe packaged tray QA green
+
+Final production-source security patch c7248b3 verifies the target HWND
+belongs to its OWN Notro process before positioning with GetDpiForWindow
+and SetWindowPos. It prevents accidentally moving an unrelated window
+with the same caption. Actual native @4080 200% DPI/5 locales/keyboard/
+small-window test PASS and all 494 local tests PASS.
+
+- Exact-source Windows CI:
+  https://github.com/writingdeveloper/Notro/actions/runs/39093635986
+  PASS (494 tests, lint, dependency audit and upload media regression).
+- Exact-source disposable Windows installer QA:
+  https://github.com/writingdeveloper/Notro/actions/runs/39093633727
+  PASS, showing real installed EXE first-run welcome, then returning-user
+  start with no welcome, right-click notification to its own registered
+  pystray HWND: menu visibly OPEN then CLOSED, no failed stages. Upgrade
+  from official v2.10.3 and dummy data preservation/uninstall PASS.
+- Independent QA artifact verified WITHOUT installing it on @4080:
+  NotroSetup.exe 17,222,275 bytes; SHA256
+  c122cf31b40607faa7b5e9ff2f6075cfbc72f47ff0634cbe990cdc519240e360
+  matches same-run manifest; ProductVersion 2.11.0, Authenticode NotSigned.
+  Published release was SKIPPED; public latest is v2.10.3.
+
+Plane NOTRO-36 is Done for **packaged Windows own-tray message QA**, not
+human right-click. NOTRO-24 still tracks human Windows10/11 install,
+multi-monitor physical 100%/200% DPI, real mouse accessibility and
+no-WebView2 fallback. NOTRO-5 remains a separate real Discord **unsent
+draft attachment** P0. No signing, public release, or account interaction.

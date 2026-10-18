@@ -407,3 +407,20 @@ mouse/right click on various work areas, mixed 100/200% monitor DPI,
 WebView2-missing fallback by a human, real authorized **unsent** Discord
 file attachment, portfolio full dependency security audit, approved
 landing/demo and human-reviewed version-matched unsigned release.
+
+
+## C7248B3 native systray release verification (2026-10-17)
+
+Exact-source CI 39093635986 PASS and manual unsigned Windows workflow
+39093633727 PASS, with 494 tests; installed candidate v2.11.0's own
+WM_NOTIFY/WM_RBUTTONUP open/close event sequence, first-run / returning-
+user restart, original v2.10.3 -> candidate upgrade, retained synthetic
+local profile and successful uninstall. The production popup now validates
+that the title-matching HWND belongs to its own Notro process, and that
+hardened code was in the same QA installer. @4080 downloaded but did NOT
+execute/install the QA installer; independently verified 17,222,275 bytes,
+SHA256 c122cf31b40607faa7b5e9ff2f6075cfbc72f47ff0634cbe990cdc519240e360,
+ProductVersion 2.11.0, NotSigned. Public Publish release step SKIPPED.
+NO-GO for broad launch remains for NOTRO-5 Discord non-sending attachment,
+NOTRO-24 human Win10/11 and physical mixed DPI, NOTRO-16 portfolio landing
+full audit, version-matched published candidate and human launch review.
