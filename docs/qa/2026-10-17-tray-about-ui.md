@@ -85,3 +85,27 @@ A fresh native QA run confirms normal open, About, settings and close.
   and human release authorization remain P0.
 - The user opted out of signing. Do not apply for certificates or bypass
   Windows protections.
+
+
+## Successful Windows CI and packaged EXE check
+
+- GitHub CI source commit 461db39:
+  https://github.com/writingdeveloper/Notro/actions/runs/39085969840
+  PASSED, 485 unit/regression tests, Ruff and dependency audit.
+- Manual unsigned candidate workflow:
+  https://github.com/writingdeveloper/Notro/actions/runs/39085985603
+  PASSED, actual public v2.10.3 -> candidate 2.11.0 upgrade, synthetic
+  APPDATA preserved, real installed EXE launched. Its own process window
+  enumeration includes a **hidden Notro Tray Menu** window alongside
+  the hidden Notro Picker and the visible first-run Notro welcome.
+  Auto-send and capture OFF, Windows startup unchanged. Uninstaller
+  succeeded, public release publishing SKIPPED.
+- Same-run unsigned NotroSetup.exe was downloaded for checksum inspection
+  without executing on the user's active PC. Size 17,215,650 bytes; SHA256
+  62593f9b66f5ae6e568ef14b6b674c68934a69523e2f860d70503b8c85c23169,
+  matching official QA run manifest; file ProductVersion 2.11.0, publisher
+  signature NotSigned (expected by user decision). Candidate still Draft PR.
+- Plane NOTRO-34 About and NOTRO-35 styled tray are Done for source/native
+  QA and packaged hidden-window smoke; a person's actual Windows 10/11
+  right-click accessibility/DPI/SmartScreen review is separate NOTRO-24.
+  Real Discord unsent-file attachment is separate NOTRO-5.
