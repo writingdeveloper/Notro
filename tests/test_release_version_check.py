@@ -377,7 +377,9 @@ def test_installed_exe_runner_receives_own_win32_tray_right_click():
     assert 'name.value.endswith(' in source
     assert "WM_NOTIFY_ICON = 0x040B" in source
     assert "WM_RBUTTONUP = 0x0205" in source
-    assert "WM_CLOSE = 0x0010" in source
+    assert "returning_user_no_welcome" in source
+    assert "stop_own_process(proc)" in source
+    assert "WM_CLOSE = 0x0010" not in source
     assert "user32.PostMessageW(hwnd, WM_NOTIFY_ICON, 0, WM_RBUTTONUP)" in source
     assert 'result["real_tray_notification_open"]' in source
     assert 'result["real_tray_notification_close"]' in source

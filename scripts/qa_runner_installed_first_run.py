@@ -51,7 +51,6 @@ user32.PostMessageW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
 # WM_NOTIFY callback to the OS-provided WM_RBUTTONUP event.
 WM_NOTIFY_ICON = 0x040B
 WM_RBUTTONUP = 0x0205
-WM_CLOSE = 0x0010
 
 SETTINGS = r"Software\Notro"
 RUN = r"Software\Microsoft\Windows\CurrentVersion\Run"
@@ -147,27 +146,19 @@ def visible_own_window(process_id: int, title: str) -> bool:
 
 
 def verify_own_tray_rightclick(process_id: int) -> dict:
-    """OS pystray event dispatch to ONLY own temporary Notro EXE HWND."""
+    """Dispatch registered systray event to own *returning-user* EXE only.
+
+    Real users dismiss the first-run welcome before interacting with the
+    tray icon. This test does not try to force-close that modal via WM_CLOSE.
+    Instead the caller restarts the same disposable profile (welcomed=1).
+    """
     status = {"tray_hwnd_count": 0, "native_notify_posted": False,
-              "welcome_close_posted": False, "welcome_closed": False,
+              "welcome_visible": visible_own_window(process_id, "Notro"),
               "opened": False, "closed": False, "classes": []}
+    if status["welcome_visible"]:
+        return status
 
-    def welcome():
-        return next((w for w in get_owned_windows(process_id)
-                     if w["title"] == "Notro" and w["visible"]), None)
-
-    existing = welcome()
-    if existing:
-        status["welcome_close_posted"] = bool(
-            user32.PostMessageW(existing["hwnd"], WM_CLOSE, 0, 0))
-        for _ in range(12):
-            if not welcome():
-                status["welcome_closed"] = True
-                break
-            time.sleep(.15)
-
-    # Wait for all hidden WebView2 views to finish their JS bridge init.
-    time.sleep(1.3)
+    time.sleep(1.1)
     handles = owned_tray_windows(process_id)
     status["tray_hwnd_count"] = len(handles)
     status["classes"] = own_window_classes(process_id)
@@ -179,23 +170,35 @@ def verify_own_tray_rightclick(process_id: int) -> dict:
         status["native_notify_posted"] |= posted
         if not posted:
             continue
-        for _ in range(16):
+        for _ in range(17):
             if visible_own_window(process_id, "Notro Tray Menu"):
                 status["opened"] = True
                 break
             time.sleep(.15)
         if status["opened"]:
             break
-
     if not status["opened"]:
         return status
     user32.PostMessageW(hwnd, WM_NOTIFY_ICON, 0, WM_RBUTTONUP)
-    for _ in range(17):
+    for _ in range(18):
         if not visible_own_window(process_id, "Notro Tray Menu"):
             status["closed"] = True
             break
         time.sleep(.15)
     return status
+
+
+def stop_own_process(proc) -> None:
+    """Terminate only the test-launched EXE PID and any of its children."""
+    if proc is None:
+        return
+    if proc.poll() is None:
+        subprocess.run(
+            ["taskkill.exe", "/PID", str(proc.pid), "/T", "/F"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            timeout=10, check=False,
+        )
+    proc.wait(timeout=8)
 
 
 def main() -> int:
@@ -225,6 +228,9 @@ def main() -> int:
         "runner_only": True, "exe_started": False,
         "welcome_visible": False, "picker_created": False,
         "tray_panel_created": False,
+        "returning_user_process": False,
+        "returning_user_no_welcome": False,
+        "returning_user_tray_created": False,
         "real_tray_notification_open": False,
         "real_tray_notification_close": False,
         "auto_send_off": False, "auto_capture_off": False,
@@ -287,14 +293,44 @@ def main() -> int:
                     break
                 time.sleep(0.3)
 
-            if result["tray_panel_created"] and proc.poll() is None:
-                # Wait briefly for the pywebview JS API to finish registration
-                # after its HWND exists. Never send to other processes.
-                time.sleep(1.5)
-                diag = verify_own_tray_rightclick(proc.pid)
-                result["tray_notification_diagnostic"] = diag
-                result["real_tray_notification_open"] = diag["opened"]
-                result["real_tray_notification_close"] = diag["closed"]
+            # Distinct, more realistic workflows: first run confirms
+            # welcome/picker/tray window exists, then the same synthetic
+            # profile is restarted after the app has set welcomed=1.
+            # No OS window-close message, global input or user profile.
+            if (result["welcome_visible"] and result["tray_panel_created"]
+                    and proc.poll() is None):
+                stop_own_process(proc)
+                proc = None
+                time.sleep(.6)
+                proc = subprocess.Popen(
+                    [str(args.exe)], cwd=str(args.exe.parent), env=env,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                )
+                deadline = time.monotonic() + 18
+                while time.monotonic() < deadline:
+                    if proc.poll() is not None:
+                        break
+                    windows = get_owned_windows(proc.pid)
+                    if (any(w["title"] == "Notro Picker" for w in windows)
+                            and any(w["title"] == "Notro Tray Menu"
+                                    for w in windows)):
+                        time.sleep(.8)
+                        break
+                    time.sleep(.15)
+                result["returning_user_process"] = proc.poll() is None
+                result["returning_user_no_welcome"] = (
+                    not visible_own_window(proc.pid, "Notro"))
+                result["returning_user_tray_created"] = any(
+                    w["title"] == "Notro Tray Menu"
+                    for w in get_owned_windows(proc.pid))
+                if (result["returning_user_process"]
+                        and result["returning_user_no_welcome"]
+                        and result["returning_user_tray_created"]):
+                    diag = verify_own_tray_rightclick(proc.pid)
+                    result["tray_notification_diagnostic"] = diag
+                    result["real_tray_notification_open"] = diag["opened"]
+                    result["real_tray_notification_close"] = diag["closed"]
 
             result["process_alive"] = proc.poll() is None
             result["auto_send_off"] = read_setting("auto_send", 1) == 0
@@ -311,6 +347,9 @@ def main() -> int:
             result["passed"] = all((
                 result["exe_started"], result["welcome_visible"],
                 result["picker_created"], result["tray_panel_created"],
+                result["returning_user_process"],
+                result["returning_user_no_welcome"],
+                result["returning_user_tray_created"],
                 result["real_tray_notification_open"],
                 result["real_tray_notification_close"],
                 result["process_alive"],
@@ -321,21 +360,10 @@ def main() -> int:
     except Exception as exc:
         result["errors"].append(type(exc).__name__ + ": " + str(exc)[:300])
     finally:
-        if proc is not None:
-            try:
-                if proc.poll() is None:
-                    # Terminate ONLY the tree started by this disposable-runner
-                    # test, never any user machine Notro installation.
-                    subprocess.run(
-                        ["taskkill.exe", "/PID", str(proc.pid), "/T", "/F"],
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                        timeout=10, check=False,
-                    )
-                proc.wait(timeout=8)
-            except (OSError, subprocess.TimeoutExpired):
-                if proc.poll() is None:
-                    proc.kill()
-                    proc.wait(timeout=5)
+        try:
+            stop_own_process(proc)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            result["errors"].append("own process cleanup: " + str(exc)[:130])
 
     print("NOTRO_INSTALLED_EXE_FIRST_RUN_QA="
           + json.dumps(result, ensure_ascii=True), flush=True)
