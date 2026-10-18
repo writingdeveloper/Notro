@@ -39,6 +39,18 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   approve/cancel flow without touching live Discord, user clipboard or chat.
 
 ### Fixed
+- Native WebView2 Welcome and video confirmation dialogs: moved native
+  WinForms Window references into private API fields. Exposing the GUI
+  object through a public JavaScript bridge attribute caused recursive
+  AccessibilityObject traversal and could prevent first-use and video
+  buttons from becoming responsive. Actual native "Try Picker"/Dismiss,
+  video trim/mute/replan/confirm/close now pass.
+- Corrupt or unsupported media ZIPs, nested invalid metadata and unsafe
+  settings JSON are rejected without mutating the media library. Bad
+  library.json/folders.json files are backed up byte-for-byte as local
+  .bak files so the application can recover without deleting cached media.
+- ZIP archive outer size is bounded before reading central-directory
+  metadata, in addition to existing manifest and decompressed image caps.
 - The Discord free upload default now matches the official August 2026 20 MB
   limit. Existing explicit 10 MB choices remain available. The 95% safety margin
   now targets **compressed output** rather than triggering needless compression

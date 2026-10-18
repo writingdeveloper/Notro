@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Real Windows file-dialog E2E for Notro's own isolated WebView2 test window.
 
-Covers cancel, Save a Unicode ZIP pack, cancel Import, and Import the saved
-pack into a fresh temporary library. Dialog automation touches ONLY the
+Covers Unicode ZIP export/import, JSON settings export/restore, cancel
+flows, and two malformed files rejected via real native Open dialogs. Dialog automation touches ONLY the
 #32770 window of this exact Python process, never Discord, real clipboard,
 registry, settings or personal Notro libraries.
 """
@@ -118,6 +118,16 @@ def main() -> int:
         original_digest = hashlib.sha256(source.read_bytes()).hexdigest()
         dest_pack = root / "한글 파일 이름 테스트.zip"
         dest_preferences = root / "한글 환경설정 백업.json"
+        corrupt_zip = root / "손상된 미디어팩.zip"
+        corrupt_zip.write_bytes(b"PK" + b"not actually a ZIP")
+        corrupt_preferences = root / "손상된 환경설정.json"
+        corrupt_preferences.write_text(json.dumps({
+            "format": "notro-settings", "version": 1,
+            "settings": {"lang": "ko"},
+            "watched_folders": [
+                {"path": str(root), "default_type": ["gif"]}
+            ],
+        }), encoding="utf-8")
 
         # Synthetic settings only: the QA process must NOT read/write real
         # HKCU settings or the user's watched-folder paths.
@@ -213,6 +223,18 @@ def main() -> int:
                 final["source_preserved"] = (
                     hashlib.sha256(source.read_bytes()).hexdigest() == original_digest
                 )
+                # A user choosing a malformed ZIP in the *real Windows Open
+                # dialog* must receive a stable error and must not mutate
+                # the existing imported library or crash the WebView bridge.
+                before_items = len(target_library.items())
+                corrupted_pack_reply = run_stage(
+                    "open_corrupt_zip", "import_pack", "confirm",
+                    str(corrupt_zip),
+                )
+                assert corrupted_pack_reply == {
+                    "ok": False, "error": "pack",
+                }, corrupted_pack_reply
+                assert len(target_library.items()) == before_items
 
                 cancelled = run_stage(
                     "profile_save_cancel", "export_preferences", "cancel", None
@@ -229,6 +251,16 @@ def main() -> int:
                 final["profile_bytes"] = dest_preferences.stat().st_size
                 assert "source_url" not in dest_preferences.read_text(encoding="utf-8")
                 assert not captured_settings, "setting writes before explicit approval"
+
+                invalid_settings_reply = run_stage(
+                    "profile_open_malformed", "preview_preferences",
+                    "confirm", str(corrupt_preferences),
+                )
+                assert invalid_settings_reply == {
+                    "ok": False, "error": "settings",
+                }, invalid_settings_reply
+                assert not captured_settings
+                assert target_library.folders() == []
 
                 cancelled_profile_open = run_stage(
                     "profile_open_cancel", "preview_preferences", "cancel", None
@@ -283,7 +315,7 @@ def main() -> int:
                 stage.get("seen") and not stage.get("error")
                 for stage in final["stages"].values()
             )
-            and len(final["stages"]) == 8
+            and len(final["stages"]) == 10
         )
         print(
             "NOTRO_NATIVE_FILE_DIALOG_QA=" + json.dumps(final, ensure_ascii=True),

@@ -228,6 +228,8 @@ def main() -> int:
         "runner_only": True, "exe_started": False,
         "welcome_visible": False, "picker_created": False,
         "tray_panel_created": False,
+        "invalid_library_backed_up": False,
+        "invalid_folders_backed_up": False,
         "returning_user_process": False,
         "returning_user_no_welcome": False,
         "returning_user_tray_created": False,
@@ -245,6 +247,19 @@ def main() -> int:
         ) as folder:
             private_appdata = Path(folder) / "Roaming"
             private_appdata.mkdir()
+            # Fake corrupt startup files live ONLY in disposable runner APPDATA.
+            synthetic_lib = private_appdata / "Notro"
+            synthetic_lib.mkdir()
+            invalid_files = {
+                "library.json": (
+                    b'{"items":[{"id":"x","type":"emoji","filename":[]}]}'
+                ),
+                "folders.json": (
+                    b'{"folders":[{"path":[],"default_type":"emoji"}]}'
+                ),
+            }
+            for filename, content in invalid_files.items():
+                (synthetic_lib / filename).write_bytes(content)
             env = os.environ.copy()
             env["APPDATA"] = str(private_appdata)
             env["NOTRO_QA_SUPPRESS_AUTORUN"] = "1"
@@ -342,11 +357,24 @@ def main() -> int:
                 (private_appdata / "Notro").is_dir()
                 and str(private_appdata).startswith(os.environ["RUNNER_TEMP"])
             )
+            # Validate exact backup bytes, not merely process survival.
+            result["invalid_library_backed_up"] = (
+                (synthetic_lib / "library.json.bak").is_file()
+                and (synthetic_lib / "library.json.bak").read_bytes()
+                    == invalid_files["library.json"]
+            )
+            result["invalid_folders_backed_up"] = (
+                (synthetic_lib / "folders.json.bak").is_file()
+                and (synthetic_lib / "folders.json.bak").read_bytes()
+                    == invalid_files["folders.json"]
+            )
             result["windows"] = get_owned_windows(proc.pid)
             result["welcome_marked"] = read_setting("welcomed", 0) == 1
             result["passed"] = all((
                 result["exe_started"], result["welcome_visible"],
                 result["picker_created"], result["tray_panel_created"],
+                result["invalid_library_backed_up"],
+                result["invalid_folders_backed_up"],
                 result["returning_user_process"],
                 result["returning_user_no_welcome"],
                 result["returning_user_tray_created"],

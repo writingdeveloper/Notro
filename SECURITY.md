@@ -77,6 +77,25 @@ unrelated local web pages and DNS-rebinding aliases. Raw paths are not
 included in asset URLs. This does not provide a sandbox against other local
 software that already has direct access to your files.
 
+## Corrupt media/backup recovery
+
+Imported ZIP packs have bounded archive, manifest, per-file and total
+decompressed sizes. Unsupported formats, malformed media metadata and
+settings backup JSON fail validation without registering media or applying
+unreviewed settings. The original media assets are not altered.
+
+If library.json or folders.json has invalid structure on startup, Notro
+moves the original bytes to a local library.json.bak or folders.json.bak
+and starts with an empty in-memory library or watched-folder list.
+**Cached image files remain on disk.** These backup JSON files may include
+private names, source URLs and local paths: never post them publicly without
+removing personal details. A full manual data recovery UI is separate work.
+
+The native WinForms window objects referenced by the Welcome and video
+dialog bridges are private fields. Only intended button and trim APIs are
+exposed to the embedded JavaScript environment, avoiding recursive native
+accessibility-object inspection.
+
 ## Local preferences backup privacy
 
 An explicit settings export creates a small local JSON file with allowlisted

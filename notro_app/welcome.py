@@ -110,7 +110,10 @@ class _Api:
     """확인 버튼 → 창 닫기 (JS에서 호출)."""
 
     def __init__(self, on_try=None):
-        self.window = None
+        # pywebview inspects public js_api attributes recursively. Exposing
+        # a WinForms Window as .window recurses into AccessibilityObject
+        # and can hang the JS bridge before Welcome buttons work.
+        self._window = None
         self._on_try = on_try
 
     def open_picker(self):
@@ -119,9 +122,9 @@ class _Api:
             self._on_try()
 
     def close(self):
-        if self.window is not None:
+        if self._window is not None:
             try:
-                self.window.destroy()
+                self._window.destroy()
             except Exception:
                 pass
 
@@ -139,5 +142,5 @@ def create_window(combo_label: str | None = None, on_try=None):
         APP_NAME, html=build_html(combo_label), js_api=api,
         width=WIN_W, height=WIN_H, resizable=False,
     )
-    api.window = win
+    api._window = win
     return win

@@ -81,6 +81,16 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
 
+      # Real own WebView2 windows, synthetic local images and no user data.
+      # Verifies first-use buttons and independent video dialog bridge.
+      - name: QA native welcome Try Picker and dismiss
+        if: github.event_name == 'workflow_dispatch'
+        run: python scripts/qa_native_welcome_flow.py
+
+      - name: QA native video confirm trim and cancel
+        if: github.event_name == 'workflow_dispatch'
+        run: python scripts/qa_native_video_dialog.py
+
       # Accesses only disposable runner's clipboard, with synthetic media;
       # never the maintainer's live Windows clipboard or Discord account.
       - name: QA native Win32 clipboard on disposable runner

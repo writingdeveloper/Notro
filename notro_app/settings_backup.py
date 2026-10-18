@@ -114,6 +114,7 @@ def _check_document(data: object) -> dict:
         path, kind = folder["path"], folder["default_type"]
         if (not isinstance(path, str) or not path or len(path) > MAX_PATH_LENGTH
                 or chr(0) in path or not os.path.isabs(path)
+                or not isinstance(kind, str)
                 or kind not in {"emoji", "sticker", "gif"}):
             raise SettingsBackupError("invalid_folders")
         key = os.path.normcase(os.path.normpath(path))

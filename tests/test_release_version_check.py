@@ -386,3 +386,45 @@ def test_installed_exe_runner_receives_own_win32_tray_right_click():
     assert "SendInput(" not in source
     assert "set_clipboard_file(" not in source
     assert "discordapp" not in source
+
+
+
+def test_disposable_installed_exe_recovers_malformed_library_and_folders():
+    source = Path("scripts/qa_runner_installed_first_run.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'synthetic_lib = private_appdata / "Notro"' in source
+    assert 'result["invalid_library_backed_up"]' in source
+    assert 'result["invalid_folders_backed_up"]' in source
+    assert 'invalid_files["library.json"]' in source
+    assert 'invalid_files["folders.json"]' in source
+    assert "GITHUB_ACTIONS" in source
+
+
+
+def test_native_first_use_and_video_dialog_are_runner_only_ui_qa_steps():
+    workflow = _workflow(RELEASE_WORKFLOW)
+    for step_name, script_name in (
+        ("QA native welcome Try Picker and dismiss",
+         "scripts/qa_native_welcome_flow.py"),
+        ("QA native video confirm trim and cancel",
+         "scripts/qa_native_video_dialog.py"),
+    ):
+        step = _step(workflow, step_name)
+        assert "if: github.event_name == 'workflow_dispatch'" in step
+        assert f"python {script_name}" in step
+
+    welcome_script = Path(
+        "scripts/qa_native_welcome_flow.py"
+    ).read_text(encoding="utf-8")
+    assert "TemporaryDirectory" in welcome_script
+    assert "intro_api._window = intro_win" in welcome_script
+    assert "dismiss_api._window = dismiss_win" in welcome_script
+    assert "no_clipboard_mutation" in welcome_script
+
+    video_script = Path(
+        "scripts/qa_native_video_dialog.py"
+    ).read_text(encoding="utf-8")
+    assert "confirm.accepted.is_set" in video_script
+    assert "VideoWindow.info" in video_script
+    assert "no_encoding_or_paste" in video_script

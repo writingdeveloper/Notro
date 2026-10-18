@@ -45,7 +45,14 @@ and Microsoft Edge WebView2:
    Windows WebView2 UI harness: python scripts/qa_native_webview.py
 6. If file dialogs changed, run the separate synthetic native dialog harness:
    python scripts/qa_native_file_dialogs.py
-7. Run dependency audit: python -m pip_audit -r requirements-build.txt --strict
+7. When Welcome, video dialog, ZIP or settings import changes, run
+   isolated native Windows WebView2 UI tests:
+   python scripts/qa_native_welcome_flow.py
+   python scripts/qa_native_video_dialog.py
+   python scripts/qa_native_file_dialogs.py
+   The last test opens 10 real Windows file dialogs (including malformed
+   ZIP and JSON), never using real Notro settings or Discord data.
+8. Run dependency audit: python -m pip_audit -r requirements-build.txt --strict
 
 The browser/WebView2 harness uses synthetic inputs and must not be
 described as proof of live Discord integration. Actual user-driven

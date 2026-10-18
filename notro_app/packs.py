@@ -25,6 +25,9 @@ VERSION = 1
 MAX_ITEMS = 1500
 MAX_ITEM_SIZE = 20 * 1024 * 1024
 MAX_TOTAL_SIZE = 180 * 1024 * 1024
+# The compressed archive cannot be substantially larger than the max
+# uncompressed payload plus bounded metadata/ZIP overhead.
+MAX_ARCHIVE_BYTES = MAX_TOTAL_SIZE + 16 * 1024 * 1024
 MAX_MANIFEST_SIZE = 2 * 1024 * 1024
 MAX_IMAGE_PIXELS = 40_000_000
 EXTENSIONS = {".png", ".gif", ".webp", ".jpg", ".jpeg"}
@@ -58,7 +61,7 @@ def _check_meta(item: dict) -> dict:
     keywords = item.get("keywords", [])
     if not isinstance(name, str) or not name.strip() or len(name) > 160:
         raise PackError("bad item name")
-    if kind not in KINDS:
+    if not isinstance(kind, str) or kind not in KINDS:
         raise PackError("bad item kind")
     if not isinstance(collection, str) or len(collection) > 80:
         raise PackError("bad collection")
@@ -121,10 +124,21 @@ def export_pack(library, destination: str) -> dict:
 
 
 def import_pack(library, archive: str) -> dict:
-    """Validate entire ZIP before mutating the library; merge duplicates safely."""
+    """Reject malformed archives as PackError without touching the library."""
+    try:
+        return _import_pack_validated(library, archive)
+    except (zipfile.BadZipFile, zipfile.LargeZipFile, EOFError,
+            NotImplementedError, RuntimeError) as exc:
+        raise PackError("corrupt or unsupported ZIP") from exc
+
+
+def _import_pack_validated(library, archive: str) -> dict:
+    """Preflight all ZIP contents before registering user media."""
     path = Path(archive)
     if path.suffix.lower() != ".zip" or not path.is_file():
         raise PackError("not a ZIP media pack")
+    if path.stat().st_size > MAX_ARCHIVE_BYTES:
+        raise PackError("ZIP archive exceeds maximum size")
     records = []
     with zipfile.ZipFile(path, "r") as z:
         infos = z.infolist()

@@ -86,7 +86,10 @@ def destroy_all() -> None:
 class _Api:
     def __init__(self, accepted: threading.Event, cancelled: threading.Event,
                  on_replan=None):
-        self.window = None
+        # Keep the native GUI object private: pywebview recursively scans
+        # public js_api attributes, and WinForms AccessibilityObject is
+        # deeply self-referential (bridge recursion/initialization stall).
+        self._window = None
         self._accepted = accepted
         self._cancelled = cancelled
         self._on_replan = on_replan
@@ -117,9 +120,9 @@ class _Api:
         self.close()
 
     def close(self):
-        if self.window is not None:
+        if self._window is not None:
             try:
-                self.window.destroy()
+                self._window.destroy()
             except Exception:
                 pass
 
@@ -284,7 +287,7 @@ class VideoWindow:
             APP_NAME, html=self._html(), js_api=self._api,
             width=WIN_W, height=WIN_H, resizable=False,
         )
-        self._api.window = self._win
+        self._api._window = self._win
         # 타이틀바 X로 닫는 것도 취소다(리뷰 지적): pywebview는 이 경우 accept()도
         # cancel()도 호출하지 않고 곧장 이 이벤트만 쏜다. 배선하지 않으면 사용자가
         # 인코딩 도중 창을 닫아도 should_cancel=w.cancelled.is_set이 절대 True가 되지
