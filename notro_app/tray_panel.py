@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.wintypes as wt
+import os
 import threading
 from pathlib import Path
 
@@ -54,6 +55,19 @@ user32.SetWindowPos.argtypes = [
 
 user32.GetDpiForWindow.restype = wt.UINT
 user32.GetDpiForWindow.argtypes = [wt.HWND]
+user32.GetWindowThreadProcessId.restype = wt.DWORD
+user32.GetWindowThreadProcessId.argtypes = [
+    wt.HWND, ctypes.POINTER(wt.DWORD)]
+
+
+def _owned_popup_hwnd() -> int:
+    """Never reposition another application's same-title Win32 window."""
+    hwnd = user32.FindWindowW(None, WINDOW_TITLE)
+    if not hwnd:
+        return 0
+    owner_pid = wt.DWORD()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner_pid))
+    return int(hwnd) if owner_pid.value == os.getpid() else 0
 
 
 def _window_pixel_scale(hwnd) -> float:
@@ -231,7 +245,9 @@ class TrayPanel:
         # If a tiny monitor/work area cannot fit the compact popup,
         # keep the classic native menu accessible instead of clipping UI.
         try:
-            hwnd = user32.FindWindowW(None, WINDOW_TITLE)
+            hwnd = _owned_popup_hwnd()
+            if not hwnd:
+                return False
             _, _, w, h, scale = _scaled_panel_bounds(hwnd)
         except OSError:
             return False
@@ -261,9 +277,9 @@ class TrayPanel:
                 # None for unused size arguments to SetWindowPos. Use our
                 # private typed Win32 function table on OWN popup HWND.
                 self._last_step = "find"
-                hwnd = user32.FindWindowW(None, WINDOW_TITLE)
+                hwnd = _owned_popup_hwnd()
                 if not hwnd:
-                    raise OSError("owned tray popup window missing")
+                    raise OSError("owned tray popup window missing or not owned")
                 self._last_step = "dpi-layout"
                 x, y, w, h, scale = _scaled_panel_bounds(hwnd)
                 if w < round(MIN_PANEL_W * scale) or h < round(MIN_PANEL_H * scale):

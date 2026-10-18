@@ -378,3 +378,32 @@ attachment acceptance. No signing, customer contact or release is involved.
   tray/global clipboard/Discord sessions.
 - User explicitly does NOT want signing; no certificate, public tag,
   release, main merge, advertising, or Discord messages were sent.
+
+
+## Installed v2.11.0 actual systray WM_NOTIFY event passed (2026-10-17)
+
+Disposable GitHub Windows run 39093341101 PASSED after splitting first-run
+welcome and returning-user startup. The latter's real pystray window
+received WM_NOTIFY/WM_RBUTTONUP and the branded Notro Tray Menu was observed
+visible, then hidden by a second notification. No simulated global mouse
+or keyboard input was generated and no private clipboard/Discord was used.
+The previous attempts (39092716631, 39093044665) failed only that custom
+systray sub-gate while trying to force-close the first-run welcome; their
+failure was retained transparently, not silently marked green.
+
+The published v2.10.3 -> draft v2.11.0 upgrade and synthetic data
+preservation still passed. Same-run unsigned test installer checksum is
+f277fbf226528a58c39411ce50e0fa4f5fb935b907f52fbf7ef70773b1fd4eb9,
+size 17,223,664 bytes. No public release was published.
+
+Follow-up security hardening: own HWND/PID verification now prevents
+positioning an unrelated Win32 window with the same caption; local
+native WebView2 test and pure regression passed. Packaged verification
+of this final guard must be completed before claiming it part of the
+installed release candidate's fully verified path.
+
+Important remaining blockers: real human Windows 10/11 notifications-area
+mouse/right click on various work areas, mixed 100/200% monitor DPI,
+WebView2-missing fallback by a human, real authorized **unsent** Discord
+file attachment, portfolio full dependency security audit, approved
+landing/demo and human-reviewed version-matched unsigned release.

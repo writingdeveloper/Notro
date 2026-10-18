@@ -159,3 +159,33 @@ def test_scaled_bounds_clamped_by_actual_monitor(monkeypatch):
     monkeypatch.setattr(tray_panel, "geometry_from_cursor",
                         lambda w, h: (10, 20, min(w, 660), min(h, 840)))
     assert tray_panel._scaled_panel_bounds(12) == (10, 20, 660, 840, 2.0)
+
+
+def test_title_matched_popup_must_belong_to_this_process(monkeypatch):
+    import ctypes
+    import ctypes.wintypes as wt
+
+    monkeypatch.setattr(tray_panel.user32, "FindWindowW",
+                        lambda title_class, title: 4567)
+    monkeypatch.setattr(tray_panel.os, "getpid", lambda: 1111)
+
+    def pretend_owner(hwnd, target):
+        assert int(hwnd) == 4567
+        ctypes.cast(target, ctypes.POINTER(wt.DWORD)).contents.value = 2222
+        return 1
+
+    monkeypatch.setattr(tray_panel.user32, "GetWindowThreadProcessId",
+                        pretend_owner)
+    assert tray_panel._owned_popup_hwnd() == 0
+
+    def actual_owner(hwnd, target):
+        ctypes.cast(target, ctypes.POINTER(wt.DWORD)).contents.value = 1111
+        return 1
+
+    monkeypatch.setattr(tray_panel.user32, "GetWindowThreadProcessId",
+                        actual_owner)
+    assert tray_panel._owned_popup_hwnd() == 4567
+
+    monkeypatch.setattr(tray_panel.user32, "FindWindowW",
+                        lambda title_class, title: 0)
+    assert tray_panel._owned_popup_hwnd() == 0

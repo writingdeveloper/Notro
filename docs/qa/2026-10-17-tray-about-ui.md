@@ -142,3 +142,40 @@ A fresh native QA run confirms normal open, About, settings and close.
   to the registered systray window of the *test-installed Notro EXE*
   and observes the owned popup opening/closing. It is **pending**
   actual remote PASS and must never be conflated with human input.
+
+
+## Isolated installed EXE notification-area message dispatch PASSED
+
+After the previous first-run modal prevented a naive external WM_CLOSE from
+dismissing the welcome, the disposable-runner QA now tests two distinct
+application starts on the SAME throwaway profile: first verifies the welcome
+and hidden picker/tray popup, then terminates ONLY that test process tree
+and reopens the installed candidate with its already-written welcome marker.
+
+In the second, returning-user start it enumerates top-level Win32 windows
+owned by the new process ID, finds its own pystray Notro*SystemTrayIcon
+class, then posts native WM_NOTIFY / WM_RBUTTONUP to its own icon HWND.
+A second notification verifies the owned Notro Tray Menu closes again.
+
+- Source 0b81b17 (before subsequent title/PID hardening).
+- Manual unsigned GitHub Actions run:
+  https://github.com/writingdeveloper/Notro/actions/runs/39093341101
+  PASSED with real_tray_notification_open=true,
+  real_tray_notification_close=true,
+  returning_user_process=true,
+  returning_user_no_welcome=true,
+  returning_user_tray_created=true, errors=[], passed=true.
+- Actual v2.10.3 -> v2.11.0 upgrade, synthetic profile retention,
+  installer/uninstaller, welcome/picker, default safety switches and
+  startup state all passed; public Publish release was skipped.
+- Independently downloaded run's QA installer into TEMP without executing it
+  on the user's active PC: NotroSetup.exe size 17,223,664 bytes; SHA-256
+  f277fbf226528a58c39411ce50e0fa4f5fb935b907f52fbf7ef70773b1fd4eb9,
+  matching the run's checksum manifest, version 2.11.0, NotSigned.
+- Another defensive source change checks the title-matched tray popup
+  HWND is owned by the current process before GetDpiForWindow or SetWindowPos.
+  Actual native @4080 QA passed; until subsequent packaged-run validation,
+  that guard itself is marked a source-level verification.
+- This proves real Windows event dispatch to the installed EXE in a
+  hosted disposable service session, not an actual person's physical
+  mouse action, two-monitor taskbar use, SmartScreen approval, or Discord.
