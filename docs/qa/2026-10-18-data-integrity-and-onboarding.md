@@ -1,8 +1,7 @@
 # Notro v2.11.0 — malformed-data recovery and first-use GUI QA
 
 Date: 2026-10-18
-Status: isolated Windows source QA PASSED; hosted unsigned EXE QA pending
-until the matching GitHub workflow run completes. The user's live v2.10.3
+Status: isolated Windows source QA and hosted unsigned EXE recovery QA PASSED. The user's live v2.10.3
 app is unchanged; no user library was loaded into this QA.
 
 ## Real defects reproduced before fixes
@@ -59,14 +58,27 @@ Reproduce with:
   python scripts/qa_native_welcome_flow.py
   python scripts/qa_native_video_dialog.py
 
-## Hosted-runner QA still pending
+## Verified hosted GitHub Windows QA
 
-Manual unsigned workflow now runs the two native UI scripts, then starts the
-ACTUAL installed v2.11.0 EXE with deliberately malformed synthetic library
-and folder JSON in disposable APPDATA. It must prove byte-for-byte backup
-into .bak and a living Welcome/Picker/Tray process before we mark source
-and packaging recovery Done. Its results cannot be inferred from local QA.
-
-No code signing, main merge, production release, Discord messaging,
-external marketing or direct user-PC installation. Actual human Windows
-10/11 GUI and consented Discord unsent attachment remain P0 blockers.
+- Source commit aeb8590 (unreleased Draft PR).
+- GitHub CI: https://github.com/writingdeveloper/Notro/actions/runs/39162457248
+  PASS: 528 tests, lint, pip-audit and image preflight.
+- Manual unsigned Windows QA run:
+  https://github.com/writingdeveloper/Notro/actions/runs/39162481015
+  PASS: real Welcome/Try Picker/dismiss and video trim/confirm/cancel stages,
+  native clipboard and isolated Ctrl+V, compiled EXE/Inno installer,
+  v2.10.3 -> v2.11.0 upgrade and synthetic data retention/uninstall.
+- Actual installed EXE started with invalid temporary library.json and
+  folders.json, preserved both source files byte-for-byte as .bak:
+  invalid_library_backed_up=true, invalid_folders_backed_up=true.
+  Live process, Welcome, Picker, hidden Tray and systray right-click
+  verified; automatic send/capture remain OFF.
+- @4080 downloaded the same-run unsigned installer for integrity validation
+  but did NOT execute/install it on the user's active PC:
+  NotroSetup.exe 17,225,822 bytes, SHA-256
+  f6d7c15f8fd858959123dbd34a671779dcadca3edfd0b33e915eab410368716c
+  matches generated manifest, ProductVersion 2.11.0, NotSigned.
+- GitHub release publish step was skipped. Public latest remains v2.10.3.
+- NOTRO-39 and NOTRO-40 engineering QA can be Done. Human Win10/11 GUI,
+  actual Discord unsent attachment, and measured three-minute human
+  first paste remain unverified separate P0 tasks.
