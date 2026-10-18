@@ -73,7 +73,24 @@ function applyStrings() {
   $("#st-folders-subtitle").textContent = str("picker_folders_subtitle");
   $("#st-openlib").textContent = str("picker_open_library");
   $("#st-addfolder").textContent = str("picker_add_folder");
+  $("#st-import-pack").textContent = str("picker_pack_import");
+  $("#st-export-pack").textContent = str("picker_pack_export");
+  $("#st-profile-title").textContent = str("picker_profile_title");
+  $("#st-profile-path-note").textContent = str("picker_profile_include_paths");
+  $("#st-profile-import").textContent = str("picker_profile_import");
+  $("#st-profile-export").textContent = str("picker_profile_export");
+  $("#profile-review-title").textContent = str("picker_profile_review_title");
+  $("#profile-review-note").textContent = str("picker_profile_review_note");
+  $("#profile-folders-label").textContent = str("picker_profile_folders_restore");
+  $("#profile-apply").textContent = str("picker_profile_confirm");
+  $("#profile-cancel").textContent = str("picker_profile_cancel");
   $("#st-close").textContent = str("picker_cancel");
+  $("#gif-title").textContent = str("picker_gif_title");
+  $("#gif-note").textContent = str("picker_gif_note");
+  $("#gif-source-label").textContent = str("picker_gif_original");
+  $("#gif-result-label").textContent = str("picker_gif_result");
+  $("#gif-accept").textContent = str("picker_gif_accept");
+  $("#gif-cancel").textContent = str("picker_gif_cancel");
   $("#dropzone").textContent = str("picker_drop_hint");
 }
 
@@ -270,6 +287,8 @@ function showCtx(e, item) {
     ctx.appendChild(b);
   };
   add(str("picker_ctx_file"), () => select(item, "file"));
+  if (item.animated)
+    add(str("picker_gif_optimize"), () => openGifPreview(item));
   if (item.can_url) add(str("picker_ctx_url"), () => select(item, "url"));
   if (!item.is_folder) {
     add(item.favorite ? str("picker_ctx_unfavorite") : str("picker_ctx_favorite"),
@@ -299,9 +318,88 @@ function hideCtx() { $("#ctx").classList.add("hidden"); }
 /* 열려 있는 창 하나 (없으면 undefined). 방향키·붙여넣기 처리는 창이 열려 있는
    동안 그리드를 건드리면 안 된다. */
 function openModal() {
-  return [$("#modal-add"), $("#modal-edit"), $("#modal-settings")]
+  return [$("#modal-add"), $("#modal-edit"), $("#modal-settings"),
+          $("#modal-gif"), $("#modal-profile")]
     .find((m) => !m.classList.contains("hidden"));
 }
+
+/* ---------- GIF preview / explicit user approval ----------
+   This is an independent file-processing workflow. The optimization candidate
+   is a private temp file; no Discord client APIs are used. */
+let gifPreview = null;
+let gifPreviewTicket = 0;
+
+function gifMiB(bytes) { return (bytes / 1048576).toFixed(2) + " MB"; }
+function gifErrorKey(error) {
+  if (error === "already_fits") return "picker_gif_fits";
+  if (error === "too_complex") return "picker_gif_too_complex";
+  if (error === "cannot_fit") return "picker_gif_cannot_fit";
+  if (error === "outdated") return "picker_gif_outdated";
+  return "picker_gif_failed";
+}
+async function closeGifPreview() {
+  gifPreviewTicket++;
+  const candidate = gifPreview;
+  gifPreview = null;
+  $("#modal-gif").classList.add("hidden");
+  $("#gif-accept").disabled = true;
+  $("#gif-source-image").removeAttribute("src");
+  $("#gif-result-image").removeAttribute("src");
+  if (candidate && api()) await api().discard_gif_preview(candidate.token);
+}
+async function openGifPreview(item) {
+  if (!api()) return;
+  const ticket = ++gifPreviewTicket;
+  gifPreview = null;
+  $("#gif-compare").classList.add("hidden");
+  $("#gif-accept").disabled = true;
+  $("#gif-meta").textContent = "";
+  $("#gif-status").textContent = str("picker_gif_loading");
+  $("#modal-gif").classList.remove("hidden");
+
+  let res;
+  try { res = await api().preview_gif(item.id); }
+  catch (_) { res = {ok:false, error:"encode"}; }
+  if (ticket !== gifPreviewTicket) {
+    if (res && res.ok) await api().discard_gif_preview(res.token);
+    return;
+  }
+  if (!res || !res.ok) {
+    $("#gif-status").textContent = str(gifErrorKey(res && res.error));
+    return;
+  }
+  gifPreview = {itemId:item.id, token:res.token};
+  $("#gif-source-image").src = res.original_url;
+  $("#gif-result-image").src = res.optimized_url;
+  $("#gif-compare").classList.remove("hidden");
+  const oldSize = res.original_size.join("×");
+  const newSize = res.optimized_size.join("×");
+  const percent = Math.round(100 * (1 - res.optimized_bytes / res.original_bytes));
+  $("#gif-meta").textContent =
+    gifMiB(res.original_bytes) + " → " + gifMiB(res.optimized_bytes)
+    + " (−" + percent + "%), " + oldSize + " → " + newSize + " px"
+    + ", " + res.frames + " " + str("picker_gif_info");
+  $("#gif-status").textContent = str("picker_gif_result");
+  $("#gif-accept").disabled = false;
+}
+async function acceptGifPreview() {
+  if (!gifPreview || !api()) return;
+  const candidate = gifPreview;
+  $("#gif-accept").disabled = true;
+  let res;
+  try { res = await api().paste_gif_preview(candidate.itemId, candidate.token); }
+  catch (_) { res = {ok:false, error:"outdated"}; }
+  if (res && res.ok) {
+    gifPreview = null;
+    gifPreviewTicket++;
+    $("#modal-gif").classList.add("hidden");
+  } else {
+    $("#gif-status").textContent = str(gifErrorKey(res && res.error));
+    gifPreview = null;
+  }
+}
+$("#gif-cancel").addEventListener("click", closeGifPreview);
+$("#gif-accept").addEventListener("click", acceptGifPreview);
 
 /* ---------- 등록 모달 ---------- */
 /* 세로 바에서 실제 컬렉션을 보고 있으면 그곳을 기본 저장 위치로 쓴다.
@@ -485,6 +583,79 @@ function renderFolders() {
   }
 }
 
+/* ---------- Safe, opt-in profile portability ----------
+   A native file dialog temporarily takes focus. Never hide the picker on
+   that expected blur. Restore only after a separate review/approval step.
+   Watched absolute paths stay unchecked by default for both directions.
+   The backend never re-enables auto-send or auto-capture from a backup. */
+let nativeDialogPending = false;
+let profileReview = null;
+async function withNativeDialog(task) {
+  if (nativeDialogPending) return {ok:false, error:"busy"};
+  nativeDialogPending = true;
+  try { return await task(); }
+  finally { nativeDialogPending = false; }
+}
+async function closeProfileReview() {
+  const review = profileReview;
+  profileReview = null;
+  $("#modal-profile").classList.add("hidden");
+  $("#profile-apply").disabled = false;
+  $("#profile-restore-folders").checked = false;
+  if (review && api()) await api().discard_preferences_preview(review.token);
+}
+async function inspectProfile() {
+  if (!api()) return;
+  const res = await withNativeDialog(() => api().preview_preferences());
+  if (!res || !res.ok) {
+    if (res && res.error !== "cancelled") flashHint("picker_profile_error");
+    return;
+  }
+  profileReview = {token:res.token};
+  $("#modal-settings").classList.add("hidden");
+  $("#profile-error").classList.add("hidden");
+  $("#profile-restore-folders").checked = false;
+  $("#profile-restore-folders").disabled = res.folders_count === 0;
+  const template = str("picker_profile_counts");
+  $("#profile-review-counts").textContent = template
+    .replace("{settings}", res.settings_count)
+    .replace("{folders}", res.folders_count);
+  $("#modal-profile").classList.remove("hidden");
+}
+async function applyProfile() {
+  if (!profileReview || !api()) return;
+  $("#profile-apply").disabled = true;
+  const token = profileReview.token;
+  const include = $("#profile-restore-folders").checked;
+  let res;
+  try { res = await api().apply_preferences(token, include); }
+  catch (_) { res = {ok:false}; }
+  if (res && res.ok) {
+    profileReview = null;
+    $("#modal-profile").classList.add("hidden");
+    await refresh();
+    $("#st-profile-include-folders").checked = false;
+    flashHint("picker_profile_restored", res);
+  } else {
+    $("#profile-error").textContent = str("picker_profile_error");
+    $("#profile-error").classList.remove("hidden");
+    profileReview = null;
+  }
+  $("#profile-apply").disabled = false;
+}
+$("#st-profile-export").addEventListener("click", async () => {
+  if (!api()) return;
+  const include = $("#st-profile-include-folders").checked;
+  const res = await withNativeDialog(
+    () => api().export_preferences(include));
+  if (res && res.ok) flashHint("picker_profile_exported", res);
+  else if (res && res.error !== "cancelled")
+    flashHint("picker_profile_error");
+});
+$("#st-profile-import").addEventListener("click", inspectProfile);
+$("#profile-apply").addEventListener("click", applyProfile);
+$("#profile-cancel").addEventListener("click", closeProfileReview);
+
 /* ---------- 이벤트 배선 ---------- */
 $("#search").addEventListener("input", (e) => { state.query = e.target.value; render(); });
 document.querySelectorAll(".tab").forEach((b) =>
@@ -523,9 +694,21 @@ $("#st-auto-send").addEventListener("change", async (e) => {
   e.target.checked = state.autoSend;
 });
 $("#st-addfolder").addEventListener("click", async () => {
-  if (api()) { await api().add_folder(state.tab); refresh(); }
+  if (api()) { await withNativeDialog(() => api().add_folder(state.tab)); refresh(); }
 });
 $("#st-openlib").addEventListener("click", () => { if (api()) api().open_data_dir(); });
+$("#st-import-pack").addEventListener("click", async () => {
+  if (!api()) return;
+  const res = await withNativeDialog(() => api().import_pack());
+  if (res && res.ok) { await refresh(); flashHint("picker_pack_imported", res); }
+  else if (res && res.error !== "cancelled") flashHint("picker_pack_error");
+});
+$("#st-export-pack").addEventListener("click", async () => {
+  if (!api()) return;
+  const res = await withNativeDialog(() => api().export_pack());
+  if (res && res.ok) flashHint("picker_pack_done", res);
+  else if (res && res.error !== "cancelled") flashHint("picker_pack_error");
+});
 
 document.addEventListener("click", (e) => { if (!$("#ctx").contains(e.target)) hideCtx(); });
 /* 방향키/Enter는 검색창에 포커스가 있어도 그리드를 조작한다 (캐럿 이동보다
@@ -537,6 +720,8 @@ const CURSOR_MOVES = {
 window.addEventListener("keydown", (e) => {
   const modal = openModal();
   if (e.key === "Escape") {
+    if (modal && modal.id === "modal-profile") { closeProfileReview(); return; }
+    if (modal && modal.id === "modal-gif") { closeGifPreview(); return; }
     if (modal && modal.id === "modal-edit") editingId = "";
     if (modal) { modal.classList.add("hidden"); return; }
     if (!$("#ctx").classList.contains("hidden")) { hideCtx(); return; }
@@ -548,7 +733,9 @@ window.addEventListener("keydown", (e) => {
   if (move) { e.preventDefault(); moveCursor(move[0], move[1]); return; }
   if (e.key === "Enter") { e.preventDefault(); selectCursor(); }
 });
-window.addEventListener("blur", () => { if (api()) api().hide(); });
+window.addEventListener("blur", () => {
+  if (api() && !nativeDialogPending && !profileReview) api().hide();
+});
 
 /* ---------- 드래그앤드롭 (pywebviewFullPath) ---------- */
 let dragDepth = 0;
@@ -561,6 +748,18 @@ window.addEventListener("drop", async (e) => {
   $("#dropzone").classList.add("hidden");
   if (!api()) return;
   const paths = [...e.dataTransfer.files].map((f) => f.pywebviewFullPath).filter(Boolean);
+  if (paths.length === 1 && /\.zip$/i.test(paths[0])) {
+    // A pack drop is explicit opt-in, with exactly the same preflight as the
+    // Import Pack dialog. Other ZIPs are rejected; never extract arbitrary files.
+    const res = await api().import_pack_path(paths[0]);
+    if (res && res.ok) {
+      await refresh();
+      flashHint("picker_pack_imported", res);
+    } else {
+      flashHint("picker_pack_error");
+    }
+    return;
+  }
   if (paths.length) {
     const res = await api().register_files(paths, state.tab, currentCollection());
     await refresh();
@@ -600,6 +799,21 @@ window.addEventListener("paste", async (e) => {
 
 /* ---------- 표시 훅 (Python이 호출) ---------- */
 window.__onShow = () => {
+  // The popup may have hidden or lost focus during a native file dialog.
+  profileReview = null;
+  nativeDialogPending = false;
+  $("#modal-profile").classList.add("hidden");
+  $("#profile-restore-folders").checked = false;
+  // A previous popup may have closed on lost focus while a preview/modal
+  // was pending. The Python controller has already discarded the preview.
+  // Reset the presentation before the new picker session begins.
+  gifPreviewTicket++;
+  gifPreview = null;
+  $("#modal-gif").classList.add("hidden");
+  $("#gif-accept").disabled = true;
+  $("#gif-compare").classList.add("hidden");
+  $("#gif-source-image").removeAttribute("src");
+  $("#gif-result-image").removeAttribute("src");
   state.query = "";
   $("#search").value = "";
   hideCtx();

@@ -15,7 +15,8 @@ import threading
 import time
 import uuid
 
-SUPPORTED_EXTS = (".png", ".gif", ".webp")
+# Match importer extensions: watched JPEG files must not disappear from the picker.
+SUPPORTED_EXTS = (".png", ".gif", ".webp", ".jpg", ".jpeg")
 SCHEMA_VERSION = 1
 
 _INVALID_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
@@ -100,7 +101,14 @@ def _slug(name) -> str:
     name = (name or "").strip()
     if not name:
         return "_uncategorized"
-    return _INVALID_CHARS.sub("_", name)[:80] or "_uncategorized"
+    slug = _INVALID_CHARS.sub("_", name)[:80].strip(" .")
+    # On Windows, "." and ".." resolve to ancestor paths and DOS device names
+    # are not valid regular directories. Untrusted pack names must never escape.
+    reserved = {"CON", "PRN", "AUX", "NUL", *(f"COM{n}" for n in range(1, 10)),
+                *(f"LPT{n}" for n in range(1, 10))}
+    if not slug or slug.upper() in reserved:
+        return "_uncategorized"
+    return slug
 
 
 class Library:
@@ -135,7 +143,8 @@ class Library:
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     apply(json.load(f))
-            except (json.JSONDecodeError, OSError, KeyError, TypeError):
+            except (json.JSONDecodeError, OSError, KeyError, TypeError,
+                    ValueError, AttributeError):
                 try:  # 손상 파일은 백업하고 빈 상태로 시작
                     os.replace(path, path + ".bak")
                 except OSError:
@@ -159,8 +168,22 @@ class Library:
                 pass
 
     def _apply_lib(self, data: dict) -> None:
+        if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+            raise ValueError("invalid library item collection")
         items = {}
-        for i in data.get("items", []):
+        for i in data["items"]:
+            if not isinstance(i, dict):
+                raise ValueError("invalid library item")
+            ident, filename, kind = i.get("id"), i.get("filename"), i.get("type")
+            if (not isinstance(ident, str) or not ident or len(ident) > 128
+                    or not isinstance(kind, str)
+                    or kind not in {"emoji", "sticker", "gif"}
+                    or not isinstance(filename, str) or not filename
+                    or filename in {".", ".."}
+                    or "/" in filename or "\\" in filename
+                    or filename.endswith((" ", "."))
+                    or any(ord(c) < 32 for c in filename)):
+                raise ValueError("invalid stored asset entry")
             i.setdefault("convert_warning", False)  # 구버전 항목 하위호환
             i.setdefault("favorite", False)
             i.setdefault("collection", "")
@@ -169,7 +192,19 @@ class Library:
         self._items = items
 
     def _apply_folders(self, data: dict) -> None:
-        self._folders = list(data.get("folders", []))
+        if not isinstance(data, dict) or not isinstance(data.get("folders"), list):
+            raise ValueError("invalid folder collection")
+        folders = data["folders"]
+        if any(
+            not isinstance(folder, dict)
+            or not isinstance(folder.get("path"), str)
+            or not folder["path"]
+            or not isinstance(folder.get("default_type"), str)
+            or folder["default_type"] not in {"emoji", "sticker", "gif"}
+            for folder in folders
+        ):
+            raise ValueError("invalid stored watched folder")
+        self._folders = list(folders)
 
     def _save(self) -> None:
         self._atomic_write(self._lib_path(),

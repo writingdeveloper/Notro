@@ -6,7 +6,7 @@ from notro_app.monitor import Monitor
 
 def test_oversize_video_triggers_callback(tmp_path, monkeypatch):
     clip = tmp_path / "clip.mp4"
-    clip.write_bytes(b"\x00" * (config.LIMIT_BYTES + 1))
+    clip.write_bytes(b"\x00" * (config.UPLOAD_CEILING_BYTES + 1))
 
     monkeypatch.setattr(mon.cb, "clipboard_has_marker", lambda: False)
     monkeypatch.setattr(mon.cb, "get_clipboard_png", lambda: None)
@@ -37,7 +37,7 @@ def test_small_video_is_ignored(tmp_path, monkeypatch):
 def test_image_path_still_uses_image_pipeline(tmp_path, monkeypatch):
     """비디오 분기가 기존 이미지 경로를 깨지 않는다."""
     png = tmp_path / "big.png"
-    png.write_bytes(b"\x00" * (config.LIMIT_BYTES + 1))
+    png.write_bytes(b"\x00" * (config.UPLOAD_CEILING_BYTES + 1))
 
     monkeypatch.setattr(mon.cb, "clipboard_has_marker", lambda: False)
     monkeypatch.setattr(mon.cb, "get_clipboard_png", lambda: None)

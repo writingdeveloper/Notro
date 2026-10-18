@@ -96,21 +96,24 @@ def scaled_size(w: int, h: int, target_px: int) -> tuple[int, int]:
 
 
 # ---------- GIF 저장 ----------
-def save_gif(frames, durations, dest: str) -> None:
-    """RGBA 프레임 목록을 애니메이션 GIF로 저장한다.
+def save_gif(frames, durations, dest: str, *, colors: int = 255,
+             loop: int = 0, optimize: bool = False) -> None:
+    """RGBA frames -> GIF. Optional palette/loop settings for opt-in preview.
 
-    GIF 투명도는 1비트라 알파<128은 완전 투명으로 처리하고, 팔레트 255번을
-    투명색으로 예약한다.
+    GIF alpha is one bit: alpha < 128 becomes transparent at palette index 255.
+    Existing callers use unchanged defaults; the optimizer can reduce colors
+    and preserve the source animation's loop setting.
     """
     out = []
     for f in frames:
         alpha = f.getchannel("A")
-        p = f.convert("RGB").convert("P", palette=Image.ADAPTIVE, colors=255)
+        p = f.convert("RGB").convert("P", palette=Image.ADAPTIVE, colors=colors)
         mask = alpha.point(lambda a: 255 if a < 128 else 0)
         p.paste(255, mask)
         out.append(p)
     out[0].save(dest, format="GIF", save_all=True, append_images=out[1:],
-                duration=durations, loop=0, disposal=2, transparency=255)
+                duration=durations, loop=loop, disposal=2,
+                transparency=255, optimize=optimize)
 
 
 # ---------- 캐시 ----------

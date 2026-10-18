@@ -214,3 +214,22 @@ button.wide:hover { background: var(--accent); color: #fff; }
   display: flex; align-items: center; justify-content: center;
   color: var(--text); font-weight: 600; pointer-events: none;
 }
+
+/* Explicit before/after decision: no silent lossy GIF conversion. */
+.gif-modal { width: 450px; }
+.gif-compare { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.gif-preview-panel { min-width:0; display:flex; flex-direction:column; gap:5px; }
+.gif-preview-panel span { font-size:11px; color:var(--muted); }
+.gif-preview-panel img {
+  width:100%; height:125px; background:var(--panel); border:1px solid var(--hover);
+  object-fit:contain; border-radius:6px;
+}
+#gif-meta { line-height:1.5; }
+#gif-accept:disabled { opacity:.45; cursor:default; }
+
+/* Opt-in settings portability: never silently include local directory paths. */
+.profile-option { cursor:pointer; }
+.profile-option input[type=checkbox] {
+  width:18px; height:18px; flex:0 0 18px; accent-color:var(--accent);
+}
+.profile-option .note { flex:1; min-width:0; line-height:1.4; }

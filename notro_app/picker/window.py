@@ -6,12 +6,15 @@ from __future__ import annotations
 import ctypes
 import ctypes.wintypes as wt
 import os
+import secrets
 import sys
+import threading
 
 from .. import clipboard_win as cb
 from .. import config
 from ..capture_store import (CAPTURE_COLLECTION_ID, CaptureStore,
                              read_clipboard_png)
+from .gif_preview import GifPreviewMixin
 
 user32 = ctypes.windll.user32
 
@@ -140,7 +143,7 @@ def popup_geometry() -> tuple[int, int, int, int]:
 
 
 def prepare_for_paste(path: str, limit_bytes: int, temp_dir: str,
-                      target_px: int = 0) -> tuple[str, bool]:
+                      target_px: int = 0, upload_ceiling_bytes: int | None = None) -> tuple[str, bool]:
     """붙여넣기 전처리 (스펙 §6.7/§6.8/§7).
 
     1) 표시 크기 정규화: target_px > 0이면 긴 변을 그 크기로 맞춘다 (§6.8).
@@ -157,7 +160,9 @@ def prepare_for_paste(path: str, limit_bytes: int, temp_dir: str,
         size = os.path.getsize(path)
     except OSError:
         return path, False
-    if size <= limit_bytes:
+    # Only compress files that exceed the actual upload ceiling. The safety
+    # margin belongs to the encoded output target, not the detection threshold.
+    if size <= (upload_ceiling_bytes if upload_ceiling_bytes is not None else limit_bytes):
         return path, False
     if path.lower().endswith(".gif"):
         return path, True
@@ -207,6 +212,21 @@ PICKER_STRING_KEYS = [
     "picker_auto_send", "picker_auto_send_note",
     "picker_edit_title", "picker_edit_note", "picker_edit_save",
     "picker_ctx_edit", "picker_err_duplicate", "picker_drop_duplicate",
+    "picker_pack_import", "picker_pack_export", "picker_pack_done",
+    "picker_pack_imported", "picker_pack_error",
+    "picker_profile_export", "picker_profile_import",
+    "picker_profile_title", "picker_profile_include_paths",
+    "picker_profile_no_paths", "picker_profile_review_title",
+    "picker_profile_review_note", "picker_profile_folders_restore",
+    "picker_profile_confirm", "picker_profile_cancel",
+    "picker_profile_exported", "picker_profile_restored",
+    "picker_profile_error", "picker_profile_restart",
+    "picker_profile_counts",
+    "picker_gif_optimize", "picker_gif_title", "picker_gif_loading",
+    "picker_gif_original", "picker_gif_result", "picker_gif_accept",
+    "picker_gif_cancel", "picker_gif_note", "picker_gif_fits",
+    "picker_gif_cannot_fit", "picker_gif_too_complex", "picker_gif_failed",
+    "picker_gif_outdated", "picker_gif_info",
 ]
 
 
@@ -217,7 +237,23 @@ def _collection(name) -> str:
     return "" if name in ("__all__", "__fav__") else name
 
 
-class PickerApi:
+def _native_dialog_kind(name: str, module=None):
+    """Prefer current pywebview FileDialog enum, fallback without eager warning.
+
+    Evaluating the old SAVE_DIALOG/OPEN_DIALOG attributes even as a fallback
+    argument raises a deprecation warning on pywebview 6.x.
+    """
+    if module is None:
+        import webview as module
+
+    kinds = getattr(module, "FileDialog", None)
+    modern = getattr(kinds, name, None) if kinds is not None else None
+    if modern is not None:
+        return modern
+    return getattr(module, name + "_DIALOG")
+
+
+class PickerApi(GifPreviewMixin):
     """JS 브리지. 각 메서드는 pywebview API 스레드에서 호출된다.
 
     주의: pywebview는 js_api 객체의 공개 속성을 재귀 탐색해 JS에 노출한다.
@@ -231,6 +267,90 @@ class PickerApi:
         self._asset_server = asset_server
         self._capture_store = capture_store or (
             CaptureStore(library) if library is not None else None)
+        self._init_gif_preview()
+        self._profile_lock = threading.Lock()
+        self._profile_review = None
+
+    def export_preferences(self, include_folders: bool = False) -> dict:
+        """Explicit save-file dialog: settings only, media/Captures excluded."""
+        import webview
+        from .. import settings_backup
+
+        chosen = self._ctrl.window.create_file_dialog(
+            _native_dialog_kind("SAVE", webview),
+            save_filename="notro-settings.json",
+            file_types=("JSON settings (*.json)",))
+        if not chosen:
+            return {"ok": False, "error": "cancelled"}
+        path = chosen[0] if isinstance(chosen, (list, tuple)) else chosen
+        try:
+            result = settings_backup.export_settings(
+                self._library, path, include_folders=bool(include_folders))
+        except (OSError, ValueError):
+            return {"ok": False, "error": "settings"}
+        return {"ok": True, **{
+            k: result[k] for k in ("settings_count", "folders_count")}}
+
+    def preview_preferences(self) -> dict:
+        """Explicit open-file dialog; no settings or folders changed yet."""
+        import webview
+        from .. import settings_backup
+
+        chosen = self._ctrl.window.create_file_dialog(
+            _native_dialog_kind("OPEN", webview),
+            file_types=("JSON settings (*.json)",))
+        if not chosen:
+            return {"ok": False, "error": "cancelled"}
+        path = chosen[0] if isinstance(chosen, (list, tuple)) else chosen
+        with self._profile_lock:
+            self._profile_review = None
+            try:
+                doc, digest = settings_backup.preview_settings(path)
+            except (OSError, ValueError):
+                return {"ok": False, "error": "settings"}
+            token = secrets.token_urlsafe(28)
+            self._profile_review = {
+                "token": token, "path": str(path), "sha256": digest,
+            }
+            return {
+                "ok": True, "token": token,
+                "settings_count": len(doc["settings"]),
+                "folders_count": len(doc["watched_folders"]),
+                # Never display watched absolute paths in the picker.
+                "sensitive_features_disabled": True,
+            }
+
+    def discard_preferences_preview(self, token: str = "") -> bool:
+        with self._profile_lock:
+            if self._profile_review and (
+                    not token or self._profile_review["token"] == token):
+                self._profile_review = None
+                return True
+            return False
+
+    def apply_preferences(self, token: str,
+                          restore_folders: bool = False) -> dict:
+        """Consume a reviewed snapshot only after separate user approval."""
+        from .. import settings_backup
+
+        with self._profile_lock:
+            review = self._profile_review
+            self._profile_review = None
+            if not review or not secrets.compare_digest(
+                    review["token"], str(token)):
+                return {"ok": False, "error": "outdated"}
+            try:
+                doc, digest = settings_backup.preview_settings(review["path"])
+            except (OSError, ValueError):
+                return {"ok": False, "error": "outdated"}
+            if not secrets.compare_digest(digest, review["sha256"]):
+                return {"ok": False, "error": "outdated"}
+            try:
+                result = settings_backup.apply_settings(
+                    doc, self._library, restore_folders=bool(restore_folders))
+            except (OSError, ValueError):
+                return {"ok": False, "error": "settings"}
+            return {"ok": True, **result}
 
     def _display(self, item: dict) -> dict:
         from ..i18n import tr
@@ -352,6 +472,48 @@ class PickerApi:
 
         return {"ok": True, "type": type_, "px": resize.set_target_px(type_, px)}
 
+    def export_pack(self) -> dict:
+        """Explicit dialog; export only registered non-Captures images."""
+        import webview
+        from .. import packs
+
+        dialog = _native_dialog_kind("SAVE", webview)
+        chosen = self._ctrl.window.create_file_dialog(
+            dialog, save_filename="notro-pack.zip",
+            file_types=("ZIP archives (*.zip)",))
+        if not chosen:
+            return {"ok": False, "error": "cancelled"}
+        path = chosen[0] if isinstance(chosen, (list, tuple)) else chosen
+        try:
+            result = packs.export_pack(self._library, path)
+        except Exception:
+            return {"ok": False, "error": "pack"}
+        return {"ok": True, "count": result["count"]}
+
+    def import_pack(self) -> dict:
+        """Explicit dialog; preflight ZIP before library mutations."""
+        import webview
+
+        dialog = _native_dialog_kind("OPEN", webview)
+        chosen = self._ctrl.window.create_file_dialog(
+            dialog, file_types=("ZIP archives (*.zip)",))
+        if not chosen:
+            return {"ok": False, "error": "cancelled"}
+        path = chosen[0] if isinstance(chosen, (list, tuple)) else chosen
+        return self.import_pack_path(path)
+
+    def import_pack_path(self, path: str) -> dict:
+        """Import one explicitly chosen/dropped ZIP; shared validation path."""
+        from .. import packs
+
+        if not isinstance(path, str) or not path.lower().endswith(".zip"):
+            return {"ok": False, "error": "pack"}
+        try:
+            result = packs.import_pack(self._library, path)
+        except Exception:
+            return {"ok": False, "error": "pack"}
+        return {"ok": True, **result}
+
     def register_clipboard(self, type_: str, collection: str = "") -> dict:
         """클립보드의 PNG 이미지를 라이브러리에 등록 (스펙 §5 — 디스코드/브라우저
         에서 이미지를 복사한 뒤 붙여넣는 주 경로). 재인코딩 추정이 아닌 클립보드
@@ -375,7 +537,8 @@ class PickerApi:
 
     def add_folder(self, default_type: str = "gif") -> dict:
         import webview
-        res = self._ctrl.window.create_file_dialog(webview.FOLDER_DIALOG)
+        res = self._ctrl.window.create_file_dialog(
+            _native_dialog_kind("FOLDER", webview))
         if res:
             self._library.add_folder(res[0], default_type)
             return {"ok": True}
@@ -429,8 +592,9 @@ class PickerController:
             except Exception:
                 pass
 
-    def select(self, item_id: str, mode: str = "file") -> None:
-        """피커 선택 → 숨김 → 클립보드 → 포커스 복귀 → Ctrl+V. 전송은 사용자."""
+    def select(self, item_id: str, mode: str = "file",
+               override_path: str | None = None) -> bool:
+        """Picker selection -> OS clipboard -> original focused window."""
         import time as _t
 
         from .. import config, resize
@@ -438,34 +602,75 @@ class PickerController:
 
         item = self._resolve(item_id)
         if not item:
-            return
+            return False
+        # Preserve any newer copy made while an image is being prepared.
+        seq_before = cb.get_sequence_number() or None
         self.hide()
         warn = False
-        if mode == "url" and item.get("source_url"):
-            ok = cb.set_clipboard_text(item["source_url"])
+        if override_path is not None:
+            path = override_path
+        elif mode == "url" and item.get("source_url"):
+            path = None
         else:
-            path, warn = prepare_for_paste(
-                self.library.asset_path(item), config.LIMIT_BYTES,
-                config.TEMP_DIR, target_px=resize.target_px_for(item["type"]))
-            ok = cb.set_clipboard_file(path)
-        focused = cb.focus_window(self.prev_hwnd)
-        if ok and focused:
-            _t.sleep(0.12)
-            cb.send_ctrl_v()
-            # 자동 전송(opt-in): 디스코드가 첨부를 입력창에 붙일 시간을 준 뒤
-            # Enter를 보낸다. 되돌릴 수 없는 동작이라 기본은 꺼짐이고, 링크로
-            # 붙여넣기(mode="url")에는 적용하지 않는다 — 그쪽은 보통 문장 중간에
-            # 끼워 넣는 용도라 바로 보내면 곤란하다.
-            if mode != "url" and config.get_setting_flag("auto_send"):
-                _t.sleep(auto_send_delay())
-                cb.send_enter()
-            if warn:
-                self._notify(tr("picker_oversize_warn"))
-        elif ok:
-            self._notify(tr("notify_paste_manual"))
+            try:
+                path, warn = prepare_for_paste(
+                    self.library.asset_path(item), config.LIMIT_BYTES,
+                    config.TEMP_DIR, target_px=resize.target_px_for(item["type"]),
+                    upload_ceiling_bytes=config.UPLOAD_CEILING_BYTES)
+            except (OSError, ValueError):
+                self._notify(tr("notify_clipboard_fail"))
+                return False
+
+        # Check target BEFORE changing the clipboard. If the original
+        # window was closed or focus changed, preserve the user's copy.
+        target_hwnd = self.prev_hwnd
+        if not cb.focus_window(target_hwnd):
+            self._notify(tr("notify_paste_target_lost"))
+            return False
+        _t.sleep(0.12)
+        if not cb.is_window_focused(target_hwnd):
+            self._notify(tr("notify_paste_target_lost"))
+            return False
+
+        if path is None:
+            ok = cb.set_clipboard_text(
+                item["source_url"], guard_seq=seq_before)
         else:
+            ok = cb.set_clipboard_file(path, guard_seq=seq_before)
+        if ok is None:
+            self._notify(tr("notify_clipboard_changed"))
+            return False
+        if not ok:
             self._notify(tr("notify_clipboard_fail"))
+            return False
+
+        # Clipboard writes may yield to another process; recheck right
+        # before injecting keys, and do not count a rejected SendInput.
+        if not cb.is_window_focused(target_hwnd):
+            self._notify(tr("notify_paste_manual"))
+            return False
+        if not cb.send_ctrl_v():
+            self._notify(tr("notify_paste_manual"))
+            return False
         self.library.touch(item["id"])
+        if warn:
+            self._notify(tr("picker_oversize_warn"))
+
+        # Auto-send is opt-in, OFF by default. Pasting works in any app but
+        # automatic Enter is restricted to an unmodified Discord desktop
+        # process, not Discord Web or other chat applications. Check again
+        # immediately before sending: upload/draft focus can change mid-delay.
+        if mode == "file" and override_path is None and config.get_setting_flag("auto_send"):
+            if not cb.is_discord_desktop_window(target_hwnd):
+                self._notify(tr("notify_auto_send_discord_only"))
+            else:
+                _t.sleep(auto_send_delay())
+                if (cb.is_window_focused(target_hwnd)
+                        and cb.is_discord_desktop_window(target_hwnd)):
+                    cb.send_enter()
+                else:
+                    self._notify(tr("notify_auto_send_focus_changed"))
+        return True
 
     def create_window(self):
         import webview
@@ -564,6 +769,13 @@ class PickerController:
             pass
 
     def hide(self):
+        # Closing the picker without accepting a GIF must not retain its
+        # temporary preview or expose its URL until the next app restart.
+        if self._api:
+            try:
+                self._api.discard_gif_preview()
+            except Exception:
+                pass
         try:
             self._remember_size()
         except Exception:

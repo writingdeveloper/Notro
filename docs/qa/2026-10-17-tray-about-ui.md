@@ -1,0 +1,211 @@
+# Notro v2.11.0 — native tray menu and About QA (2026-10-17)
+
+## Purpose and release state
+
+The user requested an About view showing program version, GitHub, releases,
+MIT license and environment; and a Discord-inspired dark menu when
+right-clicking Notro's Windows notification-area icon.
+
+This is an independent Notro WebView2 popup, NOT a modification of the Discord
+client. v2.11.0 remains an unmerged Draft PR; v2.10.3 remains latest publicly
+available. No code signing, public release, marketing post or user data changes.
+
+## Implementation
+
+- notro_app/tray_panel.py: About payload uses notro_app.__version__ and
+  fixed source, release, issue and MIT-license URLs. Private ctypes Win32
+  functions position only the owned popup on the active monitor. Fallback
+  is a native About dialog when WebView2 is absent.
+- notro_app/picker/ui/tray_panel.{html,css,js}: independent Notro logo,
+  Discord-inspired #17191f dark background, #5865f2 accent, current
+  version, live status, picker shortcut, monitoring toggle, library,
+  upload limit, language, keyboard shortcut, startup, updates, About
+  navigation and links. No remote assets or third-party data.
+- notro_app/tray.py: intercepts WM_RBUTTONUP for Notro's OWN pystray
+  notification-area icon when a working WebView2 bridge exists; otherwise
+  the classic native Windows context menu still appears, including About.
+  Shares existing menu handlers and validates action names and values.
+- notro_app/app.py: constructs and later destroys the new hidden panel
+  alongside the existing picker. The no-WebView2 branch keeps the
+  original native notification-area UI.
+- notro_app/i18n.py: full copy in English, Korean, Japanese,
+  Simplified Chinese and Spanish.
+- The packaged UI is included by existing PyInstaller add-data settings;
+  the About version and links come from local code, not network requests.
+
+## Native screen captures
+
+- tray-menu-native-preview.png: actual Windows pywebview/Edge WebView2
+  home panel, captured with the own CoreWebView2.CapturePreviewAsync API.
+- tray-about-native-preview.png: actual About panel, including
+  visible version, Windows/WebView2/MIT, unsigned/independent disclosure
+  and GitHub repository link near the top.
+
+These are isolated QA-process screenshots with synthetic state, NOT an
+installed user app screenshot or Discord chat evidence. The capture
+method does not record the desktop or any other process.
+
+## QA commands and verified scope
+
+On an authorized Windows test PC:
+
+    python scripts/qa_native_tray_panel.py --output-dir docs/qa
+
+The native QA fixture creates its own unregistered test icon, simulates its
+WM_RBUTTONUP handler, checks fallback before bridge readiness, opens a real
+native WebView2 popup, navigates to About, verifies v2.11.0/GitHub/unsigned
+information, changes a test-only upload setting, handles Escape navigation
+and closing, and invokes the picker quick action through a fake controller.
+The fixture never reads or changes actual user registry/clipboard/Discord.
+
+Additional source and UI regression suites:
+- tests/test_tray_panel_metadata.py
+- tests/test_tray_panel_actions.py
+- tests/test_tray_panel_ui_contract.py
+- tests/test_i18n.py
+
+## Real bug found and fixed
+
+The draft used pywebview.Window.move(x, y) after window.show().
+On the installed WinForms/pywebview backend, that path passed None for
+unused Win32 SetWindowPos size parameters and raised an ArgumentError.
+The popup now moves via its own private WinDLL user32 function table, using
+the exact owned Notro popup HWND. No global API prototypes are overwritten.
+A fresh native QA run confirms normal open, About, settings and close.
+
+## Still not proven by this QA
+
+- The actual packaged EXE creation of its hidden popup must pass on a
+  disposable Windows GitHub Actions runner before marking packaging done.
+- Human Windows 10/11 right-click experience, SmartScreen warning, DPI,
+  multiple monitors and keyboard accessibility need human acceptance.
+- A Discord-approved non-sending draft attachment still needs separate
+  user-authorized testing (Plane NOTRO-5).
+- The portfolio landing security audit, version-matched public download
+  and human release authorization remain P0.
+- The user opted out of signing. Do not apply for certificates or bypass
+  Windows protections.
+
+
+## Successful Windows CI and packaged EXE check
+
+- GitHub CI source commit 461db39:
+  https://github.com/writingdeveloper/Notro/actions/runs/39085969840
+  PASSED, 485 unit/regression tests, Ruff and dependency audit.
+- Manual unsigned candidate workflow:
+  https://github.com/writingdeveloper/Notro/actions/runs/39085985603
+  PASSED, actual public v2.10.3 -> candidate 2.11.0 upgrade, synthetic
+  APPDATA preserved, real installed EXE launched. Its own process window
+  enumeration includes a **hidden Notro Tray Menu** window alongside
+  the hidden Notro Picker and the visible first-run Notro welcome.
+  Auto-send and capture OFF, Windows startup unchanged. Uninstaller
+  succeeded, public release publishing SKIPPED.
+- Same-run unsigned NotroSetup.exe was downloaded for checksum inspection
+  without executing on the user's active PC. Size 17,215,650 bytes; SHA256
+  62593f9b66f5ae6e568ef14b6b674c68934a69523e2f860d70503b8c85c23169,
+  matching official QA run manifest; file ProductVersion 2.11.0, publisher
+  signature NotSigned (expected by user decision). Candidate still Draft PR.
+- Plane NOTRO-34 About and NOTRO-35 styled tray are Done for source/native
+  QA and packaged hidden-window smoke; a person's actual Windows 10/11
+  right-click accessibility/DPI/SmartScreen review is separate NOTRO-24.
+  Real Discord unsent-file attachment is separate NOTRO-5.
+
+
+## Follow-up: DPI-safe positioning and smaller display QA
+
+- On @4080 the real Win32 Notro test window runs at 200% DPI. During
+  compact-window testing, the draft passed logical WebView2 width/height
+  directly to physical Win32 SetWindowPos and the panel unexpectedly
+  collapsed from intended 362x532 CSS px to 310x320 CSS px. The previous
+  minimum-window setting masked this real DPI bug.
+- Fixed by requesting native GetDpiForWindow on the owned popup's HWND
+  and scaling CSS layout to physical pixels before SetWindowPos.
+  Independently verified actual 192 DPI, browser 362x532 CSS and
+  real Windows frame 724x1064 physical pixels. 100% and 200% conversion
+  have regression coverage.
+- Added 310x320 logical minimum and a native-menu fallback when
+  monitor work area is smaller than that minimum; no clipping
+  attempt is made in the impossible work-area case.
+- Repeated native @4080 WebView2 QA with five localizations,
+  keyboard navigation/accessible GitHub focus, simulated in-browser
+  100/125/150% zoom (not real monitor DPI), and a *real Win32*
+  330x420 logical pixel compact popup. The About license link
+  remains horizontally reachable after scrolling. These checks passed.
+- The no-WebView2 native Windows About dialog now uses current
+  language strings rather than fixed English. No real user setting
+  or clipboard was modified.
+- **NOT yet tested:** moving a real installed Notro popup between
+  two monitors of different 100%/200% native DPI, Windows 10
+  multi-monitor taskbar placement and physical user right-click.
+  These remain within NOTRO-24.
+- New hosted runner QA sends only an OS WM_NOTIFY/WM_RBUTTONUP message
+  to the registered systray window of the *test-installed Notro EXE*
+  and observes the owned popup opening/closing. It is **pending**
+  actual remote PASS and must never be conflated with human input.
+
+
+## Isolated installed EXE notification-area message dispatch PASSED
+
+After the previous first-run modal prevented a naive external WM_CLOSE from
+dismissing the welcome, the disposable-runner QA now tests two distinct
+application starts on the SAME throwaway profile: first verifies the welcome
+and hidden picker/tray popup, then terminates ONLY that test process tree
+and reopens the installed candidate with its already-written welcome marker.
+
+In the second, returning-user start it enumerates top-level Win32 windows
+owned by the new process ID, finds its own pystray Notro*SystemTrayIcon
+class, then posts native WM_NOTIFY / WM_RBUTTONUP to its own icon HWND.
+A second notification verifies the owned Notro Tray Menu closes again.
+
+- Source 0b81b17 (before subsequent title/PID hardening).
+- Manual unsigned GitHub Actions run:
+  https://github.com/writingdeveloper/Notro/actions/runs/39093341101
+  PASSED with real_tray_notification_open=true,
+  real_tray_notification_close=true,
+  returning_user_process=true,
+  returning_user_no_welcome=true,
+  returning_user_tray_created=true, errors=[], passed=true.
+- Actual v2.10.3 -> v2.11.0 upgrade, synthetic profile retention,
+  installer/uninstaller, welcome/picker, default safety switches and
+  startup state all passed; public Publish release was skipped.
+- Independently downloaded run's QA installer into TEMP without executing it
+  on the user's active PC: NotroSetup.exe size 17,223,664 bytes; SHA-256
+  f277fbf226528a58c39411ce50e0fa4f5fb935b907f52fbf7ef70773b1fd4eb9,
+  matching the run's checksum manifest, version 2.11.0, NotSigned.
+- Another defensive source change checks the title-matched tray popup
+  HWND is owned by the current process before GetDpiForWindow or SetWindowPos.
+  Actual native @4080 QA passed; until subsequent packaged-run validation,
+  that guard itself is marked a source-level verification.
+- This proves real Windows event dispatch to the installed EXE in a
+  hosted disposable service session, not an actual person's physical
+  mouse action, two-monitor taskbar use, SmartScreen approval, or Discord.
+
+
+## FINAL: own-HWND/PID-safe packaged tray QA green
+
+Final production-source security patch c7248b3 verifies the target HWND
+belongs to its OWN Notro process before positioning with GetDpiForWindow
+and SetWindowPos. It prevents accidentally moving an unrelated window
+with the same caption. Actual native @4080 200% DPI/5 locales/keyboard/
+small-window test PASS and all 494 local tests PASS.
+
+- Exact-source Windows CI:
+  https://github.com/writingdeveloper/Notro/actions/runs/39093635986
+  PASS (494 tests, lint, dependency audit and upload media regression).
+- Exact-source disposable Windows installer QA:
+  https://github.com/writingdeveloper/Notro/actions/runs/39093633727
+  PASS, showing real installed EXE first-run welcome, then returning-user
+  start with no welcome, right-click notification to its own registered
+  pystray HWND: menu visibly OPEN then CLOSED, no failed stages. Upgrade
+  from official v2.10.3 and dummy data preservation/uninstall PASS.
+- Independent QA artifact verified WITHOUT installing it on @4080:
+  NotroSetup.exe 17,222,275 bytes; SHA256
+  c122cf31b40607faa7b5e9ff2f6075cfbc72f47ff0634cbe990cdc519240e360
+  matches same-run manifest; ProductVersion 2.11.0, Authenticode NotSigned.
+  Published release was SKIPPED; public latest is v2.10.3.
+
+Plane NOTRO-36 is Done for **packaged Windows own-tray message QA**, not
+human right-click. NOTRO-24 still tracks human Windows10/11 install,
+multi-monitor physical 100%/200% DPI, real mouse accessibility and
+no-WebView2 fallback. NOTRO-5 remains a separate real Discord **unsent
+draft attachment** P0. No signing, public release, or account interaction.

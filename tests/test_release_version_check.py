@@ -57,15 +57,15 @@ def _run_commands(workflow: str) -> list[str]:
 
 
 def test_expected_tag_uses_app_version():
-    assert check_release_version.expected_tag() == "v2.10.3"
+    assert check_release_version.expected_tag() == "v2.11.0"
 
 
 def test_validate_tag_accepts_matching_release():
-    check_release_version.validate_tag("v2.10.3")
+    check_release_version.validate_tag("v2.11.0")
 
 
 def test_validate_tag_rejects_mismatch():
-    with pytest.raises(ValueError, match="expected v2.10.3"):
+    with pytest.raises(ValueError, match="expected v2.11.0"):
         check_release_version.validate_tag("v2.10.4")
 
 
@@ -76,7 +76,7 @@ def test_cli_returns_nonzero_for_mismatched_tag():
         capture_output=True,
     )
     assert result.returncode != 0
-    assert "expected v2.10.3" in result.stderr
+    assert "expected v2.11.0" in result.stderr
 
 
 def test_cli_returns_nonzero_for_shell_significant_mismatched_tag():
@@ -86,7 +86,7 @@ def test_cli_returns_nonzero_for_shell_significant_mismatched_tag():
         capture_output=True,
     )
     assert result.returncode != 0
-    assert "expected v2.10.3" in result.stderr
+    assert "expected v2.11.0" in result.stderr
 
 
 def test_release_workflow_passes_tag_by_environment_variable():
@@ -200,3 +200,231 @@ def test_release_workflow_uses_node_24_release_action_major():
     assert re.findall(r"softprops/action-gh-release@\S+", workflow) == [
         "softprops/action-gh-release@v3"
     ]
+
+
+def test_manual_release_run_uploads_short_lived_unsigned_qa_artifact():
+    workflow = _workflow(RELEASE_WORKFLOW)
+    step = _step(workflow, "Upload unsigned QA installer")
+    assert "if: github.event_name == 'workflow_dispatch'" in step
+    assert "actions/upload-artifact@v7" in step
+    assert "NOTRO-UNSIGNED-QA-" in step
+    assert "retention-days: 3" in step
+    assert "if-no-files-found: error" in step
+    assert "overwrite: false" in step
+    assert "dist/NotroSetup.exe.sha256" in step
+    assert "dist/NotroSetup.exe" in step
+    assert PUSH_TAG_GUARD in _step(workflow, "Publish release")
+
+
+def test_release_gates_audit_pinned_build_requirements_and_media_thresholds():
+    release = _workflow(RELEASE_WORKFLOW)
+    ci = _workflow(CI_WORKFLOW)
+    assert "run: pip install -r requirements-build.txt" in release
+    assert "python -m pip_audit -r requirements-build.txt --strict" in release
+    assert "python -m pip_audit -r requirements-build.txt --strict" in ci
+    assert "python scripts/qa_release_media_preflight.py" in release
+    assert "python scripts/qa_release_media_preflight.py" in ci
+    assert "Publish release" in release
+    assert PUSH_TAG_GUARD in _step(release, "Publish release")
+
+
+def test_build_tools_versions_pinned_with_no_runtime_signing():
+    build_req = Path("requirements-build.txt").read_text(encoding="utf-8")
+    build_script = Path("build.bat").read_text(encoding="utf-8-sig")
+    assert "pyinstaller==6.21.0" in build_req
+    assert "pip-audit==2.10.1" in build_req
+    assert "requirements-build.txt" in build_script
+    assert "signpath" not in build_req.lower()
+
+
+def test_unsigned_disposable_runner_installer_smoke_is_opt_in():
+    release = _workflow(RELEASE_WORKFLOW)
+    stage = _step(release, "QA install and uninstall on ephemeral runner")
+    assert "if: github.event_name == 'workflow_dispatch'" in stage
+    assert "scripts/qa_installer_smoke.ps1" in stage
+    assert PUSH_TAG_GUARD in _step(release, "Publish release")
+    inno = Path("installer.iss").read_text(encoding="utf-8-sig")
+    assert "Check: ShouldLaunchNotro" in inno
+    assert "NOTRO_QA_SUPPRESS_AUTORUN" in inno
+    assert "Result := GetEnv(" in inno
+    ps = Path("scripts/qa_installer_smoke.ps1").read_text(encoding="utf-8")
+    assert "GITHUB_ACTIONS" in ps and "RUNNER_TEMP" in ps
+    assert "NOTRO_QA_SUPPRESS_AUTORUN" in ps
+    assert "NotSigned" in ps
+    assert "QA_INSTALL_UNINSTALL_PASSED" in ps
+    assert "unins000.exe" in ps
+
+
+def test_release_refuse_tags_not_reachable_from_origin_main():
+    workflow = _workflow(RELEASE_WORKFLOW)
+    ancestry = _step(workflow, "Verify release tag belongs to main")
+    assert "if: startsWith(github.ref, 'refs/tags/')" in ancestry
+    assert "git fetch origin main" in ancestry
+    assert "git merge-base --is-ancestor $env:GITHUB_SHA origin/main" in ancestry
+    assert "$LASTEXITCODE -ne 0" in ancestry
+    assert "fetch-depth: 0" in workflow
+
+
+def test_media_release_gate_includes_real_pixel_data_not_just_padding():
+    script = Path("scripts/qa_release_media_preflight.py").read_text(
+        encoding="utf-8"
+    )
+    assert "rng.randbytes(3000 * 3000 * 3)" in script
+    assert 'summary["real_pixel_png"]' in script
+    assert "sha256(noisy) == noise_digest" in script
+    assert "converted.stat().st_size <= config.LIMIT_BYTES" in script
+
+
+def test_qa_installer_upgrade_from_checksum_verified_public_release():
+    release = _workflow(RELEASE_WORKFLOW)
+    stage = _step(release, "QA install and uninstall on ephemeral runner")
+    assert "GH_TOKEN:" in stage and "github.token" in stage
+    script = Path("scripts/qa_installer_smoke.ps1").read_text(encoding="utf-8")
+    assert "gh release download v2.10.3" in script
+    assert "Get-FileHash -LiteralPath $baselineExe -Algorithm SHA256" in script
+    assert "Baseline process still running before upgrade" in script
+    assert "Synthetic settings/data marker" in script
+    assert "NOTRO_QA_BASELINE_TO_CANDIDATE_UPGRADE_PRESERVED_DATA" in script
+    assert "NOTRO_QA_UPGRADE_UNINSTALL_PASSED" in script
+
+
+def test_installer_upgrade_waits_for_installer_only_not_persistent_tray_child():
+    script = Path("scripts/qa_installer_smoke.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "$Process.WaitForExit(120000)" in script
+    assert "Wait-OnlyInstallerProcess -Process $baseline" in script
+    assert "Wait-OnlyInstallerProcess -Process $installed" in script
+    assert "Wait-OnlyInstallerProcess -Process $uninstalled" in script
+    assert not any("-Wait -PassThru" in line for line in script.splitlines())
+
+
+def test_runner_clipboard_contract_cannot_run_on_real_user_pc():
+    release = _workflow(RELEASE_WORKFLOW)
+    stage = _step(release, "QA native Win32 clipboard on disposable runner")
+    assert "if: github.event_name == 'workflow_dispatch'" in stage
+    assert "python scripts/qa_runner_clipboard_cf_hdrop.py" in stage
+    script = Path("scripts/qa_runner_clipboard_cf_hdrop.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'os.environ.get("GITHUB_ACTIONS") != "true"' in script
+    assert 'os.environ.get("RUNNER_TEMP")' in script
+    assert "cb.set_clipboard_file" in script
+    assert "cb.CF_HDROP" in script
+    assert "cb.set_clipboard_text" in script
+    assert "guard_seq=before" in script
+    assert "clear_runner_clipboard()" in script
+    assert "cb.send_ctrl_v" not in script and "cb.send_enter" not in script
+
+
+def test_hosted_runner_own_window_paste_qa_does_not_send_discord_messages():
+    workflow = _workflow(RELEASE_WORKFLOW)
+    step = _step(workflow, "QA own-window Win32 Ctrl+V and focus recovery")
+    assert "if: github.event_name == 'workflow_dispatch'" in step
+    assert "python scripts/qa_runner_owned_target_paste.py" in step
+    source = Path("scripts/qa_runner_owned_target_paste.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'os.environ.get("GITHUB_ACTIONS") != "true"' in source
+    assert "IsolatedLibrary" in source
+    assert "PickerController" in source
+    assert "cb.focus_window(hwnd)" in source
+    assert "root = tk.Tk()" in source
+    assert "entry.bind" in source
+    assert "cb.send_enter = reject_enter" in source
+    assert "window.config.get_setting_flag = lambda name: False" in source
+    assert "clear_clipboard()" in source
+    assert "discord.com" not in source
+
+
+def test_real_installed_candidate_first_run_gui_is_runner_only():
+    script = Path("scripts/qa_runner_installed_first_run.py").read_text(
+        encoding="utf-8"
+    )
+    ps = Path("scripts/qa_installer_smoke.ps1").read_text(encoding="utf-8")
+    assert "qa_runner_installed_first_run.py" in ps
+    assert "--exe $exe --expected-version $ExpectedVersion" in ps
+    assert 'os.environ.get("GITHUB_ACTIONS") != "true"' in script
+    assert 'os.environ.get("RUNNER_TEMP")' in script
+    assert 'env["APPDATA"] = str(private_appdata)' in script
+    assert '"auto_send", 0' in script and '"auto_capture_save", 0' in script
+    assert '"auto_update", 0' in script and '"hotkey"' in script
+    assert 'w["title"] == "Notro" and w["visible"]' in script
+    assert 'w["title"] == "Notro Picker"' in script
+    assert '"taskkill.exe", "/PID", str(proc.pid), "/T", "/F"' in script
+    assert "GetWindowThreadProcessId" in script
+    assert "SendInput" not in script
+    assert "set_clipboard_file" not in script
+
+
+def test_installed_candidate_creates_hidden_styled_tray_popup():
+    source = Path("scripts/qa_runner_installed_first_run.py").read_text(
+        encoding="utf-8"
+    )
+    assert '"tray_panel_created": False' in source
+    assert 'w["title"] == "Notro Tray Menu" and not w["visible"]' in source
+    assert 'result["tray_panel_created"],' in source
+
+
+def test_installed_exe_runner_receives_own_win32_tray_right_click():
+    source = Path("scripts/qa_runner_installed_first_run.py").read_text(
+        encoding="utf-8"
+    )
+    assert "GITHUB_ACTIONS" in source and "RUNNER_TEMP" in source
+    assert "owned_tray_windows(process_id)" in source
+    assert "GetWindowThreadProcessId" in source
+    assert 'name.value.startswith("Notro")' in source
+    assert 'name.value.endswith(' in source
+    assert "WM_NOTIFY_ICON = 0x040B" in source
+    assert "WM_RBUTTONUP = 0x0205" in source
+    assert "returning_user_no_welcome" in source
+    assert "stop_own_process(proc)" in source
+    assert "WM_CLOSE = 0x0010" not in source
+    assert "user32.PostMessageW(hwnd, WM_NOTIFY_ICON, 0, WM_RBUTTONUP)" in source
+    assert 'result["real_tray_notification_open"]' in source
+    assert 'result["real_tray_notification_close"]' in source
+    assert "SendInput(" not in source
+    assert "set_clipboard_file(" not in source
+    assert "discordapp" not in source
+
+
+
+def test_disposable_installed_exe_recovers_malformed_library_and_folders():
+    source = Path("scripts/qa_runner_installed_first_run.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'synthetic_lib = private_appdata / "Notro"' in source
+    assert 'result["invalid_library_backed_up"]' in source
+    assert 'result["invalid_folders_backed_up"]' in source
+    assert 'invalid_files["library.json"]' in source
+    assert 'invalid_files["folders.json"]' in source
+    assert "GITHUB_ACTIONS" in source
+
+
+
+def test_native_first_use_and_video_dialog_are_runner_only_ui_qa_steps():
+    workflow = _workflow(RELEASE_WORKFLOW)
+    for step_name, script_name in (
+        ("QA native welcome Try Picker and dismiss",
+         "scripts/qa_native_welcome_flow.py"),
+        ("QA native video confirm trim and cancel",
+         "scripts/qa_native_video_dialog.py"),
+    ):
+        step = _step(workflow, step_name)
+        assert "if: github.event_name == 'workflow_dispatch'" in step
+        assert f"python {script_name}" in step
+
+    welcome_script = Path(
+        "scripts/qa_native_welcome_flow.py"
+    ).read_text(encoding="utf-8")
+    assert "TemporaryDirectory" in welcome_script
+    assert "intro_api._window = intro_win" in welcome_script
+    assert "dismiss_api._window = dismiss_win" in welcome_script
+    assert "no_clipboard_mutation" in welcome_script
+
+    video_script = Path(
+        "scripts/qa_native_video_dialog.py"
+    ).read_text(encoding="utf-8")
+    assert "confirm.accepted.is_set" in video_script
+    assert "VideoWindow.info" in video_script
+    assert "no_encoding_or_paste" in video_script

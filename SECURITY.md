@@ -25,11 +25,34 @@ new clipboard images" in picker settings is **off by default**. With it off, the
 only images written to your library are the ones you register explicitly.
 
 **It simulates <kbd>Ctrl</kbd>+<kbd>V</kbd>** (and <kbd>Enter</kbd>, if you turn on
-auto-send) using the Windows `SendInput` API — the same mechanism as the built-in
-Windows emoji panel. It does not read your keystrokes.
+auto-send) using the Windows `SendInput` API. Paste can work in other apps,
+but optional automatic `Enter` is restricted to the same still-focused Discord
+desktop window. Notro checks the executable's name with public Win32 APIs,
+without reading the Discord process. It cannot detect switching channels
+inside the same Discord window; auto-send is therefore off by default.
+It does not read your keystrokes.
 
-**It never touches the Discord client, your account, or your token.** There is no
-self-bot behaviour, no injection, and no patching of any application.
+**It does not modify or inject into Discord, require a Discord account
+token or perform private client IPC.** Notro is an independent Windows OS-level
+utility, not affiliated with or endorsed by Discord. Its behavior cannot be
+guaranteed compliant with every current or future Discord policy; read the
+published architecture and keep user-directed sending manual.
+
+## Original-window focus and newer-copy protection
+
+Before changing clipboard content for a picker paste, Notro checks that the
+original target window still exists and is focused. Windows clipboard
+sequence-number checks protect newer text or file copies made while image
+preparation runs; if a newer copy is found, the paste is canceled without
+overwriting it. Windows SendInput return values are checked so rejected
+Ctrl+V injection cannot be reported as a successful paste. A successful
+SendInput return is **not proof** that Discord or another application
+accepted the attachment. Switching channels inside the same Discord
+window is not detectable. Auto-send is OFF by default.
+
+These checks use only public Win32 APIs, not Discord client hooks or REA.
+They reduce accidental copy loss but cannot guarantee uninterrupted focus
+against all external OS/clipboard interleavings.
 
 ## Network access
 
@@ -46,9 +69,41 @@ Notro contacts only the services documented below:
 **There is no telemetry, analytics, crash reporting, or account of any kind.** No
 clipboard content, file name, or usage data is ever transmitted.
 
-A local HTTP server binds to `127.0.0.1` on a random port while the picker is
-running, so the WebView2 control can display your library images. It serves only
-files already in your own library and is not reachable from outside your machine.
+A local HTTP server binds to `127.0.0.1` on a random port while the
+picker is running, to serve only media already in your library to the
+embedded WebView2 picker. Each start creates an unpredictable URL capability;
+requests must also use the exact loopback Host header to reduce exposure to
+unrelated local web pages and DNS-rebinding aliases. Raw paths are not
+included in asset URLs. This does not provide a sandbox against other local
+software that already has direct access to your files.
+
+## Corrupt media/backup recovery
+
+Imported ZIP packs have bounded archive, manifest, per-file and total
+decompressed sizes. Unsupported formats, malformed media metadata and
+settings backup JSON fail validation without registering media or applying
+unreviewed settings. The original media assets are not altered.
+
+If library.json or folders.json has invalid structure on startup, Notro
+moves the original bytes to a local library.json.bak or folders.json.bak
+and starts with an empty in-memory library or watched-folder list.
+**Cached image files remain on disk.** These backup JSON files may include
+private names, source URLs and local paths: never post them publicly without
+removing personal details. A full manual data recovery UI is separate work.
+
+The native WinForms window objects referenced by the Welcome and video
+dialog bridges are private fields. Only intended button and trim APIs are
+exposed to the embedded JavaScript environment, avoiding recursive native
+accessibility-object inspection.
+
+## Local preferences backup privacy
+
+An explicit settings export creates a small local JSON file with allowlisted
+preferences only; no media, private Captures, clipboard contents, tokens or
+Discord source links. Watched absolute paths are excluded by default and
+included only with consent. Import is verified and separately confirmed;
+auto-send and auto-capture are forced OFF, and startup settings unchanged.
+The image ZIP media pack is a separate workflow.
 
 ## Where your data lives
 

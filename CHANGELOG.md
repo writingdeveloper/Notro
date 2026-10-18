@@ -3,6 +3,96 @@
 All notable changes to this project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.11.0] - Unreleased (candidate: 2026-10-13)
+
+### Added
+- Windows notification-area right-click opens an owned Discord-inspired dark
+  WebView2 panel with picker shortcuts, monitoring controls and safe settings.
+  About displays the real program version, GitHub/Release/Issues, MIT,
+  platform and unsigned/independent disclosure. Native pystray menu and
+  About dialog remain available if WebView2 is missing or not yet ready.
+  The UI is localized to English, Korean, Japanese, Chinese and Spanish;
+  actual native WebView2 popup/screenshots were regression tested.
+- Portable user-controlled ZIP emoji/sticker/GIF pack import/export with content
+  verification, size limits and duplicate detection. Private Captures and original
+  source URLs are excluded. This is **not** a full settings backup.
+- First-run welcome offers a direct, explicit "Try picker" action.
+- Added separate opt-in JSON preferences backup with explicit watched-folder
+  path disclosure, strict parsing, user review and two-step restoration.
+  No images/Captures, and auto-send and auto-capture are disabled on restore.
+  Real native Windows Save/Open with Korean filenames tested.
+
+- On-demand release-workflow builds can retain a 3-day UNSIGNED QA installer
+  artifact with its SHA-256, enabling real Windows installer tests without
+  publishing a release/tag.
+- Synthetic 100/1,000/5,000-item library performance benchmark, Windows regression
+  coverage and Ruff CI lint. REA static compatibility and marketing QA notes.
+
+- Opt-in GIF size/quality preview: right-click an animated item to compare
+  original and optimized animations, frame timing, dimensions and file sizes.
+  A bounded Pillow engine tries palette reductions before lowering resolution,
+  preserves animation loop and frame timing, and rejects unsafe inputs.
+  Only the user-approved temporary candidate is pasted; automatic Enter is
+  suppressed. Original GIFs and library files remain unchanged.
+- GIF preview lifecycle includes cancel/close cleanup and temporary localhost
+  media URLs. Native WebView2 fixture validates both images and a synthetic
+  approve/cancel flow without touching live Discord, user clipboard or chat.
+
+### Fixed
+- Native WebView2 Welcome and video confirmation dialogs: moved native
+  WinForms Window references into private API fields. Exposing the GUI
+  object through a public JavaScript bridge attribute caused recursive
+  AccessibilityObject traversal and could prevent first-use and video
+  buttons from becoming responsive. Actual native "Try Picker"/Dismiss,
+  video trim/mute/replan/confirm/close now pass.
+- Corrupt or unsupported media ZIPs, nested invalid metadata and unsafe
+  settings JSON are rejected without mutating the media library. Bad
+  library.json/folders.json files are backed up byte-for-byte as local
+  .bak files so the application can recover without deleting cached media.
+- ZIP archive outer size is bounded before reading central-directory
+  metadata, in addition to existing manifest and decompressed image caps.
+- The Discord free upload default now matches the official August 2026 20 MB
+  limit. Existing explicit 10 MB choices remain available. The 95% safety margin
+  now targets **compressed output** rather than triggering needless compression
+  of 19–20 MB files.
+- Watched folder JPEG files appear correctly beside PNG, GIF and WebP.
+- Local media server streams GIF assets in bounded chunks; race handling returns
+  404 if a watched file vanishes before opening.
+- Collection folder names cannot resolve to ancestor paths or Windows DOS devices.
+
+### Notes
+- Real Discord/WebView2 installer end-to-end QA and signing are **not yet complete**.
+  Do not publish this candidate release until the verification gates are met.
+
+### Further hardening (release candidate; not yet published)
+- Optional auto-send now requires a still-focused Discord desktop target and
+  checks the original window again before both paste and Enter. Ordinary
+  paste to other apps still works, but Enter is never automatic there. This
+  uses public Windows APIs only and cannot detect switching channels
+  inside one window; auto-send remains disabled by default.
+- Local picker thumbnail URLs now require an unpredictable per-session
+  capability and the exact loopback Host header. ZIP manifest decompression
+  is bounded even for untrusted compressed input.
+- Added isolated native Windows Edge WebView2 fixture smoke that verifies real
+  thumbnails, picker search/settings, all five language bridges and ZIP drop
+  import using synthetic data, without opening chats or modifying Discord.
+- Paste safety: checks the original window BEFORE modifying the clipboard,
+  preserves any newer copy made while preparing media and verifies that
+  Windows accepted Ctrl+V key events before reporting success.
+  When focus is already lost, the clipboard is not changed. Included
+  five-language explanatory notifications and a separately owned
+  Win32 target-window QA harness on a disposable Windows runner.
+- A single ZIP media pack may now be dragged onto the picker to import via
+  the same validated media pack path used by the explicit Import button.
+- Added repeatable native Win32 Save As/Open dialog E2E on Korean ZIP
+  filenames and an isolated WebView2 fixture, including cancel paths.
+- Measured synthetic 100/1,000/5,000-item Windows WebView2 DOM render and
+  search without touching user images. Real mixed GIF memory QA remains.
+- Prefer current pywebview FileDialog enum with old-version-only fallback,
+  eliminating deprecated alias warnings.
+- Plane backlog synchronization now preserves existing work-item state, priority
+  and ownership so restarting a session cannot silently reset QA progress.
+
 ## [2.10.3] - 2026-08-08
 
 ### Fixed

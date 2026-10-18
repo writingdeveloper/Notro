@@ -16,6 +16,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Required for trustworthy tagged-commit ancestry check.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v7
         with:
@@ -23,7 +26,13 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install --upgrade pyinstaller -r requirements-dev.txt
+        run: pip install -r requirements-build.txt
+
+      - name: Audit build/runtime dependencies
+        run: python -m pip_audit -r requirements-build.txt --strict
+
+      - name: Release media threshold preflight
+        run: python scripts/qa_release_media_preflight.py
 
       - name: Export app version
         shell: pwsh
@@ -36,6 +45,16 @@ jobs:
             throw "Invalid installer version: $version"
           }
           "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Verify release tag belongs to main
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          git fetch origin main --quiet
+          git merge-base --is-ancestor $env:GITHUB_SHA origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw "Refusing release: tagged commit is not in origin/main"
+          }
 
       - name: Verify release tag matches app version
         if: startsWith(github.ref, 'refs/tags/')
@@ -62,6 +81,29 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
 
+      # Real own WebView2 windows, synthetic local images and no user data.
+      # Verifies first-use buttons and independent video dialog bridge.
+      - name: QA native welcome Try Picker and dismiss
+        if: github.event_name == 'workflow_dispatch'
+        run: python scripts/qa_native_welcome_flow.py
+
+      - name: QA native video confirm trim and cancel
+        if: github.event_name == 'workflow_dispatch'
+        run: python scripts/qa_native_video_dialog.py
+
+      # Accesses only disposable runner's clipboard, with synthetic media;
+      # never the maintainer's live Windows clipboard or Discord account.
+      - name: QA native Win32 clipboard on disposable runner
+        if: github.event_name == 'workflow_dispatch'
+        run: python scripts/qa_runner_clipboard_cf_hdrop.py
+
+      # The target window is owned by the disposable hosted runner only.
+      # This exercises PickerController -> Win32 CF_HDROP -> SendInput -> own
+      # Tk text field, never Discord or a user's live desktop/clipboard.
+      - name: QA own-window Win32 Ctrl+V and focus recovery
+        if: github.event_name == 'workflow_dispatch'
+        run: python scripts/qa_runner_owned_target_paste.py
+
       # --collect-all webview가 numpy·cryptography까지 끌어온다 (앱은 둘 다 쓰지 않는다).
       # build.bat과 같은 제외 플래그를 유지할 것 — 어긋나면 CI 산출물만 40MB 커진다.
       - name: Build EXE
@@ -77,11 +119,34 @@ jobs:
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss /DAppVersion=$env:APP_VERSION
 
+      # Short-lived, unsigned QA in a fresh Windows GitHub-hosted runner.
+      # No installed client data or global clipboard are touched.
+      - name: QA install and uninstall on ephemeral runner
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/qa_installer_smoke.ps1 -ExpectedVersion $env:APP_VERSION
+
       - name: Generate SHA256
         shell: pwsh
         run: |
           $hash = (Get-FileHash dist/NotroSetup.exe -Algorithm SHA256).Hash.ToLower()
           "$hash  NotroSetup.exe" | Out-File -FilePath dist/NotroSetup.exe.sha256 -Encoding ascii -NoNewline
+
+      # On-demand QA build: short-lived UNSIGNED installer, no release/tag.
+      # Access depends on repository permissions; never market this as signed.
+      - name: Upload unsigned QA installer
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: NOTRO-UNSIGNED-QA-${{ github.run_id }}
+          path: |
+            dist/NotroSetup.exe
+            dist/NotroSetup.exe.sha256
+          retention-days: 3
+          if-no-files-found: error
+          overwrite: false
 
       # 태그 푸시일 때만 릴리스를 만든다. 덕분에 workflow_dispatch로 돌리면 빌드와
       # installer 컴파일만 검증하고 릴리스는 만들지 않는다(installer.iss 안전 검증용).

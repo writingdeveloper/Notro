@@ -1,2 +1,4 @@
 -r requirements.txt
 pytest>=8.0
+# Pinned for repeatable CI lint until newer default rules are reviewed.
+ruff==0.15.21

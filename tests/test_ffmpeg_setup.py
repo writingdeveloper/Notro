@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 
 import notro_app.ffmpeg_setup as fs
 

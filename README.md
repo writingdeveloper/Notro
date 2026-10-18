@@ -19,9 +19,9 @@
 
 ---
 
-Two things Discord charges for, solved from outside the app:
+Two everyday Discord frustrations, handled without modifying the Discord client:
 
-- **Your image is 14 MB and the free limit is 10 MB.** Notro notices the moment you copy
+- **Your image is 24 MB and the free limit is 20 MB.** Notro notices the moment you copy
   it, shrinks it, and puts it back on your clipboard. You just press <kbd>Ctrl</kbd>+<kbd>V</kbd>.
 - **You want to use custom emoji anywhere.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>,
   pick one, and it lands in the message box.
@@ -33,10 +33,10 @@ Discord client and never sees your account or token. The honest trade-off: recip
 your emoji as image attachments, not as native inline emoji.
 
 <p align="center">
-  <img src="docs/demo.gif" width="620" alt="Notro's picker: typing filters a personal library of custom Discord emoji live, and the arrow keys move through the grid">
+  <img src="docs/demo-owned-webview.gif" width="620" alt="Notro's native Windows WebView2 picker with original geometric example assets">
 </p>
 
-<p align="center"><sub>Real UI, real library — search filters as you type, arrow keys move, Enter pastes.</sub></p>
+<p align="center"><sub>Actual Windows WebView2 picker UI using a temporary library of original generated geometric assets. Shows search, keyboard focus, tabs and settings; NOT a Discord attachment or installed-app demo.</sub></p>
 
 <p align="center">
   <a href="../../releases/latest"><b>⬇ Download NotroSetup.exe</b></a><br>
@@ -44,6 +44,29 @@ your emoji as image attachments, not as native inline emoji.
 </p>
 
 ---
+
+> [Discord's File Attachments FAQ](https://support.discord.com/hc/en-us/articles/25444343291031-File-Attachments-FAQ) (updated September 30, 2026) and [Nitro FAQ](https://support.discord.com/hc/en-us/articles/115000435108-What-are-Nitro-Nitro-Basic): Free 20 MB / Nitro Basic 50 MB / Nitro up to 1 GB. The 10 MB and 500 MB custom presets remain available. Actual limits can vary by account and experiments. The optional 1 GB preset conservatively uses decimal 1,000,000,000 bytes.
+
+## Tray menu and About (v2.11.0 candidate)
+
+**New in the unreleased v2.11.0 candidate** (not in public v2.10.3):
+right-click the **Notro notification-area icon beside the clock** to open a
+dark, Discord-inspired **Notro-owned** popup. From there you can open the
+picker, pause monitoring, open the library, change upload limit/language/
+hotkey/startup/update preferences, and choose **About Notro**.
+
+About displays the **actual installed program version**, publisher, Windows
+compatibility, WebView2 engine, MIT license and hardcoded GitHub repository,
+Releases and Issues links. The product is **unsigned** and independent of,
+not endorsed by, Discord. When WebView2 is missing/not ready, the original
+Windows tray context menu remains usable and provides a native About dialog.
+
+![Notro custom tray menu in Windows WebView2](docs/qa/tray-menu-native-preview.png)
+
+![Notro About with version and GitHub in Windows WebView2](docs/qa/tray-about-native-preview.png)
+
+These screenshots were captured from an isolated synthetic native WebView2
+fixture, **not** a normal installed end-user session or Discord chat.
 
 ## The picker
 
@@ -80,35 +103,67 @@ collection with no registration step at all.
   collection. Picker settings can do that automatically for every new clipboard image —
   off by default.
 - The window can be resized and remembers its size, per monitor DPI.
-- Items over the upload limit: still images are compressed automatically, oversized GIFs
-  are sent as-is with a warning.
+- Items over the upload limit: still images are compressed automatically. Oversized GIFs
+  are unchanged by default and show a warning. For an animated item, right-click →
+  **Optimize GIF…** to compare the original with an explicitly generated smaller GIF
+  (color/resolution changes shown). Only **Paste optimized** uses the candidate;
+  sending remains manual. Your original file and library are never modified.
 - Optional auto-send presses <kbd>Enter</kbd> for you after pasting — off by default.
+  It is limited to a still-focused Discord desktop window; pasted items in other apps must be sent manually. Switching channels inside the same window cannot be detected.
+  The picker now checks the original window **before** modifying the clipboard. If you copy something new while an image is prepared, it cancels rather than overwriting that copy. Windows input acceptance is checked but cannot guarantee that a receiving app accepts the attachment.
 
 </details>
+
+## Portable media packs
+
+In the picker settings, choose **Export pack** or **Import pack** to move your
+registered emoji, sticker and GIF library between Windows PCs. Packs are local
+ZIP files with media and searchable labels, checked for corrupt files and
+unsafe paths before import. Already saved duplicates are skipped.
+
+Private automatic **Captures**, Discord source URLs, clipboard history, watched
+folder paths and Windows settings are **not exported**. The ZIP is a portable
+asset pack, not a complete settings backup. Share only media you have rights to.
+
+Drop a pack ZIP directly onto the picker for quick import, or use the Import pack button in Settings.
+
+## Preferences backup (JSON)
+
+From Picker Settings, **Export settings** saves a separate local JSON file
+with language, hotkey, upload limit and display/paste-size preferences.
+It contains no images, clipboard history, Captures, Discord account data or
+source URLs. **Watched-folder absolute paths are excluded by default**;
+include them only when explicitly checked.
+
+**Restore settings** first shows the number of settings and paths and requires
+a second approval to apply. Existing watched folders are never deleted; you
+may optionally add paths that still exist. **Auto-send and auto-capture remain
+OFF** after restoration, and Windows startup is unchanged. Restart Notro for
+language/hotkey changes. Use a separate media pack ZIP to transfer images.
 
 ## Automatic compression
 
 Notro watches the clipboard. When a new image appears it computes **the PNG size Discord
 would actually produce**, and if that fits the limit it does nothing at all. Over the
 limit, it re-encodes to WebP, then JPEG, lowering quality and finally resolution until it
-fits under ~9.5 MB, and puts the result back as a file so <kbd>Ctrl</kbd>+<kbd>V</kbd>
+fits under ~19 MB, and puts the result back as a file so <kbd>Ctrl</kbd>+<kbd>V</kbd>
 uploads it as an attachment.
 
 > Your original files on disk are never touched — only the clipboard is replaced.
 
-The limit is switchable from the tray for **10 / 50 / 500 MB** (free, Nitro Basic, Nitro).
+The limit is switchable from the tray for **10 / 20 / 50 / 500 MB** (10 MB optional low cap, free, Nitro Basic, Nitro).
 
 ## Video clips
 
 Copy a game clip that's too big and Notro asks first, showing exactly what to expect:
 
 ```
-52MB · 1:12 · 1080p60  →  about 9.5MB · 480p30
+52MB · 1:12 · 1080p60  →  about 19MB · 720p60
 ```
 
 You can **trim it** (`start – end`) and **drop the audio** in that same window, and the
 estimate updates as you type. This matters more than any encoder setting: a 30-second
-1080p60 capture has to fall back to **1080p30** as a whole clip, but trimmed to the seven
+1080p60 capture has to fall back to **720p60** as a whole clip, but trimmed to the seven
 seconds you actually wanted, it stays at **1080p60**.
 
 **ffmpeg is never bundled.** It's fetched on demand (~30 MB, SHA-256 verified) the first
@@ -124,7 +179,7 @@ installs to `%LOCALAPPDATA%\Programs\Notro`.
 > unknown — click *More info → Run anyway*. Every release ships a `NotroSetup.exe.sha256`
 > so you can verify exactly what you downloaded, and you can
 > [build it yourself](#build-it-yourself) from source. See
-> [SECURITY.md](SECURITY.md#code-signing) and the [code signing policy](CODE_SIGNING.md).
+> [SECURITY.md](SECURITY.md#code-signing) and the [Code signing policy](CODE_SIGNING.md).
 
 **Windows 10 users:** the picker needs the Microsoft Edge WebView2 runtime (Windows 11 has
 it built in). The installer fetches it if it's missing. Without it the picker is disabled
@@ -183,8 +238,8 @@ Compression behaviour lives in `notro_app/config.py` and `notro_app/compress.py`
 
 | Setting | Default | Description |
 |---|---|---|
-| `LIMIT_MB` | 10 | Upload limit — or pick 10/50/500 from the tray menu |
-| `SAFETY` | 0.95 | Safety margin (targets ~9.5 MB) |
+| `LIMIT_MB` | 20 | Upload limit — or pick 10/20/50/500 from the tray menu |
+| `SAFETY` | 0.95 | Safety margin (targets ~19 MB) |
 | `WEBP_QUALITIES` | 90–50 | WebP quality steps |
 | `MIN_SCALE` | 0.4 | Lower bound for downscaling |
 
@@ -196,6 +251,15 @@ pytest
 ```
 
 </details>
+
+## Contributing and public release
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contributor setup, Windows
+regression tests, responsible issue reporting and why a green CI alone
+does not authorize a public installer release or marketing campaign.
+The project has chosen **not to pursue code signing**; its unsigned
+Windows installer may trigger a publisher warning. Never disable
+Windows protections just to try an unsigned download.
 
 ## License
 

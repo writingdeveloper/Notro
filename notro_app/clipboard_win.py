@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.wintypes as wt
+import ntpath
 import struct
 import time
 
@@ -25,6 +26,21 @@ user32.SetClipboardData.restype = wt.HANDLE
 user32.SetClipboardData.argtypes = [wt.UINT, wt.HANDLE]
 user32.GetClipboardData.restype = wt.HANDLE
 user32.GetClipboardData.argtypes = [wt.UINT]
+
+# Public Win32 APIs only. These read window/process identity, not Discord's
+# address space, private IPC, authentication state, or message content.
+user32.IsWindow.restype = wt.BOOL
+user32.IsWindow.argtypes = [wt.HWND]
+user32.GetWindowThreadProcessId.restype = wt.DWORD
+user32.GetWindowThreadProcessId.argtypes = [wt.HWND, ctypes.POINTER(wt.DWORD)]
+kernel32.OpenProcess.restype = wt.HANDLE
+kernel32.OpenProcess.argtypes = [wt.DWORD, wt.BOOL, wt.DWORD]
+kernel32.QueryFullProcessImageNameW.restype = wt.BOOL
+kernel32.QueryFullProcessImageNameW.argtypes = [
+    wt.HANDLE, wt.DWORD, wt.LPWSTR, ctypes.POINTER(wt.DWORD),
+]
+kernel32.CloseHandle.restype = wt.BOOL
+kernel32.CloseHandle.argtypes = [wt.HANDLE]
 
 CF_HDROP = 15
 CF_UNICODETEXT = 13
@@ -99,12 +115,14 @@ def set_clipboard_file(path: str, guard_seq: int | None = None) -> bool | None:
         user32.CloseClipboard()
 
 
-def set_clipboard_text(text: str) -> bool:
+def set_clipboard_text(text: str, guard_seq: int | None = None) -> bool | None:
     """URL 등 텍스트를 클립보드에 넣는다 (마커 포함 — Monitor 재처리 방지)."""
     data = text.encode("utf-16-le") + b"\0\0"
     if not _open_clipboard_retry():
         return False
     try:
+        if guard_seq is not None and get_sequence_number() != guard_seq:
+            return None
         user32.EmptyClipboard()
         if not _global_put(CF_UNICODETEXT, data):
             return False
@@ -180,24 +198,70 @@ def get_foreground_window() -> int:
     return user32.GetForegroundWindow()
 
 
-def _send_keys(seq) -> None:
+PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+_DISCORD_DESKTOP_NAMES = frozenset({
+    "discord.exe", "discordptb.exe", "discordcanary.exe",
+})
+
+
+def window_process_name(hwnd: int) -> str:
+    """Get only a target window's executable basename via public Win32 APIs.
+
+    This is a best-effort *accidental-send safety check*, not account or
+    process attestation. A denied, recycled or unknown HWND returns "" so
+    automated Enter will fail closed. Browser Discord needs manual send.
+    """
+    if not hwnd or not user32.IsWindow(hwnd):
+        return ""
+    pid = wt.DWORD()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    if not pid.value:
+        return ""
+    handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid.value)
+    if not handle:
+        return ""
+    try:
+        name = ctypes.create_unicode_buffer(32768)
+        length = wt.DWORD(len(name))
+        if not kernel32.QueryFullProcessImageNameW(handle, 0, name, ctypes.byref(length)):
+            return ""
+        return ntpath.basename(name.value).casefold()
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def is_discord_desktop_window(hwnd: int) -> bool:
+    """Strictly gate optional auto-send to Discord's desktop executable."""
+    return window_process_name(hwnd) in _DISCORD_DESKTOP_NAMES
+
+
+def is_window_focused(hwnd: int) -> bool:
+    """Never paste or auto-send after the user moved to a different window."""
+    return bool(hwnd and user32.IsWindow(hwnd) and get_foreground_window() == hwnd)
+
+
+user32.SendInput.restype = wt.UINT
+user32.SendInput.argtypes = [wt.UINT, ctypes.POINTER(_INPUT), ctypes.c_int]
+
+
+def _send_keys(seq) -> bool:
+    """Whether SendInput accepted every key event (not app delivery proof)."""
     arr = (_INPUT * len(seq))()
     for i, (vk, flags) in enumerate(seq):
         arr[i].type = INPUT_KEYBOARD
         arr[i].u.ki = _KEYBDINPUT(vk, 0, flags, 0, 0)
-    user32.SendInput(len(seq), arr, ctypes.sizeof(_INPUT))
+    return int(user32.SendInput(len(seq), arr, ctypes.sizeof(_INPUT))) == len(seq)
 
 
-def send_ctrl_v() -> None:
-    """OS 수준 Ctrl+V 입력 (클라이언트 수정·계정 자동화 아님 — Win+. 패널과 동일 방식)."""
-    _send_keys([(VK_CONTROL, 0), (VK_V, 0),
-                (VK_V, KEYEVENTF_KEYUP), (VK_CONTROL, KEYEVENTF_KEYUP)])
+def send_ctrl_v() -> bool:
+    """OS-only Ctrl+V; returns False when Windows blocked key injection."""
+    return _send_keys([(VK_CONTROL, 0), (VK_V, 0),
+                       (VK_V, KEYEVENTF_KEYUP), (VK_CONTROL, KEYEVENTF_KEYUP)])
 
 
-def send_enter() -> None:
-    """OS 수준 Enter 입력. 자동 전송 설정이 켜졌을 때만 쓴다 — 붙여넣기와 달리
-    되돌릴 수 없는 동작이라 기본은 꺼져 있다."""
-    _send_keys([(VK_RETURN, 0), (VK_RETURN, KEYEVENTF_KEYUP)])
+def send_enter() -> bool:
+    """Opt-in keyboard Enter; never claim success when SendInput fails."""
+    return _send_keys([(VK_RETURN, 0), (VK_RETURN, KEYEVENTF_KEYUP)])
 
 
 def focus_window(hwnd: int) -> bool:

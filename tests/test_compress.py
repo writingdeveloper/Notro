@@ -72,8 +72,18 @@ def test_to_rgb_on_white_passes_through_rgb():
 
 
 def test_compute_limit_bytes_scales_and_applies_margin():
-    for mb in (10, 50, 500):
+    for mb in (10, 20, 50, 500):
         assert config.compute_limit_bytes(mb) == int(
             mb * 1024 * 1024 * config.SAFETY
         )
     assert config.compute_limit_bytes(50) > config.compute_limit_bytes(10)
+
+
+
+def test_nitro_one_gigabyte_preset_is_conservatively_decimal():
+    from notro_app import config
+
+    assert config.upload_ceiling_bytes(1024) == 1_000_000_000
+    assert config.compute_limit_bytes(1024) == 950_000_000
+    # Legacy manual 500MB preset must keep the existing threshold.
+    assert config.upload_ceiling_bytes(500) == 500 * 1024 * 1024

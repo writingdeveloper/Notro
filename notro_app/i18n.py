@@ -764,3 +764,395 @@ def tr(key: str, **kwargs) -> str:
     table = STRINGS.get(current_lang, STRINGS["en"])
     text = table.get(key) or STRINGS["en"].get(key, key)
     return text.format(**kwargs) if kwargs else text
+
+
+# Portable packs (opt-in only; exclude private Captures and external paths).
+_PACK_STRINGS = {
+    "en": {"picker_pack_import": "Import pack", "picker_pack_export": "Export pack",
+           "picker_pack_done": "Exported {count} items", "picker_pack_imported": "Imported {added}, already saved {duplicate}, failed {failed}",
+           "picker_pack_error": "Unable to read or write pack; check ZIP validity and storage"},
+    "ko": {"picker_pack_import": "팩 가져오기", "picker_pack_export": "팩 내보내기",
+           "picker_pack_done": "{count}개 항목 내보내기 완료", "picker_pack_imported": "가져옴 {added}개 · 중복 {duplicate}개 · 실패 {failed}개",
+           "picker_pack_error": "팩 처리 실패: ZIP 파일과 저장 공간을 확인하세요"},
+    "ja": {"picker_pack_import": "パックを読み込む", "picker_pack_export": "パックを書き出す",
+           "picker_pack_done": "{count} 件を書き出しました", "picker_pack_imported": "追加 {added} · 重複 {duplicate} · 失敗 {failed}",
+           "picker_pack_error": "パックの処理に失敗しました。ZIP と保存先を確認してください"},
+    "zh": {"picker_pack_import": "导入资源包", "picker_pack_export": "导出资源包",
+           "picker_pack_done": "已导出 {count} 项", "picker_pack_imported": "导入 {added} · 重复 {duplicate} · 失败 {failed}",
+           "picker_pack_error": "资源包处理失败，请检查 ZIP 和存储空间"},
+    "es": {"picker_pack_import": "Importar paquete", "picker_pack_export": "Exportar paquete",
+           "picker_pack_done": "Se exportaron {count} elementos", "picker_pack_imported": "Importados {added} · duplicados {duplicate} · fallidos {failed}",
+           "picker_pack_error": "No se pudo procesar el paquete ZIP; comprueba el archivo y el espacio disponible"},
+}
+for _lang, _table in _PACK_STRINGS.items():
+    STRINGS[_lang].update(_table)
+del _PACK_STRINGS
+
+
+_WELCOME_ACTIONS = {
+    "en": "Try the emoji picker now",
+    "ko": "이모지 선택기 바로 체험하기",
+    "ja": "絵文字ピッカーを試す",
+    "zh": "立即体验表情选择器",
+    "es": "Probar el selector de emojis",
+}
+for _lang, _message in _WELCOME_ACTIONS.items():
+    STRINGS[_lang]["welcome_try_picker"] = _message
+del _WELCOME_ACTIONS
+
+# Optional auto-send is deliberately restricted to a still-focused Discord
+# desktop window. The picker remains a general Windows attachment picker.
+_AUTOSEND_SAFETY_MESSAGES = {
+    "en": (
+        "Auto-send skipped: only available in Discord desktop. Item was pasted; send manually.",
+        "Auto-send canceled: the active window changed after pasting.",
+        "Auto-send works only while the Discord desktop window stays focused. Pasting elsewhere is still supported.",
+    ),
+    "ko": (
+        "자동 전송은 Discord 데스크톱에서만 됩니다. 붙여넣기는 완료했으니 직접 전송하세요.",
+        "붙여넣은 뒤 활성 창이 바뀌어 자동 전송을 취소했습니다.",
+        "Discord 데스크톱 창에 계속 포커스가 있을 때만 자동 전송합니다. 다른 앱에서는 붙여넣기만 합니다.",
+    ),
+    "ja": (
+        "自動送信はDiscordデスクトップ限定です。貼り付け後、手動で送信してください。",
+        "貼り付け後にアクティブウィンドウが変わったため、自動送信を中止しました。",
+        "Discordデスクトップがフォーカスされている間だけ自動送信します。他のアプリでは貼り付けのみです。",
+    ),
+    "zh": (
+        "自动发送仅支持Discord桌面版。内容已粘贴，请手动发送。",
+        "粘贴后活动窗口发生变化，已取消自动发送。",
+        "仅在Discord桌面版窗口持续处于焦点时自动发送。其他应用只执行粘贴。",
+    ),
+    "es": (
+        "El envío automático solo funciona en Discord de escritorio. Se pegó el archivo; envíalo manualmente.",
+        "Se canceló el envío automático porque cambió la ventana activa.",
+        "Solo se envía automáticamente mientras Discord de escritorio mantiene el foco. En otras aplicaciones solo se pega.",
+    ),
+}
+for _lang, (_non_discord, _focus_changed, _note) in _AUTOSEND_SAFETY_MESSAGES.items():
+    STRINGS[_lang]["notify_auto_send_discord_only"] = _non_discord
+    STRINGS[_lang]["notify_auto_send_focus_changed"] = _focus_changed
+    STRINGS[_lang]["picker_auto_send_note"] = _note
+del _AUTOSEND_SAFETY_MESSAGES
+# Explicit opt-in animated GIF optimization (source library files never modified).
+_GIF_PREVIEW_STRINGS = {
+    "en": {
+        "picker_gif_optimize": "Optimize GIF…",
+        "picker_gif_title": "GIF size and quality preview",
+        "picker_gif_loading": "Preparing a comparison…",
+        "picker_gif_original": "Original",
+        "picker_gif_result": "Optimized candidate",
+        "picker_gif_accept": "Paste optimized (send manually)",
+        "picker_gif_cancel": "Cancel",
+        "picker_gif_note": "Compare both animations. Colors or resolution may change. Your original file is never modified; sending the optimized attachment is manual.",
+        "picker_gif_fits": "This GIF already fits the configured size target.",
+        "picker_gif_cannot_fit": "Could not fit this GIF without excessive quality loss. Try a shorter animation or higher upload limit.",
+        "picker_gif_too_complex": "This GIF is too large or complex to optimize safely.",
+        "picker_gif_failed": "Could not produce a safe animated preview.",
+        "picker_gif_outdated": "The GIF or upload limit changed. Reopen the preview.",
+        "picker_gif_info": "frames · send manually",
+    },
+    "ko": {
+        "picker_gif_optimize": "GIF 용량 최적화…",
+        "picker_gif_title": "GIF 용량·화질 비교",
+        "picker_gif_loading": "원본과 최적화 후보를 준비하고 있어요…",
+        "picker_gif_original": "원본",
+        "picker_gif_result": "최적화 후보",
+        "picker_gif_accept": "최적화본 붙여넣기 (직접 전송)",
+        "picker_gif_cancel": "취소",
+        "picker_gif_note": "움직임을 비교하세요. 색상·해상도가 변할 수 있습니다. 원본은 수정하지 않으며, 붙여넣은 뒤 직접 전송해야 합니다.",
+        "picker_gif_fits": "이 GIF는 현재 설정한 용량 목표 안에 들어갑니다.",
+        "picker_gif_cannot_fit": "과도한 화질 저하 없이 용량 목표에 맞추지 못했습니다. 짧은 GIF나 더 높은 한도를 사용해 보세요.",
+        "picker_gif_too_complex": "안전하게 처리하기에는 GIF가 너무 크거나 복잡합니다.",
+        "picker_gif_failed": "GIF 최적화 미리보기를 만들지 못했습니다.",
+        "picker_gif_outdated": "원본 또는 용량 한도가 바뀌었습니다. 미리보기를 다시 열어 주세요.",
+        "picker_gif_info": "프레임 · 전송은 수동",
+    },
+    "ja": {
+        "picker_gif_optimize": "GIFを最適化…",
+        "picker_gif_title": "GIF容量・画質の比較",
+        "picker_gif_loading": "比較用アニメーションを準備中…",
+        "picker_gif_original": "元のGIF",
+        "picker_gif_result": "最適化候補",
+        "picker_gif_accept": "最適化版を貼り付け（送信は手動）",
+        "picker_gif_cancel": "キャンセル",
+        "picker_gif_note": "両方の動きを比較してください。色や解像度が変わる場合があります。元のファイルは変更せず、送信は手動です。",
+        "picker_gif_fits": "このGIFは現在のサイズ目標に収まっています。",
+        "picker_gif_cannot_fit": "画質を保ちながらサイズを収められません。短いアニメーションや高い上限をお試しください。",
+        "picker_gif_too_complex": "このGIFは安全に処理するには大きすぎるか複雑です。",
+        "picker_gif_failed": "GIFの最適化プレビューを生成できませんでした。",
+        "picker_gif_outdated": "元のGIFまたは容量上限が変更されました。再度プレビューしてください。",
+        "picker_gif_info": "フレーム · 送信は手動",
+    },
+    "zh": {
+        "picker_gif_optimize": "优化 GIF…",
+        "picker_gif_title": "GIF 大小和画质对比",
+        "picker_gif_loading": "正在准备对比动画…",
+        "picker_gif_original": "原始 GIF",
+        "picker_gif_result": "优化候选",
+        "picker_gif_accept": "粘贴优化版（手动发送）",
+        "picker_gif_cancel": "取消",
+        "picker_gif_note": "请对比两段动画。颜色或分辨率可能改变。原文件不会被修改；发送需手动完成。",
+        "picker_gif_fits": "此 GIF 已符合当前大小目标。",
+        "picker_gif_cannot_fit": "无法在保持可接受画质的情况下压缩到目标大小。请尝试较短的 GIF 或更高的限额。",
+        "picker_gif_too_complex": "此 GIF 过大或过于复杂，无法安全优化。",
+        "picker_gif_failed": "无法生成安全的 GIF 优化预览。",
+        "picker_gif_outdated": "GIF 原文件或大小限制已更改。请重新预览。",
+        "picker_gif_info": "帧 · 手动发送",
+    },
+    "es": {
+        "picker_gif_optimize": "Optimizar GIF…",
+        "picker_gif_title": "Comparar tamaño y calidad del GIF",
+        "picker_gif_loading": "Preparando animaciones para comparar…",
+        "picker_gif_original": "Original",
+        "picker_gif_result": "Candidato optimizado",
+        "picker_gif_accept": "Pegar optimizado (enviar manualmente)",
+        "picker_gif_cancel": "Cancelar",
+        "picker_gif_note": "Compara ambas animaciones: pueden cambiar los colores o la resolución. El original no se modifica y debes enviar el adjunto manualmente.",
+        "picker_gif_fits": "Este GIF ya cabe en el tamaño configurado.",
+        "picker_gif_cannot_fit": "No cabe sin perder demasiada calidad. Prueba una animación más corta o un límite mayor.",
+        "picker_gif_too_complex": "El GIF es demasiado grande o complejo para optimizarlo de forma segura.",
+        "picker_gif_failed": "No se pudo generar una vista previa optimizada del GIF.",
+        "picker_gif_outdated": "El GIF o el límite de tamaño ha cambiado. Abre otra vista previa.",
+        "picker_gif_info": "fotogramas · envío manual",
+    },
+}
+for _lang, _table in _GIF_PREVIEW_STRINGS.items():
+    STRINGS[_lang].update(_table)
+del _GIF_PREVIEW_STRINGS
+# Explicit settings backup UI. Never ship user image data or tokens in this JSON.
+_PROFILE_BACKUP_STRINGS = {
+    "en": {
+        "picker_profile_export": "Export settings",
+        "picker_profile_import": "Restore settings…",
+        "picker_profile_title": "Preferences backup (.json, no media)",
+        "picker_profile_include_paths": "Include watched-folder paths (private local addresses; unchecked by default)",
+        "picker_profile_no_paths": "Watched paths are excluded by default.",
+        "picker_profile_review_title": "Review settings restoration",
+        "picker_profile_review_note": "Nothing has changed yet. Restore applies preferences only; no images or private Captures. Auto-send and auto-capture will remain OFF, startup is unchanged. Restart Notro for hotkey/language changes.",
+        "picker_profile_folders_restore": "Also add existing watched folders from this backup (optional; never deletes current folders)",
+        "picker_profile_confirm": "Apply reviewed settings",
+        "picker_profile_cancel": "Cancel",
+        "picker_profile_exported": "Saved {settings_count} preferences, {folders_count} watched-folder paths.",
+        "picker_profile_restored": "Applied {applied} preferences; added {folders_added} folders ({folders_missing} missing). Restart Notro.",
+        "picker_profile_error": "Settings backup could not be read or restored. No unapproved settings were applied.",
+        "picker_profile_restart": "Restart Notro to apply hotkey/language changes.",
+        "picker_profile_counts": "Preferences: {settings} · Watched folder paths in file: {folders}",
+    },
+    "ko": {
+        "picker_profile_export": "설정 백업",
+        "picker_profile_import": "설정 복원…",
+        "picker_profile_title": "환경설정 백업 (.json, 이미지 제외)",
+        "picker_profile_include_paths": "감시 폴더 경로 포함 (개인 PC 경로가 노출될 수 있음, 기본 해제)",
+        "picker_profile_no_paths": "감시 폴더 경로는 기본적으로 제외됩니다.",
+        "picker_profile_review_title": "설정 복원 확인",
+        "picker_profile_review_note": "아직 아무것도 변경하지 않았습니다. 이미지·개인 캡처는 복원 대상이 아닙니다. 자동 전송·자동 캡처는 꺼지고 시작 프로그램 설정은 유지됩니다. 단축키·언어 적용 시 Notro를 다시 시작하세요.",
+        "picker_profile_folders_restore": "백업에 있는 기존 감시 폴더 경로도 추가 (선택, 기존 폴더 삭제 없음)",
+        "picker_profile_confirm": "확인한 설정 적용",
+        "picker_profile_cancel": "취소",
+        "picker_profile_exported": "설정 {settings_count}개, 감시 폴더 경로 {folders_count}개 백업 완료.",
+        "picker_profile_restored": "설정 {applied}개 적용 · 폴더 {folders_added}개 추가({folders_missing}개 없음). Notro를 다시 시작하세요.",
+        "picker_profile_error": "설정 백업을 읽거나 복원할 수 없습니다. 승인하지 않은 설정은 적용하지 않았습니다.",
+        "picker_profile_restart": "단축키·언어 적용을 위해 Notro를 다시 시작하세요.",
+        "picker_profile_counts": "설정 {settings}개 · 백업에 포함된 감시 폴더 경로 {folders}개",
+    },
+    "ja": {
+        "picker_profile_export": "設定をバックアップ",
+        "picker_profile_import": "設定を復元…",
+        "picker_profile_title": "設定バックアップ（JSON・画像なし）",
+        "picker_profile_include_paths": "監視フォルダーのパスを含める（個人のローカルパス、初期値はオフ）",
+        "picker_profile_no_paths": "監視フォルダーのパスは初期状態では除外します。",
+        "picker_profile_review_title": "設定の復元を確認",
+        "picker_profile_review_note": "まだ何も変更していません。画像や個人のキャプチャは含みません。自動送信と自動保存はオフのまま、起動設定は変更しません。ショートカットや言語の反映には再起動が必要です。",
+        "picker_profile_folders_restore": "存在する監視フォルダーも追加（任意、既存の設定は削除しません）",
+        "picker_profile_confirm": "確認した設定を適用",
+        "picker_profile_cancel": "キャンセル",
+        "picker_profile_exported": "設定 {settings_count} 件、監視フォルダー {folders_count} 件を保存。",
+        "picker_profile_restored": "設定 {applied} 件を適用、フォルダー {folders_added} 件追加（未検出 {folders_missing} 件）。Notro を再起動してください。",
+        "picker_profile_error": "設定バックアップを読み込めませんでした。未承認の変更は適用されていません。",
+        "picker_profile_restart": "ショートカット・言語を反映するには Notro を再起動してください。",
+        "picker_profile_counts": "設定 {settings} 件 · 保存済み監視フォルダー {folders} 件",
+    },
+    "zh": {
+        "picker_profile_export": "备份设置",
+        "picker_profile_import": "恢复设置…",
+        "picker_profile_title": "偏好设置备份（JSON，不含图片）",
+        "picker_profile_include_paths": "包含监视文件夹路径（可能泄露本地私人路径，默认不选）",
+        "picker_profile_no_paths": "默认不包含监视文件夹路径。",
+        "picker_profile_review_title": "确认恢复设置",
+        "picker_profile_review_note": "尚未修改任何设置。本备份不含媒体或私人截图。自动发送和自动截图保存将保持关闭，开机启动不变。快捷键和语言更改需重启 Notro。",
+        "picker_profile_folders_restore": "同时添加备份中存在的监视文件夹（可选，不删除现有文件夹）",
+        "picker_profile_confirm": "应用已检查的设置",
+        "picker_profile_cancel": "取消",
+        "picker_profile_exported": "已保存 {settings_count} 项设置及 {folders_count} 个监视路径。",
+        "picker_profile_restored": "已应用 {applied} 项设置，新增 {folders_added} 个文件夹（缺失 {folders_missing} 个）。请重启 Notro。",
+        "picker_profile_error": "无法读取或恢复设置备份。未执行未经批准的更改。",
+        "picker_profile_restart": "请重启 Notro 以应用快捷键和语言。",
+        "picker_profile_counts": "设置 {settings} 项 · 备份中的监视路径 {folders} 个",
+    },
+    "es": {
+        "picker_profile_export": "Exportar ajustes",
+        "picker_profile_import": "Restaurar ajustes…",
+        "picker_profile_title": "Copia de preferencias (JSON, sin archivos multimedia)",
+        "picker_profile_include_paths": "Incluir rutas de carpetas vigiladas (rutas privadas; desactivado por defecto)",
+        "picker_profile_no_paths": "Las rutas de carpetas se excluyen por defecto.",
+        "picker_profile_review_title": "Revisar restauración",
+        "picker_profile_review_note": "Todavía no se ha cambiado nada. No incluye imágenes ni capturas privadas. El envío y la captura automáticos quedarán desactivados; el inicio de Windows no cambia. Reinicia Notro para el idioma y atajos.",
+        "picker_profile_folders_restore": "Agregar las carpetas vigiladas existentes del archivo (opcional, sin borrar las actuales)",
+        "picker_profile_confirm": "Aplicar ajustes revisados",
+        "picker_profile_cancel": "Cancelar",
+        "picker_profile_exported": "Guardados {settings_count} ajustes y {folders_count} rutas de carpetas.",
+        "picker_profile_restored": "Aplicados {applied} ajustes y añadidas {folders_added} carpetas ({folders_missing} ausentes). Reinicia Notro.",
+        "picker_profile_error": "No se pudo leer o restaurar la copia de ajustes. No se aplicaron cambios no aprobados.",
+        "picker_profile_restart": "Reinicia Notro para aplicar los atajos y el idioma.",
+        "picker_profile_counts": "Ajustes: {settings} · Rutas vigiladas guardadas: {folders}",
+    },
+}
+for _profile_lang, _profile_strings in _PROFILE_BACKUP_STRINGS.items():
+    STRINGS[_profile_lang].update(_profile_strings)
+del _PROFILE_BACKUP_STRINGS
+
+# Safe paste messages — all five UI locales, distinct from "clipboard ready".
+_FOCUS_CLIPBOARD_GUARDS = {
+    "en": (
+        "Original target window is no longer focused. Clipboard was not changed.",
+        "A newer clipboard copy was detected. Notro kept your new copy.",
+    ),
+    "ko": (
+        "원래 붙여넣을 창이 활성화되지 않았습니다. 클립보드는 변경하지 않았습니다.",
+        "새로 복사한 내용이 감지되어 해당 클립보드 내용을 보존했습니다.",
+    ),
+    "ja": (
+        "元の貼り付け先がフォーカスされていません。クリップボードは変更しませんでした。",
+        "新しいコピーが見つかりました。新しいクリップボード内容を保持しました。",
+    ),
+    "zh": (
+        "原来的粘贴窗口未获得焦点，剪贴板没有被修改。",
+        "检测到更新的复制内容，已保留新的剪贴板内容。",
+    ),
+    "es": (
+        "La ventana de destino ya no tiene el foco. No se modificó el portapapeles.",
+        "Se detectó una copia posterior; se conservó ese contenido del portapapeles.",
+    ),
+}
+for _locale, (_target_lost, _newer_copy) in _FOCUS_CLIPBOARD_GUARDS.items():
+    STRINGS[_locale]["notify_paste_target_lost"] = _target_lost
+    STRINGS[_locale]["notify_clipboard_changed"] = _newer_copy
+del _FOCUS_CLIPBOARD_GUARDS
+# The independent Windows tray popup has its own localized presentation text.
+# The product is NOT an official Discord add-on and remains unsigned by choice.
+_TRAY_PANEL_TRANSLATIONS = {
+    "en": {
+        "tray_about": "About Notro",
+        "tray_settings": "Settings",
+        "tray_back": "Back",
+        "tray_quick": "QUICK ACTIONS",
+        "tray_running": "ACTIVE",
+        "tray_paused": "PAUSED",
+        "tray_picker_note": "Your personal emoji, sticker and GIF collection",
+        "tray_footnote": "Windows media utility · Independent from Discord",
+        "tray_limit_note": "Free 20 MB · Nitro Basic 50 MB · Nitro up to 1 GB; actual limits vary",
+        "tray_about_note": "Your media collection, one hotkey away.",
+        "tray_platform": "Supported OS",
+        "tray_engine": "Display engine",
+        "tray_license": "License",
+        "tray_disclosure": "Unsigned Windows utility. Independent from and not endorsed by Discord. Files are pasted as attachments, not native Nitro emoji.",
+        "tray_links": "PROJECT LINKS",
+        "tray_github": "GitHub repository",
+        "tray_releases": "Releases & downloads",
+        "tray_issues": "Report an issue",
+        "tray_license_link": "MIT license",
+        "tray_failed": "Couldn't complete that action. You can use the classic tray menu.",
+    },
+    "ko": {
+        "tray_about": "Notro 정보",
+        "tray_settings": "설정",
+        "tray_back": "뒤로",
+        "tray_quick": "빠른 작업",
+        "tray_running": "실행 중",
+        "tray_paused": "일시 정지",
+        "tray_picker_note": "내 이모지·스티커·GIF를 빠르게 찾아보세요",
+        "tray_footnote": "Windows 미디어 도구 · Discord와 독립적으로 작동",
+        "tray_limit_note": "무료 20MB · Nitro Basic 50MB · Nitro 최대 1GB (계정별 상이)",
+        "tray_about_note": "내 미디어 라이브러리를 단축키 하나로.",
+        "tray_platform": "지원 운영체제",
+        "tray_engine": "화면 엔진",
+        "tray_license": "라이선스",
+        "tray_disclosure": "서명되지 않은 Windows 유틸리티입니다. Discord의 공식 제품이 아니며, 미디어는 Nitro 이모지가 아닌 파일 첨부로 붙여넣습니다.",
+        "tray_links": "프로젝트 링크",
+        "tray_github": "GitHub 저장소",
+        "tray_releases": "릴리스 및 다운로드",
+        "tray_issues": "문제 제보",
+        "tray_license_link": "MIT 라이선스",
+        "tray_failed": "작업을 완료하지 못했습니다. 기본 트레이 메뉴를 이용할 수 있습니다.",
+    },
+    "ja": {
+        "tray_about": "Notro について",
+        "tray_settings": "設定",
+        "tray_back": "戻る",
+        "tray_quick": "クイック操作",
+        "tray_running": "動作中",
+        "tray_paused": "一時停止",
+        "tray_picker_note": "自分の絵文字・ステッカー・GIFを簡単検索",
+        "tray_footnote": "独立した Windows メディアツール",
+        "tray_limit_note": "無料 20MB · Nitro Basic 50MB · Nitro 最大 1GB（アカウントにより異なる）",
+        "tray_about_note": "自分のメディアをショートカットひとつで。",
+        "tray_platform": "対応 OS",
+        "tray_engine": "表示エンジン",
+        "tray_license": "ライセンス",
+        "tray_disclosure": "未署名の Windows ユーティリティ。Discord 非公式で、画像は Nitro 絵文字ではなく添付ファイルになります。",
+        "tray_links": "プロジェクトリンク",
+        "tray_github": "GitHub リポジトリ",
+        "tray_releases": "リリースとダウンロード",
+        "tray_issues": "不具合を報告",
+        "tray_license_link": "MIT ライセンス",
+        "tray_failed": "操作に失敗しました。Windows の従来メニューを使えます。",
+    },
+    "zh": {
+        "tray_about": "关于 Notro",
+        "tray_settings": "设置",
+        "tray_back": "返回",
+        "tray_quick": "快捷操作",
+        "tray_running": "运行中",
+        "tray_paused": "已暂停",
+        "tray_picker_note": "快速搜索个人表情、贴纸和 GIF",
+        "tray_footnote": "独立于 Discord 的 Windows 媒体工具",
+        "tray_limit_note": "免费 20MB · Nitro Basic 50MB · Nitro 最多 1GB（因账号而异）",
+        "tray_about_note": "一个快捷键，打开个人媒体收藏。",
+        "tray_platform": "支持系统",
+        "tray_engine": "显示引擎",
+        "tray_license": "许可协议",
+        "tray_disclosure": "未签名的 Windows 工具，与 Discord 无官方关联。媒体以文件附件形式粘贴，并非原生 Nitro 表情。",
+        "tray_links": "项目链接",
+        "tray_github": "GitHub 仓库",
+        "tray_releases": "版本与下载",
+        "tray_issues": "报告问题",
+        "tray_license_link": "MIT 许可证",
+        "tray_failed": "操作失败，可使用 Windows 原生托盘菜单。",
+    },
+    "es": {
+        "tray_about": "Acerca de Notro",
+        "tray_settings": "Ajustes",
+        "tray_back": "Volver",
+        "tray_quick": "ACCIONES RÁPIDAS",
+        "tray_running": "ACTIVO",
+        "tray_paused": "PAUSADO",
+        "tray_picker_note": "Tu colección de emojis, stickers y GIFs",
+        "tray_footnote": "Utilidad multimedia de Windows independiente de Discord",
+        "tray_limit_note": "Gratis 20 MB · Nitro Basic 50 MB · Nitro hasta 1 GB (según cuenta)",
+        "tray_about_note": "Tu colección multimedia a un atajo de distancia.",
+        "tray_platform": "Sistema compatible",
+        "tray_engine": "Motor visual",
+        "tray_license": "Licencia",
+        "tray_disclosure": "Herramienta de Windows sin firma y sin afiliación con Discord. Los archivos se pegan como adjuntos, no como emojis nativos de Nitro.",
+        "tray_links": "ENLACES DEL PROYECTO",
+        "tray_github": "Repositorio GitHub",
+        "tray_releases": "Versiones y descargas",
+        "tray_issues": "Informar de un problema",
+        "tray_license_link": "Licencia MIT",
+        "tray_failed": "No se pudo completar. Puedes usar el menú clásico de Windows.",
+    },
+}
+for _code, _values in _TRAY_PANEL_TRANSLATIONS.items():
+    STRINGS[_code].update(_values)
+del _TRAY_PANEL_TRANSLATIONS

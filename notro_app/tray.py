@@ -15,6 +15,28 @@ from .config import (get_setting_str, is_startup_registered, set_setting_int,
 from .i18n import set_language, tr
 
 
+class _NotroIcon(pystray.Icon):
+    """Keep native Win32 menu unless a ready WebView2 tray surface handles it.
+
+    WM_RBUTTONUP is sent only for our own registered notification-area icon.
+    No subclassing/injection into Discord or other applications is involved.
+    """
+    WM_RBUTTONUP = 0x0205
+
+    def __init__(self, *args, themed_right_click=None, **kwargs):
+        self._themed_right_click = themed_right_click
+        super().__init__(*args, **kwargs)
+
+    def _on_notify(self, wparam, lparam):
+        if lparam == self.WM_RBUTTONUP and self._themed_right_click:
+            try:
+                if self._themed_right_click():
+                    return
+            except Exception:
+                pass
+        return super()._on_notify(wparam, lparam)
+
+
 def make_icon_image(active=True, update_pending=False):
     """Notro 트레이 아이콘: 니트로식 블러플 캡슐에 'not Nitro' 대각선 슬래시.
     active=False(감시 중지)면 회색으로 표시. update_pending이면 우측 상단에
@@ -52,7 +74,8 @@ def signal_update_ready(icon, monitor, tag: str) -> None:
         pass
 
 
-def build_icon(monitor, picker=None, listener=None, on_quit_extra=None, updater=None) -> "pystray.Icon":
+def build_icon(monitor, picker=None, listener=None, on_quit_extra=None,
+               updater=None, tray_panel=None) -> "pystray.Icon":
     """트레이 아이콘 구성.
 
     picker/listener가 주어지면 피커 열기·핫키 메뉴가 추가된다 (없으면 v1 메뉴).
@@ -114,17 +137,21 @@ def build_icon(monitor, picker=None, listener=None, on_quit_extra=None, updater=
             icon.update_menu()
 
         return pystray.MenuItem(
-            f"{mb} MB",
+            "1 GB" if mb == 1024 else f"{mb} MB",
             on_select,
             checked=lambda item, mb=mb: config.LIMIT_MB == mb,
             radio=True,
         )
 
-    # 디스코드 한도: 무료 10 / 니트로 베이직 50 / 니트로 500 MB
+    # Discord's 2026-09-30 attachment FAQ and 2026-09-29 Nitro FAQ:
+    # free 20MB, Basic 50MB, Nitro up to 1GB (not a guaranteed account limit).
+    # Keep 10MB and 500MB as legacy/manual options.
     limit_menu = pystray.Menu(
         make_limit_item(10),
+        make_limit_item(20),
         make_limit_item(50),
         make_limit_item(500),
+        make_limit_item(1024),
     )
 
     # 언어 메뉴 (자동 감지 + 각 언어). 언어명은 해당 언어 표기 그대로 둔다.
@@ -240,7 +267,13 @@ def build_icon(monitor, picker=None, listener=None, on_quit_extra=None, updater=
             return tr("tooltip_picker", ver=__version__, combo=label_for(c))
         return tr("tooltip", ver=__version__)
 
-    icon = pystray.Icon(
+    def on_about(icon, item):
+        if tray_panel is not None and tray_panel.show_about():
+            return
+        from .tray_panel import native_about_fallback
+        native_about_fallback()
+
+    icon = _NotroIcon(
         APP_NAME,
         make_icon_image(True),
         _tooltip(),
@@ -261,9 +294,123 @@ def build_icon(monitor, picker=None, listener=None, on_quit_extra=None, updater=
                 checked=lambda item: is_startup_registered(),
             ),
             *updater_items,
+            pystray.MenuItem(lambda item: tr("tray_about"), on_about),
+            pystray.Menu.SEPARATOR,
             pystray.MenuItem(lambda item: tr("quit"), on_quit),
         ),
+        themed_right_click=(
+            (lambda: tray_panel.request_show("home"))
+            if tray_panel is not None else None
+        ),
     )
+    # The modern tray popup and the classic fallback share exactly the
+    # same action handlers/state. A hosted JS click never writes clipboard
+    # or invokes SendInput; picker actions remain user-directed.
+    if tray_panel is not None:
+        from .hotkey import HOTKEY_CHOICES, HOTKEY_OFF
+        from . import i18n
+
+        def get_panel_state():
+            combo = get_setting_str("hotkey", "ctrl+shift+e")
+            hotkeys = [
+                {"value": key, "label": val[2]}
+                for key, val in HOTKEY_CHOICES.items()
+            ]
+            hotkeys.append({"value": HOTKEY_OFF, "label": tr("hotkey_off")})
+            languages = [{"value": "auto", "label": tr("lang_auto")}] + [
+                {"value": code, "label": lang_names[code]}
+                for code in lang_names
+            ]
+            labels = {
+                "picker": tr("picker_open"),
+                "pause": tr("pause"), "resume": tr("resume"),
+                "open_library": tr("open_library_folder"),
+                "limit": tr("upload_limit"), "settings": tr("tray_settings"),
+                "about": tr("tray_about"), "quit": tr("quit"),
+                "back": tr("tray_back"), "quick_actions": tr("tray_quick"),
+                "running": tr("tray_running"), "paused": tr("tray_paused"),
+                "picker_note": tr("tray_picker_note"),
+                "footnote": tr("tray_footnote"),
+                "limit_note": tr("tray_limit_note"),
+                "hotkey": tr("hotkey_menu"), "language": tr("language"),
+                "startup": tr("run_at_startup"),
+                "auto_update": tr("update_auto"),
+                "check_update": tr("update_check"),
+                "restart_update": tr("update_restart"),
+                "open_output": tr("open_folder"),
+                "about_note": tr("tray_about_note"),
+                "platform": tr("tray_platform"),
+                "engine": tr("tray_engine"),
+                "license": tr("tray_license"),
+                "disclosure": tr("tray_disclosure"),
+                "links": tr("tray_links"), "github": tr("tray_github"),
+                "releases": tr("tray_releases"), "issues": tr("tray_issues"),
+                "license_link": tr("tray_license_link"),
+                "failed": tr("tray_failed"),
+            }
+            return {
+                "monitor_enabled": bool(monitor.enabled),
+                "limit_mb": config.LIMIT_MB,
+                "hotkey": combo,
+                "hotkeys": hotkeys,
+                "language": get_setting_str("lang", "auto"),
+                "lang_resolved": i18n.current_lang,
+                "languages": languages,
+                "startup": bool(is_startup_registered()),
+                "auto_update": _auto_on() if updater is not None else False,
+                "updater_present": updater is not None,
+                "update_ready": bool(updater and updater.ready_exe),
+                "labels": labels,
+            }
+
+        def on_panel_action(name, value):
+            if name == "picker" and picker is not None:
+                tray_panel.hide()
+                on_open_picker(icon, None)
+            elif name == "toggle":
+                on_toggle(icon, None)
+            elif name == "library":
+                on_open_library(icon, None)
+            elif name == "output":
+                on_open_folder(icon, None)
+            elif name == "limit" and value in ("10", "20", "50", "500", "1024"):
+                config.set_limit_mb(int(value))
+                set_setting_int("limit_mb", int(value))
+                icon.update_menu()
+            elif name == "language" and value in (*lang_names, "auto"):
+                set_setting_str("lang", value)
+                set_language(value)
+                icon.title = _tooltip()
+                icon.update_menu()
+            elif name == "hotkey" and listener is not None and value in (
+                    *HOTKEY_CHOICES, HOTKEY_OFF):
+                set_setting_str("hotkey", value)
+                listener.set_combo(value)
+                icon.title = _tooltip()
+                icon.update_menu()
+            elif name == "startup":
+                on_toggle_startup(icon, None)
+            elif name == "auto_update" and updater is not None:
+                on_toggle_auto(icon, None)
+            elif name == "check_update" and updater is not None:
+                on_check_update(icon, None)
+            elif name == "restart_update" and updater is not None:
+                if not updater.ready_exe:
+                    return False
+                tray_panel.hide()
+                on_restart_update(icon, None)
+            elif name == "quit":
+                tray_panel.hide()
+                on_quit(icon, None)
+            else:
+                return False
+            return True
+
+        # Only pywebview-private callbacks; public PanelApi exposes a strict
+        # action string and an allowlisted view of state.
+        tray_panel._state = get_panel_state
+        tray_panel._action = on_panel_action
+
     monitor.on_history_change = icon.update_menu
     monitor.status_cb = lambda title, msg: icon.notify(msg, title)
     return icon
